@@ -1,0 +1,7 @@
+<?xml version="1.0"?>
+<config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="urn:magento:module:Magento_Backend:etc/menu.xsd">
+    <menu>
+      <add id="Tagalys_Sync::tagalys" title="Tagalys" translate="title" module="Tagalys_Sync" parent="Magento_Backend::system" sortOrder="50" dependsOnModule="Tagalys_Sync" resource="Tagalys_Sync::tagalys"/>
+      <add id="Tagalys_Sync::tagalys_configuration" title="Configuration" translate="title" module="Tagalys_Sync" parent="Tagalys_Sync::tagalys" sortOrder="10" dependsOnModule="Tagalys_Sync" action="tagalys/configuration/edit" resource="Tagalys_Sync::tagalys_configuration"/>
+    </menu>
+</config>

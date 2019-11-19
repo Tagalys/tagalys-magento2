@@ -1,0 +1,46 @@
+<?php
+try {
+    $objectManager = \Magento\Framework\App\ObjectManager::getInstance();
+    $tagalysCategoryHelper = $objectManager->get('Tagalys\Sync\Helper\Category');
+    $tagalysCategories = json_encode($tagalysCategoryHelper->getTagalysCategories());
+    $tagalysCreated = json_encode($tagalysCategoryHelper->getTagalysCreatedCategories());
+    echo "<script>tagalysCategories = $tagalysCategories;tagalysCreated = $tagalysCreated;</script>";
+} catch (\Exception $e) {}
+?>
+<script>
+    require(
+        [
+            'jquery',
+            'mage/translate',
+        ],
+        function($) {
+            $(function() {
+                try {
+                    var tagalysNoticeInterval = null;
+                    var urlComponents = window.location.href.split('/');
+                    var id_index = urlComponents.indexOf('id');
+                    if (id_index != -1) {
+                        var currentCategory = urlComponents[id_index + 1];
+                        if ($.inArray(currentCategory, tagalysCategories) !== -1) {
+                            tagalysNoticeInterval = setInterval(function() {
+                                if ($('#catalog_category_products').length > 0) {
+                                    var $tagalysDiv = $('<div>').css('background', '#1c6dad').css('padding', '10px').css('margin-bottom', '10px').css('color', 'white');
+                                    $tagalysDiv.append($('<h2>').css('margin-bottom', '5px').html('Product positions in this category are controlled by Tagalys').css('color', 'white'));
+                                    $tagalysDiv.append($('<p>').css('margin-bottom', '0').html('Visit <a target="__blank" style="color:white;text-decoration:underline;" href="https://next.tagalys.com">next.tagalys.com</a> to merchandise & change product positions'));
+                                    $tagalysDiv.insertBefore('#catalog_category_products');
+                                    clearInterval(tagalysNoticeInterval);
+                                }
+                            }, 1000);
+                        } else if ($.inArray(currentCategory, tagalysCreated) !== -1) {
+                            var $tagalysDiv = $('<div>').css('background', '#1c6dad').css('padding', '10px').css('margin-bottom', '10px').css('color', 'white');
+                            $tagalysDiv.append($('<h2>').css('margin-bottom', '5px').html('This category was created by Tagalys').css('color', 'white'));
+                            $tagalysDiv.append($('<p>').css('margin-bottom', '0').html('Visit <a target="__blank" style="color:white;text-decoration:underline;" href="https://next.tagalys.com">next.tagalys.com</a> to merchandise & change product positions'));
+                            $tagalysDiv.insertBefore('.page-main-actions');
+                        }
+                    }
+                } catch (err) {
+
+                }
+            });
+        });
+</script>

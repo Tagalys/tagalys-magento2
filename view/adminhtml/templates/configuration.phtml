@@ -1,0 +1,535 @@
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/jstree/3.2.1/themes/default/style.min.css" />
+<link rel="stylesheet" href="https://tagalys-assets.s3-ap-southeast-1.amazonaws.com/extension-assets/js-tree/theme-proton/style.min.css" />
+<link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/font-awesome/4.7.0/css/font-awesome.min.css">
+<style>
+    #edit_form .tagalys-button-submit {
+        background-color: #eb5202;
+        border-color: #eb5202;
+        color: #ffffff;
+        text-shadow: 1px 1px 0 rgba(0, 0, 0, 0.25);
+        font-size: 1.6rem;
+        letter-spacing: .025em;
+        padding-bottom: 0.6875em;
+        padding-top: 0.6875em;
+        border-radius: 0;
+        width: auto;
+    }
+
+    .tagalys-button-important {
+        background-color: #eb5202;
+        border-color: #eb5202;
+        color: #ffffff;
+        text-shadow: 1px 1px 0 rgba(0, 0, 0, 0.25);
+        font-size: 1.6rem;
+        letter-spacing: .025em;
+        padding: 0.6875em;
+        border-radius: 0;
+        display: inline-block;
+    }
+
+    .tagalys-button-important:hover {
+        color: #ffffff;
+    }
+
+    .admin__scope-old .form-inline .fieldset>.field>.label span {
+        word-break: inherit;
+    }
+
+    div[id*=admin_tagalys] td.value {
+        width: 500px !important;
+    }
+
+    input[id*=jtree][id*=-q] {
+        width: 300px;
+    }
+
+    .tagalys-note {
+        background-color: #fffbdc !important;
+        border: dashed 1px #ffbc00 !important;
+        padding: 10px;
+    }
+
+    div[id*=categories-jtree-] {
+        max-height: 500px;
+        overflow: auto;
+    }
+
+    .jstree-hidden {
+        display: none !important;
+    }
+
+    .entry-edit fieldset li,
+    .entry-edit .fieldset li {
+        margin-left: 22px !important;
+    }
+
+    .jstree-proton .jstree-disabled {
+        color: #aaa;
+    }
+
+    .jstree-proton .jstree-clicked {
+        background: #ffa436;
+        box-shadow: inset 0 0 1px #a04300;
+        font-weight: 600;
+    }
+
+    .jstree-proton .jstree-hovered {
+        background: #ffac47;
+        box-shadow: inset 0 0 1px #a04300;
+    }
+
+    .jstree-proton .jstree-anchor {
+        cursor: pointer;
+    }
+
+    .hidden {
+        display: none !important;
+    }
+
+    /* Magento 2 */
+    .admin__fieldset>.admin__field>.admin__field-control input[type="checkbox"] {
+        margin-top: 0;
+    }
+
+    div[class*=field-categories_for_tagalys_store] {
+        margin: 0 !important;
+    }
+
+    .admin__collapsible-block-wrapper.fieldset-wrapper .fieldset-wrapper-content {
+        padding: 0 !important;
+    }
+</style>
+<script>
+    var syncManuallyUrl = '<?php echo $this->syncManuallyUrl(); ?>';
+    var syncStatusUrl = '<?php echo $this->syncStatusUrl(); ?>';
+
+    var tagalysManualSyncStarted = false;
+    var tagalysClientSideWorkCompleted = false;
+    var tagalysWaitingForTagalys = false;
+    var tagalysSyncing = false;
+    var tagalysLabelStartManualSync = 'Sync Manually';
+    var tagalysLabelNothingToSync = 'Nothing to sync';
+    var tagalysLabelSyncing = 'Manual sync in progress - do not close browser (click to pause)';
+    var tagalysLabelManualSyncWaitingForTagalys = 'Waiting for Tagalys. You can close the browser.';
+    var tagalysLabelManualSyncFinished = 'Finished syncing. You can close the browser.';
+
+    function tagalysInterval(fn, time) {
+        var timer = false;
+        this.start = function() {
+            if (!this.isRunning())
+                timer = setInterval(fn, time);
+        };
+        this.stop = function() {
+            clearInterval(timer);
+            timer = false;
+        };
+        this.isRunning = function() {
+            return timer !== false;
+        };
+    }
+
+    function isTagalysEnabled(tgls_jq) {
+        // if(tgls_jq('#enable_listingpages').val() != '1') return false;
+        return true;
+    }
+    var tagalysStatusUpdateInterval, tagalysManualSyncIndicatorInterval, tagalysMonitorInterval;
+    var tagalysManualSyncTimeout = false;
+
+    document.addEventListener("DOMContentLoaded", function(e) {
+        require([
+            "jquery"
+        ], function(tgls_jq) {
+            if (isTagalysEnabled(tgls_jq)) {
+                tagalysStatusUpdateInterval = new tagalysInterval(tagalysGetAndUpdateSyncStatus, 5000);
+                tagalysManualSyncIndicatorInterval = new tagalysInterval(tagalysUpdateManualSyncIndicator, 2000);
+                // monitoring
+                tagalysMonitorInterval = new tagalysInterval(tagalysMonitorTimers, 5000);
+                tagalysMonitorInterval.start();
+
+                tagalysGetAndUpdateSyncStatus();
+                tagalysRenderJsTree('store');
+                tgls_jq.each(tgls_jq('#stores_for_tagalys').val(), function(i, store_id) {
+                    tagalysRenderJsTree('category', store_id);
+                });
+            }
+        });
+    });
+
+    function tagalysMonitorTimers() {
+        if (tagalysSyncing) {
+            tagalysManualSyncIndicatorInterval.start();
+            if (tagalysManualSyncTimeout === false) {
+                tagalysManualSyncTimeout = setTimeout(tagalysSyncManually, 100);
+            }
+        } else {
+            tagalysManualSyncIndicatorInterval.stop();
+            tagalysStatusUpdateInterval.start();
+        }
+    }
+
+
+    function tagalysToggleManualSync() {
+        if (tagalysSyncing) {
+            tagalysStopManualSync();
+        } else {
+            tagalysStartManualSync();
+        }
+    }
+
+    function tagalysStopManualSync() {
+        tagalysSyncing = false;
+
+        // stop timer
+        if (tagalysManualSyncTimeout === false) {
+            // not running. nothing to do.
+        } else {
+            clearTimeout(tagalysManualSyncTimeout);
+            tagalysManualSyncTimeout = false;
+        }
+        tagalysManualSyncIndicatorInterval.stop();
+
+        tagalysUpdateSyncButtonLabel();
+
+        // start updates
+        tagalysStatusUpdateInterval.start();
+    }
+
+    function tagalysStartManualSync() {
+        // stop timer if running
+        if (tagalysManualSyncTimeout === false) {
+            // not running. nothing to do.
+        } else {
+            clearTimeout(tagalysManualSyncTimeout);
+            tagalysManualSyncTimeout = false;
+        }
+
+        // stop updates
+        tagalysStatusUpdateInterval.stop();
+
+        // start manual sync
+        tagalysSyncing = true;
+        tagalysManualSyncTimeout = setTimeout(tagalysSyncManually, 100);
+        tagalysManualSyncIndicatorInterval.start();
+        tagalysUpdateSyncButtonLabel();
+    }
+
+    function tagalysUpdateSyncButtonLabel() {
+        var toggleButton = document.getElementById('tagalys-toggle-manual-sync');
+        if (!toggleButton) {
+            return;
+        }
+        if (tagalysSyncing) {
+            toggleButton.innerHTML = tagalysLabelSyncing;
+        } else {
+            if (tagalysClientSideWorkCompleted) {
+                if (tagalysWaitingForTagalys) {
+                    toggleButton.innerHTML = tagalysLabelManualSyncWaitingForTagalys;
+                } else {
+                    if (tagalysManualSyncStarted) {
+                        toggleButton.innerHTML = tagalysLabelManualSyncFinished;
+                    } else {
+                        toggleButton.innerHTML = tagalysLabelNothingToSync;
+                    }
+                }
+            } else {
+                toggleButton.innerHTML = tagalysLabelStartManualSync;
+            }
+        }
+    }
+
+    function tagalysUpdateManualSyncIndicator() {
+        if (tagalysSyncing) {
+            var toggleButton = document.getElementById('tagalys-toggle-manual-sync');
+            var currentIndicator = toggleButton.innerHTML;
+            var currentDotStr = currentIndicator.substr(tagalysLabelSyncing.length, 3);
+            var nextDotStr = '...';
+            switch (currentDotStr) {
+                case '.':
+                    nextDotStr = '..';
+                    break;
+                case '..':
+                    nextDotStr = '...';
+                    break;
+                case '...':
+                    nextDotStr = '.';
+                    break;
+            }
+            toggleButton.innerHTML = tagalysLabelSyncing + nextDotStr;
+        }
+    }
+
+    function tagalysSyncManually() {
+        tagalysManualSyncStarted = true;
+        if (tagalysSyncing) {
+            require([
+                "jquery"
+            ], function($) {
+                $.ajax({
+                    url: syncManuallyUrl,
+                    method: 'POST',
+                    data: {
+                        form_key: window.FORM_KEY
+                    },
+                    success: function(data, textStatus, jqXHR) {
+                        updateSyncStatus(data);
+                        if (data.client_side_work_completed == true) {
+                            tagalysStopManualSync();
+                        } else {
+                            tagalysManualSyncTimeout = setTimeout(tagalysSyncManually, 100);
+                        }
+                    },
+                    error: function(jqXHR, textStatus, errorThrown) {
+                        tagalysManualSyncTimeout = false;
+                    }
+                });
+            });
+        } else {
+            // don't do anything
+            tagalysManualSyncTimeout = false;
+        }
+    }
+
+    function tagalysGetAndUpdateSyncStatus() {
+        require([
+            "jquery"
+        ], function($) {
+            if (tagalysSyncing == false) {
+                $.ajax({
+                    url: syncStatusUrl,
+                    method: 'POST',
+                    data: {
+                        form_key: window.FORM_KEY
+                    },
+                    success: function(data, textStatus, jqXHR) {
+                        // var syncStatus = JSON.parse(data);
+                        updateSyncStatus(data);
+                    }
+                });
+            }
+        });
+    }
+
+    function updateSyncStatus(syncStatus) {
+        tagalysClientSideWorkCompleted = syncStatus.client_side_work_completed;
+        if (syncStatus.waiting_for_tagalys == true) {
+            tagalysWaitingForTagalys = true;
+        } else {
+            tagalysWaitingForTagalys = false;
+        }
+        tagalysUpdateSyncButtonLabel();
+        document.getElementById('note_sync_status').innerHTML = syncStatus.status;
+        for (store_id in syncStatus.stores) {
+            document.getElementById('store_' + store_id + '_note_setup_complete').innerHTML = (syncStatus.stores[store_id].setup_complete ? 'Yes' : 'No');
+            var toggleButton = document.getElementById('tagalys-toggle-manual-sync');
+            if (toggleButton.innerHTML == 'Sync Now') {
+                var feed_status = syncStatus.stores[store_id].feed_status;
+            } else {
+                var feed_status = syncStatus.stores[store_id].feed_status.replace('Waiting to write', 'Writing');
+            }
+            document.getElementById('store_' + store_id + '_note_feed_status').innerHTML = feed_status;
+            document.getElementById('store_' + store_id + '_note_updates_status').innerHTML = syncStatus.stores[store_id].updates_status;
+            document.getElementById('store_' + store_id + '_note_listing_pages_status').innerHTML = syncStatus.stores[store_id].listing_pages_status;
+        }
+    }
+
+    var config = {
+        paths: {
+            "jquery.jstree": "https://cdnjs.cloudflare.com/ajax/libs/jstree/3.2.1/jstree.min"
+        },
+        shim: {
+            'jquery.jstree': ['jquery', 'jquery/ui']
+        }
+    };
+    require.config(config);
+
+    function tagalysRenderJsTree(tree_type, storeId) {
+        require([
+            "jquery",
+            "jquery.jstree"
+        ], function(tgls_jq) {
+            var multiselect = '';
+            var target_div = '';
+            if (tree_type == 'category') {
+                multiselect = 'categories_for_tagalys_store_' + storeId;
+                target_div = 'categories-jtree-store-' + storeId;
+                if (tgls_jq('#'+target_div).length == 0) {
+                    return;
+                }
+                tgls_jq('#select-all-category-store-' + storeId).on('click', function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    tgls_jq('#' + target_div).jstree(true).select_all();
+                });
+                tgls_jq('#deselect-all-category-store-' + storeId).on('click', function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    tgls_jq('#' + target_div).jstree(true).deselect_all();
+                });
+            } else if (tree_type == 'store') {
+                multiselect = 'stores_for_tagalys';
+                target_div = 'stores-jtree';
+                tgls_jq('#' + target_div + '-q').css('display', 'none');
+            } else {
+                return;
+            }
+            tgls_jq.jstree.defaults.checkbox.three_state = false;
+            tgls_jq.jstree.defaults.search.show_only_matches = true;
+            tgls_jq('#' + target_div).on('changed.jstree', function(e, data) {
+                var i, j, r = [];
+                for (i = 0, j = data.selected.length; i < j; i++) {
+                    if (data.instance.get_node(data.selected[i]).original.state.disabled != true) {
+                        r.push(data.instance.get_node(data.selected[i]).original.value);
+                    }
+                }
+                tgls_jq('#' + multiselect).val(r);
+                var totalSelected = 0;
+                tgls_jq.each(tgls_jq('#stores_for_tagalys').val(), function(i, storeId) {
+                    var selectorVal = tgls_jq('#categories_for_tagalys_store_' + storeId).val();
+                    if (selectorVal != null) {
+                        totalSelected += selectorVal.length;
+                    }
+                });
+            }).jstree({
+                'plugins': ["checkbox", "search"],
+                'core': {
+                    'data': JSON.parse(tgls_jq('#' + target_div).attr('data-tree')),
+                    'themes': {
+                        'name': 'proton',
+                        'responsive': true
+                    },
+                }
+            });
+            tgls_jq('#' + target_div + '-q')
+                .attr('placeholder', "Search categories")
+                .keyup(function() {
+                    if (jstreeSearchTimer) {
+                        clearTimeout(jstreeSearchTimer);
+                    }
+                    jstreeSearchTimer = setTimeout(function() {
+                        var v = tgls_jq('#' + target_div + '-q').val();
+                        tgls_jq('#' + target_div).jstree(true).search(v);
+                    }, 250);
+                });
+        })
+    }
+
+    var jstreeSearchTimer = false;
+</script>
+
+<script>
+    require([
+        "jquery"
+    ], function(tgls_jq) {
+        var storesVisibilityTimer = false;
+        tgls_jq(function(){
+            tgls_jq('.force-hide-store-categories').parents('.fieldset-wrapper').children().hide();
+        })
+        tgls_jq('#enable_listingpages').change(function() {
+            checkTagalysEnabled();
+        });
+        tgls_jq('#category_pages_rendering_method').change(function() {
+            onRenderingModeChange();
+        });
+        tgls_jq('#same_or_similar_products_across_all_stores').change(function() {
+            onSameProductsAcrossStoresChange();
+        });
+        tgls_jq('#store_id_for_category_pages').change(function() {
+            updateStoreCategoriesVisibility();
+        });
+        tgls_jq('#enable_smart_pages').change(function() {
+            checkIfSmartPagesEnabled();
+        });
+        tgls_jq('#understand_and_agree').keyup(function() {
+            updateFromIAgree()
+        }).bind('paste', function() {
+            updateFromIAgree()
+        });
+
+        checkTagalysEnabled(false);
+        onRenderingModeChange(false);
+
+        function updateFromIAgree() {
+            if (storesVisibilityTimer) {
+                clearTimeout(storesVisibilityTimer);
+            }
+            storesVisibilityTimer = setTimeout(function() {
+                updateStoreCategoriesVisibility();
+            }, 250);
+        }
+
+        function checkTagalysEnabled(resetIAgree) {
+            if (typeof(resetIAgree) == 'undefined') {
+                resetIAgree = true;
+            }
+            if (tgls_jq('#enable_listingpages').val() != '1') {
+                tgls_jq('#technical_considerations_fieldset-wrapper').hide();
+                tgls_jq.each(tgls_jq('#stores_for_tagalys').val(), function(i, storeId) {
+                    var selectorVal = tgls_jq('#store_' + storeId + '_listing_pages-wrapper').hide();
+                });
+            } else {
+                tgls_jq('#technical_considerations_fieldset-wrapper').show();
+                tgls_jq.each(tgls_jq('#stores_for_tagalys').val(), function(i, storeId) {
+                    var selectorVal = tgls_jq('#store_' + storeId + '_listing_pages-wrapper').show();
+                });
+                onRenderingModeChange(resetIAgree);
+            }
+        }
+
+        function onRenderingModeChange(resetIAgree) {
+            if (typeof(resetIAgree) == 'undefined') {
+                resetIAgree = true;
+            }
+            if (resetIAgree) {
+                tgls_jq('#understand_and_agree').val('');
+            }
+            var renderingMethod = tgls_jq('#category_pages_rendering_method').val();
+            renderingMethod = renderingMethod ? renderingMethod : 'platform';
+            tgls_jq('.visible-for-rendering-method').parents('.admin__field').hide();
+            tgls_jq('.visible-for-rendering-method-' + renderingMethod).parents('.admin__field').show();
+            if (renderingMethod == 'platform') {
+                onSameProductsAcrossStoresChange();
+            }
+            updateStoreCategoriesVisibility();
+        }
+
+        function onSameProductsAcrossStoresChange() {
+            var sameProductsAcrossStores = tgls_jq('#same_or_similar_products_across_all_stores').val();
+            tgls_jq('.visible-for-same-products-across-stores').parents('.admin__field').hide();
+            tgls_jq('.visible-for-same-products-across-stores-' + sameProductsAcrossStores).parents('.admin__field').show();
+            updateStoreCategoriesVisibility();
+        }
+
+        function updateStoreCategoriesVisibility() {
+            var agreeValue = tgls_jq('#understand_and_agree').val();
+            if (agreeValue) {
+                agreeValue = agreeValue.trim();
+            }
+            if (agreeValue == 'I agree') {
+                var renderingMethod = tgls_jq('#category_pages_rendering_method').val();
+                var sameProductsAcrossStores = tgls_jq('#same_or_similar_products_across_all_stores').val();
+                if (renderingMethod == 'platform' && sameProductsAcrossStores == '1') {
+                    var storeIdForCategoryPages = tgls_jq('#store_id_for_category_pages').val();
+                    tgls_jq('.categories-for-tagalys-store').parents('.fieldset-wrapper').hide();
+                    tgls_jq('#store_' + storeIdForCategoryPages + '_listing_pages-wrapper').show();
+                } else {
+                    tgls_jq('.categories-for-tagalys-store').parents('.fieldset-wrapper').show();
+                }
+                checkIfSmartPagesEnabled();
+            } else {
+                tgls_jq('.categories-for-tagalys-store').parents('.fieldset-wrapper').hide();
+            }
+        }
+
+        function checkIfSmartPagesEnabled() {
+            var $smartPageSelect = tgls_jq('#enable_smart_pages');
+            var $smartPageDivs = tgls_jq('div[class*="smart_page_parent_category"]');
+            if ($smartPageSelect.val() == 1) {
+                tgls_jq('#smart-pages-info').html('Scroll down to set store preferences');
+                $smartPageDivs.show();
+            } else {
+                tgls_jq('#smart-pages-info').html('This will allow you to create new categories from the Tagalys Dashboard whose products are dynamically managed by Tagalys based on various conditions.');
+                $smartPageDivs.hide();
+            }
+        }
+    })
+</script>

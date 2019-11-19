@@ -1,0 +1,15 @@
+<?xml version="1.0"?>
+<config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="urn:magento:framework:Event/etc/events.xsd">
+   <event name="checkout_cart_product_add_after">
+       <observer name="tagalys_product_action_add_to_cart" instance="Tagalys\Sync\Observer\ProductActionAddToCart" />
+   </event>
+   <event name="checkout_onepage_controller_success_action">
+       <observer name="tagalys_product_action_buy" instance="Tagalys\Sync\Observer\ProductActionBuy" />
+   </event>
+   <event name="controller_action_predispatch">
+       <observer name="tagalys_predispatch" instance="Tagalys\Sync\Observer\Predispatch" />
+   </event>
+   <event name="customer_login">
+       <observer name="tagalys_login" instance="Tagalys\Sync\Observer\Login" />
+   </event>
+</config>

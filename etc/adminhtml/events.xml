@@ -1,0 +1,27 @@
+<?xml version="1.0"?>
+<config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="urn:magento:framework:Event/etc/events.xsd">
+   <event name="controller_action_postdispatch">
+       <observer name="tagalys_postaction" instance="Tagalys\Sync\Observer\PostAction" />
+   </event>
+   <event name="controller_action_catalog_product_save_entity_after">
+       <observer name="tagalys_save_product" instance="Tagalys\Sync\Observer\UpdateProduct" />
+   </event>
+   <event name="catalog_product_delete_after_done">
+       <observer name="tagalys_delete_product" instance="Tagalys\Sync\Observer\UpdateProduct" />
+   </event>
+   <event name="catalog_product_attribute_update_before">
+       <observer name="tagalys_update_attributes" instance="Tagalys\Sync\Observer\UpdateAttributes" />
+   </event>
+   <event name="catalog_category_save_after">
+       <observer name="tagalys_update_category" instance="Tagalys\Sync\Observer\UpdateCategory" />
+   </event>
+   <event name="catalog_product_import_bunch_save_after">
+       <observer name="tagalys_import_save" instance="Tagalys\Sync\Observer\ImportSave" />
+   </event>
+   <event name="catalog_product_import_bunch_delete_commit_before">
+       <observer name="tagalys_import_delete" instance="Tagalys\Sync\Observer\ImportDelete" />
+   </event>
+   <event name="sales_order_shipment_save_after">
+       <observer name="shipment_save" instance="Tagalys\Sync\Observer\ShipmentSave" />
+   </event>
+</config>

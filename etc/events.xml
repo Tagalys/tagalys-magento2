@@ -1,0 +1,6 @@
+<?xml version="1.0"?>
+<config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="urn:magento:framework:Event/etc/events.xsd">
+    <event name="tagalys_record_updated_products">
+        <observer name="tagalys_record_updated_products" instance="Tagalys\Sync\Observer\RecordUpdatedProducts" />
+    </event>
+</config>

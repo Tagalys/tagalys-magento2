@@ -1,0 +1,52 @@
+<?xml version="1.0"?>
+<page xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" layout="admin-2columns-left" xsi:noNamespaceSchemaLocation="urn:magento:framework:View/Layout/etc/page_configuration.xsd">
+    <head>
+        <title>
+            Tagalys - Need help? Visit http://support.tagalys.com
+        </title>
+    </head>
+    <body>
+<!--         <referenceContainer name="content">
+            <block class="Magento\Backend\Block\Template" template="Tagalys_Sync::configuration.phtml"/>
+        </referenceContainer> -->
+
+        <referenceContainer name="left">
+            <block class="Tagalys\Sync\Block\Adminhtml\Configuration\Edit\Tabs" name="attribute_edit_tabs">
+                <container label="API Credentials" name="api_credentials">
+                    <block class="Tagalys\Sync\Block\Adminhtml\Configuration\Edit\Tab\Apicredentials" as="api_credentials"/>
+                </container>
+                <container label="Sync Settings" name="sync_settings">
+                    <block class="Tagalys\Sync\Block\Adminhtml\Configuration\Edit\Tab\Syncsettings" as="sync_settings"/>
+                </container>
+                <container label="Sync" name="sync">
+                    <block class="Tagalys\Sync\Block\Adminhtml\Configuration\Edit\Tab\Sync" as="sync"/>
+                </container>
+                <container label="Search" name="search">
+                    <block class="Tagalys\Sync\Block\Adminhtml\Configuration\Edit\Tab\Search" as="search"/>
+                </container>
+                <container label="Listingpages" name="listingpages">
+                    <block class="Tagalys\Sync\Block\Adminhtml\Configuration\Edit\Tab\Listingpages" as="listingpages"/>
+                </container>
+                <container label="Recommendations" name="recommendations">
+                    <block class="Tagalys\Sync\Block\Adminhtml\Configuration\Edit\Tab\Recommendations" as="recommendations"/>
+                </container>
+                <container label="Mystore" name="mystore">
+                    <block class="Tagalys\Sync\Block\Adminhtml\Configuration\Edit\Tab\Mystore" as="mystore"/>
+                </container>
+                <container label="Support" name="support">
+                    <block class="Tagalys\Sync\Block\Adminhtml\Configuration\Edit\Tab\Support" as="support"/>
+                </container>
+                <!-- <block class="Magento\Eav\Block\Adminhtml\Attribute\Edit\Options\Labels" as="labels"/>
+                <block class="Magento\Catalog\Block\Adminhtml\Product\Attribute\Edit\Tab\Front" as="front"/> -->
+            </block>
+        </referenceContainer>
+        <referenceContainer name="content">
+            <block class="Tagalys\Sync\Block\Adminhtml\Configuration\Edit\Form" name="tagalys_edit_configuration_form"/>
+            <block class="Tagalys\Sync\Block\Adminhtml\Configuration\Behaviour" name="tagalys_configuration_behaviour" template="Tagalys_Sync::configuration.phtml" />
+        </referenceContainer>
+
+<!--         <referenceContainer name="js">
+            <block class="Magento\Backend\Block\Template" name="attribute_edit_js" template="Magento_Catalog::catalog/product/attribute/js.phtml"/>
+        </referenceContainer> -->
+    </body>
+</page>
