@@ -123,40 +123,6 @@ class Sync extends \Magento\Framework\App\Helper\AbstractHelper
         $this->tagalysCategory->maintenanceSync();
     }
 
-    public function checkUpdatedAtAndInsertIntoSyncQueue() {
-        $conn = $this->resourceConnection->getConnection();
-        $tableName = $this->resourceConnection->getTableName('catalog_product_entity');
-
-        $lastDetected = $this->tagalysConfiguration->getConfig("sync:method:db.catalog_product_entity.updated_at:last_detected_change");
-        if ($lastDetected == NULL) {
-            $lastDetected = $conn->fetchAll("SELECT updated_at from $tableName ORDER BY updated_at DESC LIMIT 1")[0]['updated_at'];
-        }
-        $optimize = $this->tagalysConfiguration->getConfig('use_optimized_product_updated_at');
-        if ($optimize){
-            $this->queueHelper->importProductsToSync($lastDetected);
-        } else {
-            $lastId = 0;
-            while (true) {
-                $selectQuery = "SELECT entity_id from $tableName WHERE entity_id > $lastId and updated_at > '$lastDetected' ORDER BY entity_id ASC LIMIT 1000";
-                $pageOfProducts = $conn->fetchAll($selectQuery);
-                $lastNumberOfResults = count($pageOfProducts);
-                if ($lastNumberOfResults > 0) {
-                    $productIds = array();
-                    foreach ($pageOfProducts as $i => $productEntityRow) {
-                        array_push($productIds, $productEntityRow['entity_id']);
-                    }
-                    $this->queueHelper->insertUnique($productIds);
-                    $lastId = end($pageOfProducts)['entity_id'];
-                } else {
-                    break;
-                }
-            }
-        }
-
-        $lastDetected = $conn->fetchAll("SELECT updated_at from $tableName ORDER BY updated_at DESC LIMIT 1")[0]['updated_at'];
-        $this->tagalysConfiguration->setConfig("sync:method:db.catalog_product_entity.updated_at:last_detected_change", $lastDetected);
-    }
-
     public function sync($maxProducts = 500, $max_categories = 50) {
         $this->maxProducts = $maxProducts;
         if ($this->perPage > $maxProducts) {
@@ -177,7 +143,7 @@ class Sync extends \Magento\Framework\App\Helper\AbstractHelper
             // 4. check updated_at if enabled
             $productUpdateDetectionMethods = $this->tagalysConfiguration->getConfig('product_update_detection_methods', true);
             if (in_array('db.catalog_product_entity.updated_at', $productUpdateDetectionMethods)) {
-                $this->checkUpdatedAtAndInsertIntoSyncQueue();
+                $this->queueHelper->importProductsToSync();
             }
 
             // 5. check queue size and (clear_queue, trigger_feed) if required

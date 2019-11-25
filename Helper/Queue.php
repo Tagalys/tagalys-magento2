@@ -41,22 +41,39 @@ class Queue extends \Magento\Framework\App\Helper\AbstractHelper
         }
     }
 
-    public function importProductsToSync($lastChecked) {
-        $stores = $this->tagalysConfiguration->getStoresForTagalys(true);
-        $stores = implode(',', $stores);
-        $ea = $this->resourceConnection->getTableName('eav_attribute');
-        $eet = $this->resourceConnection->getTableName('eav_entity_type');
-        $cpe = $this->resourceConnection->getTableName('catalog_product_entity');
-        $cpei = $this->resourceConnection->getTableName('catalog_product_entity_int');
-        $cpr = $this->resourceConnection->getTableName('catalog_product_relation');
+    public function importProductsToSync() {
         $tq = $this->resourceConnection->getTableName('tagalys_queue');
-        $sql = "SELECT ea.attribute_id FROM $ea as ea INNER JOIN $eet as eet ON ea.entity_type_id = eet.entity_type_id WHERE eet.entity_table = 'catalog_product_entity' AND ea.attribute_code = 'visibility'";
-        $rows = $this->runSqlSelect($sql);
-        $attrId = $rows[0]['attribute_id'];
-        $sql = "REPLACE $tq (product_id) SELECT DISTINCT cpe.entity_id as product_id FROM $cpe as cpe INNER JOIN $cpei as cpei ON cpe.entity_id = cpei.entity_id WHERE cpe.updated_at > '$lastChecked' AND cpei.attribute_id = $attrId AND cpei.value IN (2,3,4) AND cpei.store_id IN ($stores);";
-        $this->runSql($sql);
-        $sql = "REPLACE $tq (product_id) SELECT DISTINCT cpr.parent_id as product_id FROM $cpr as cpr INNER JOIN $cpe as cpe ON cpe.entity_id = cpr.child_id WHERE cpe.updated_at > '$lastChecked'";
-        $this->runSql($sql);
+        $cpe = $this->resourceConnection->getTableName('catalog_product_entity');
+        $lastDetected = $this->tagalysConfiguration->getConfig("sync:method:db.catalog_product_entity.updated_at:last_detected_change");
+        if ($lastDetected == NULL) {
+            $lastDetected = $this->runSqlSelect("SELECT updated_at from $cpe ORDER BY updated_at DESC LIMIT 1")[0]['updated_at'];
+        }
+        $optimize = $this->tagalysConfiguration->getConfig('use_optimized_product_updated_at', true);
+        if ($optimize) {
+            $stores = $this->tagalysConfiguration->getStoresForTagalys(true);
+            $stores = implode(',', $stores);
+            $ea = $this->resourceConnection->getTableName('eav_attribute');
+            $eet = $this->resourceConnection->getTableName('eav_entity_type');
+            $cpei = $this->resourceConnection->getTableName('catalog_product_entity_int');
+            $cpr = $this->resourceConnection->getTableName('catalog_product_relation');
+            $sql = "SELECT ea.attribute_id FROM $ea as ea INNER JOIN $eet as eet ON ea.entity_type_id = eet.entity_type_id WHERE eet.entity_table = 'catalog_product_entity' AND ea.attribute_code = 'visibility'";
+            $rows = $this->runSqlSelect($sql);
+            $attrId = $rows[0]['attribute_id'];
+            if (\Magento\Framework\App\ProductMetadata::EDITION_NAME == "Community"){
+                $columnToMap = 'entity_id';
+            } else {
+                $columnToMap = 'row_id';
+            }
+            $sql = "REPLACE $tq (product_id) SELECT DISTINCT cpe.entity_id as product_id FROM $cpe as cpe INNER JOIN $cpei as cpei ON cpe.{$columnToMap} = cpei.{$columnToMap} WHERE cpe.updated_at > '$lastDetected' AND cpei.attribute_id = $attrId AND cpei.value IN (2,3,4) AND cpei.store_id IN ($stores);";
+            $this->runSql($sql);
+            $sql = "REPLACE $tq (product_id) SELECT DISTINCT cpr.parent_id as product_id FROM $cpr as cpr INNER JOIN $cpe as cpe ON cpe.entity_id = cpr.child_id WHERE cpe.updated_at > '$lastDetected'";
+            $this->runSql($sql);
+        } else {
+            $sql = "REPLACE $tq (product_id) SELECT entity_id from $cpe WHERE updated_at > '$lastDetected'";
+            $this->runSql($sql);
+        }
+        $lastDetected = $this->runSqlSelect("SELECT updated_at from $cpe ORDER BY updated_at DESC LIMIT 1")[0]['updated_at'];
+        $this->tagalysConfiguration->setConfig("sync:method:db.catalog_product_entity.updated_at:last_detected_change", $lastDetected);
         return true;
     }
 
