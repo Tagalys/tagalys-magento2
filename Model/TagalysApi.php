@@ -173,7 +173,7 @@ class TagalysApi implements TagalysManagementInterface
                         $params['product_positions'] = [];
                     }
                     $res = $this->tagalysCategoryHelper->performCategoryPositionUpdate($params['store_id'], $params['category_id'], $params['product_positions']);
-                    $this->tagalysCategoryHelper->updateWithData($params['store_id'], $params['category_id'], array('positions_sync_required' => 0));
+                    $this->tagalysCategoryHelper->updateWithData($params['store_id'], $params['category_id'], array('positions_sync_required' => 0, 'positions_synced_at' => date("Y-m-d H:i:s")));
                     if ($res) {
                         $response = ['status' => 'OK', 'message' => $res];
                     } else {

@@ -356,7 +356,6 @@ class Category extends \Magento\Framework\App\Helper\AbstractHelper
                         $newPositions = $this->tagalysApi->storeApiCall($storeId . '', '/v1/mpages/_platform/__categories-' . $categoryId . '/positions', array());
                         if ($newPositions != false) {
                             $this->performCategoryPositionUpdate($storeId, $categoryId, $newPositions['positions']);
-                            array_push($this->updatedCategories, $categoryId);
                             $categoryToSync->addData(array('positions_sync_required' => 0, 'positions_synced_at' => date("Y-m-d H:i:s")))->save();
                         } else {
                             // api call failed
@@ -367,9 +366,15 @@ class Category extends \Magento\Framework\App\Helper\AbstractHelper
                 }
                 $syncStatus['locked_by'] = null;
                 $this->tagalysConfiguration->setConfig('categories_sync_status', $syncStatus, true);
-
-                $this->processUpdatedCategories();
             }
+        }
+    }
+
+    public function _setPositionSortOrder($storeId, $categoryId) {
+        $mappedStoreIds = $this->tagalysConfiguration->getMappedStores($storeId, true);
+        foreach ($mappedStoreIds as $mappedStoreId) {
+            $category = $this->categoryFactory->create()->setStoreId($mappedStoreId)->load($categoryId);
+            $category->setDefaultSortBy('position')->save();
         }
     }
 
@@ -585,7 +590,7 @@ class Category extends \Magento\Framework\App\Helper\AbstractHelper
     }
 
     public function assignParentCategoriesToProductId($productId, $viaDb = false) {
-        $this->tagalysCommandsLogger->info( "assignParentCategoriesToProductId: $productId");
+        $this->logger->info( "assignParentCategoriesToProductId: $productId");
         $product = $this->productFactory->create()->load($productId);
         $categoryIds = $product->getCategoryIds();
         $assignedParents = array();
@@ -607,7 +612,7 @@ class Category extends \Magento\Framework\App\Helper\AbstractHelper
     }
 
     public function assignProductToCategory($categoryId, $product, $viaDb = false){
-        $this->tagalysCommandsLogger->info("assignProductToCategory: {$categoryId}");
+        $this->logger->info("assignProductToCategory: {$categoryId}");
         $productSku = $product->getSku();
         $categoryProductLink = $this->categoryProductLinkInterfaceFactory->create();
         $categoryProductLink->setSku($productSku);
@@ -616,7 +621,7 @@ class Category extends \Magento\Framework\App\Helper\AbstractHelper
         $this->categoryLinkRepositoryInterface->save($categoryProductLink);
     }
     public function assignProductToCategoryViaDb($categoryId, $product){
-        $this->tagalysCommandsLogger->info("assignProductToCategoryViaDb: {$categoryId}");
+        $this->logger->info("assignProductToCategoryViaDb: {$categoryId}");
         $conn = $this->resourceConnection->getConnection();
         $table = $this->resourceConnection->getTableName('catalog_category_product');
         
@@ -674,26 +679,12 @@ class Category extends \Magento\Framework\App\Helper\AbstractHelper
                                 break;
                             case 'category':
                                 array_push($this->updatedCategories, $tagalysCategories);
-                                $this->processUpdatedCategories();
+                                $this->reindexUpdatedCategories();
                                 break;
                         }
                     }
                 }
             }
-        }
-    }
-
-    public function processUpdatedCategories() {
-        if (count($this->updatedCategories) > 0) {
-            foreach ($this->updatedCategories as $categoryId) {
-                // set position sort order for all tagalys stores for all categories. assumption: if a category is assigned to tagalys in one store, it has to be assigned to tagalys in other stores that are powered by tagalys.
-                $storesForTagalys = $this->tagalysConfiguration->getStoresForTagalys();
-                foreach ($storesForTagalys as $storeId) {
-                    $category = $this->categoryFactory->create()->setStoreId($storeId)->load($categoryId);
-                    $category->setDefaultSortBy('position')->save();
-                }
-            }
-            $this->reindexUpdatedCategories();
         }
     }
 
@@ -726,8 +717,8 @@ class Category extends \Magento\Framework\App\Helper\AbstractHelper
         } else {
             $this->_updatePositionsReverse($storeId, $categoryId, $positions);
         }
-        $this->updatedCategories[] = $categoryId;
-        $this->processUpdatedCategories();
+        $this->_setPositionSortOrder($storeId, $categoryId);
+        $this->reindexUpdatedCategories($categoryId);
         return true;
     }
     

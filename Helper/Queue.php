@@ -9,7 +9,8 @@ class Queue extends \Magento\Framework\App\Helper\AbstractHelper
         \Magento\Store\Model\StoreManagerInterface $storeManager,
         \Magento\ConfigurableProduct\Model\Product\Type\Configurable $configurableProduct,
         \Magento\Catalog\Model\ProductFactory $productFactory,
-        \Magento\Framework\App\ResourceConnection $resourceConnection
+        \Magento\Framework\App\ResourceConnection $resourceConnection,
+        \Magento\Framework\App\ProductMetadataInterface $productMetadataInterface
     )
     {
         $this->queueFactory = $queueFactory;
@@ -18,6 +19,7 @@ class Queue extends \Magento\Framework\App\Helper\AbstractHelper
         $this->configurableProduct = $configurableProduct;
         $this->productFactory = $productFactory;
         $this->resourceConnection = $resourceConnection;
+        $this->productMetadataInterface = $productMetadataInterface;
 
         $writer = new \Zend\Log\Writer\Stream(BP . '/var/log/tagalys_core.log');
         $this->tagalysLogger = new \Zend\Log\Logger();
@@ -59,7 +61,8 @@ class Queue extends \Magento\Framework\App\Helper\AbstractHelper
             $sql = "SELECT ea.attribute_id FROM $ea as ea INNER JOIN $eet as eet ON ea.entity_type_id = eet.entity_type_id WHERE eet.entity_table = 'catalog_product_entity' AND ea.attribute_code = 'visibility'";
             $rows = $this->runSqlSelect($sql);
             $attrId = $rows[0]['attribute_id'];
-            if (\Magento\Framework\App\ProductMetadata::EDITION_NAME == "Community"){
+            $edition = $this->productMetadataInterface->getEdition();
+            if ($edition == "Community"){
                 $columnToMap = 'entity_id';
             } else {
                 $columnToMap = 'row_id';
@@ -69,7 +72,7 @@ class Queue extends \Magento\Framework\App\Helper\AbstractHelper
             $sql = "REPLACE $tq (product_id) SELECT DISTINCT cpr.parent_id as product_id FROM $cpr as cpr INNER JOIN $cpe as cpe ON cpe.entity_id = cpr.child_id WHERE cpe.updated_at > '$lastDetected'";
             $this->runSql($sql);
         } else {
-            $sql = "REPLACE $tq (product_id) SELECT entity_id from $cpe WHERE updated_at > '$lastDetected'";
+            $sql = "REPLACE $tq (product_id) SELECT DISTINCT entity_id from $cpe WHERE updated_at > '$lastDetected'";
             $this->runSql($sql);
         }
         $lastDetected = $this->runSqlSelect("SELECT updated_at from $cpe ORDER BY updated_at DESC LIMIT 1")[0]['updated_at'];
