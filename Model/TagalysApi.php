@@ -52,6 +52,7 @@ class TagalysApi implements TagalysManagementInterface
 
     public function info($params)
     {
+        $response = array('result' => false, 'message' => 'invalid info_type');
         switch ($params['info_type']) {
             case 'status':
                 try {
@@ -172,11 +173,21 @@ class TagalysApi implements TagalysManagementInterface
                         $params['product_positions'] = [];
                     }
                     $res = $this->tagalysCategoryHelper->performCategoryPositionUpdate($params['store_id'], $params['category_id'], $params['product_positions']);
+                    $this->tagalysCategoryHelper->updateWithData($params['store_id'], $params['category_id'], array('positions_sync_required' => 0));
                     if ($res) {
                         $response = ['status' => 'OK', 'message' => $res];
                     } else {
                         $response = ['status' => 'error', 'message' => 'Unknown error occurred'];
                     }
+                } catch (\Exception $e) {
+                    $response = ['status' => 'error', 'message' => $e->getMessage(), 'trace' => $e->getTrace()];
+                }
+                break;
+            case 'clear_category_caches':
+                try {
+                    $this->logger->info("clear_category_caches: params: " . json_encode($params));
+                    $this->tagalysCategoryHelper->clearCacheForCategories($params['category_ids']);
+                    $response = ['status' => 'OK', 'message' => 'cleared'];
                 } catch (\Exception $e) {
                     $response = ['status' => 'error', 'message' => $e->getMessage(), 'trace' => $e->getTrace()];
                 }

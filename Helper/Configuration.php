@@ -111,7 +111,8 @@ class Configuration extends \Magento\Framework\App\Helper\AbstractHelper
                 'category_pages_store_mapping' => '{}',
                 'integration_permissions' => '["Tagalys_Sync::tagalys"]',
                 'product_update_detection_methods' => '["events"]',
-                'use_optimized_product_updated_at' => true
+                'use_optimized_product_updated_at' => true,
+                'listing_pages:clear_cache_automatically' => 'true'
             );
             if (array_key_exists($configPath, $defaultConfigValues)) {
                 $configValue = $defaultConfigValues[$configPath];

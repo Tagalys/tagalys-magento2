@@ -49,9 +49,6 @@ class Category extends \Magento\Framework\App\Helper\AbstractHelper
         $this->urlRewriteCollection = $urlRewriteCollection;
         $this->tagalysQueue = $tagalysQueue;
         
-        $writer = new \Zend\Log\Writer\Stream(BP . '/var/log/tagalys_commands.log');
-        $this->tagalysCommandsLogger = new \Zend\Log\Logger();
-        $this->tagalysCommandsLogger->addWriter($writer);
         $writer = new \Zend\Log\Writer\Stream(BP . '/var/log/tagalys_categories.log');
         $this->logger = new \Zend\Log\Logger();
         $this->logger->addWriter($writer);
@@ -72,19 +69,39 @@ class Category extends \Magento\Framework\App\Helper\AbstractHelper
             ->getFirstItem();
 
         try {
-        if ($id = $firstItem->getId()) {
-            $updateData['category_id'] = $categoryId;
-            $updateData['store_id'] = $storeId;
-            $model = $this->tagalysCategoryFactory->create()->load($id)->addData($updateData);
-            $model->setId($id)->save();
-        } else {
-            $createData['category_id'] = $categoryId;
-            $createData['store_id'] = $storeId;
-            $model = $this->tagalysCategoryFactory->create()->setData($createData);
-            $insertId = $model->save()->getId();
-        }
+            if ($id = $firstItem->getId()) {
+                $updateData['category_id'] = $categoryId;
+                $updateData['store_id'] = $storeId;
+                $model = $this->tagalysCategoryFactory->create()->load($id)->addData($updateData);
+                $model->setId($id)->save();
+            } else {
+                $createData['category_id'] = $categoryId;
+                $createData['store_id'] = $storeId;
+                $model = $this->tagalysCategoryFactory->create()->setData($createData);
+                $insertId = $model->save()->getId();
+            }
         } catch (Exception $e) {
         
+        }
+    }
+    public function updateWithData($storeId, $categoryId, $updateData)
+    {
+        $firstItem = $this->tagalysCategoryFactory->create()->getCollection()
+            ->addFieldToFilter('category_id', $categoryId)
+            ->addFieldToFilter('store_id', $storeId)
+            ->getFirstItem();
+
+        try {
+            if ($id = $firstItem->getId()) {
+                $updateData['category_id'] = $categoryId;
+                $updateData['store_id'] = $storeId;
+                $model = $this->tagalysCategoryFactory->create()->load($id)->addData($updateData);
+                $model->setId($id)->save();
+                return true;
+            }
+            return false;
+        } catch (Exception $e) {
+            return false;
         }
     }
     public function markStoreCategoryIdsForDeletionExcept($storeId, $categoryIds) {
@@ -351,7 +368,7 @@ class Category extends \Magento\Framework\App\Helper\AbstractHelper
                 $syncStatus['locked_by'] = null;
                 $this->tagalysConfiguration->setConfig('categories_sync_status', $syncStatus, true);
 
-                $this->processUpdatedCategories(true);
+                $this->processUpdatedCategories();
             }
         }
     }
@@ -666,48 +683,17 @@ class Category extends \Magento\Framework\App\Helper\AbstractHelper
         }
     }
 
-    public function processUpdatedCategories($updateSortOrder = false) {
-        $writer = new \Zend\Log\Writer\Stream(BP . '/var/log/tagalys_commands.log');
-        $this->tagalysCommandsLogger = new \Zend\Log\Logger();
-        $this->tagalysCommandsLogger->addWriter($writer);
+    public function processUpdatedCategories() {
         if (count($this->updatedCategories) > 0) {
-
-            if ($updateSortOrder) {
-                // set sort order to position
-                foreach ($this->updatedCategories as $categoryId) {
-                // don't set default store order because that could change all store's sort orders
-                    // $category = $this->categoryFactory->create()->setStoreId('0')->load($categoryId);
-                    // $category->setDefaultSortBy('position')->save();
-
+            foreach ($this->updatedCategories as $categoryId) {
                 // set position sort order for all tagalys stores for all categories. assumption: if a category is assigned to tagalys in one store, it has to be assigned to tagalys in other stores that are powered by tagalys.
                 $storesForTagalys = $this->tagalysConfiguration->getStoresForTagalys();
                 foreach ($storesForTagalys as $storeId) {
                     $category = $this->categoryFactory->create()->setStoreId($storeId)->load($categoryId);
-                    if ($category->getDefaultSortBy() != 'position') {
-                        $this->setDefaultSortBy($categoryId);
-                    }
-                }
+                    $category->setDefaultSortBy('position')->save();
                 }
             }
-
-            $reindexAndClearCacheImmediately = $this->tagalysConfiguration->getConfig('listing_pages:reindex_and_clear_cache_immediately');
-            if ($reindexAndClearCacheImmediately == '1') {
-                // reindex
-                $indexer = $this->indexerFactory->create()->load('catalog_category_product');
-                $indexer->reindexList($this->updatedCategories);
-
-                foreach($this->updatedCategories as $categoryId) {
-                // clear magento cache
-                $category = $this->categoryFactory->create()->load($categoryId);
-                $this->eventManager->dispatch('clean_cache_by_tags', ['object' => $category]);
-                }
-            }
-
-            // trigger event to allow clearing custom cache
-            $categoryIdsObj = new \Magento\Framework\DataObject(array('category_ids' => $this->updatedCategories));
-            $this->eventManager->dispatch('tagalys_category_positions_updated', ['tgls_data' => $categoryIdsObj]);
-
-            $this->updatedCategories = array();
+            $this->reindexUpdatedCategories();
         }
     }
 
@@ -740,7 +726,8 @@ class Category extends \Magento\Framework\App\Helper\AbstractHelper
         } else {
             $this->_updatePositionsReverse($storeId, $categoryId, $positions);
         }
-        $this->reindexUpdatedCategories($categoryId);
+        $this->updatedCategories[] = $categoryId;
+        $this->processUpdatedCategories();
         return true;
     }
     
@@ -829,38 +816,6 @@ class Category extends \Magento\Framework\App\Helper\AbstractHelper
         $category->setStoreId(0);
         $category->save();
         return $category->getId();
-    }
-
-    public function setDefaultSortBy($categoryId)
-    {
-        $this->logger->info("setDefaultSortBy: category_id: $categoryId");
-        $category = $this->categoryFactory->create()->load($categoryId);
-        if ($category->getId() == null) {
-            throw new \Exception("Platform category not found");
-        }
-        $entityTypeTable = $this->resourceConnection->getTableName('eav_entity_type');
-        $eavAttribute = $this->resourceConnection->getTableName('eav_attribute');
-        $cev = $this->resourceConnection->getTableName('catalog_category_entity_varchar');
-        $conn = $this->resourceConnection->getConnection();
-        $select = $conn->fetchAll("SELECT entity_type_id FROM $entityTypeTable WHERE entity_type_code='catalog_category';");
-        $entityTypeId = $select[0]['entity_type_id'];
-        $select = $conn->fetchAll("SELECT attribute_code, attribute_id FROM $eavAttribute WHERE entity_type_id=$entityTypeId AND attribute_code IN ('default_sort_by');");
-        $defaultSortByAttribute = $select[0]['attribute_id'];
-        $storeIds = $this->getStoresForCategory($categoryId);
-
-        foreach ($storeIds as $storeId) {
-            try{
-                $sql = "REPLACE $cev (entity_id, attribute_id, store_id, value) VALUES ($categoryId, $defaultSortByAttribute, $storeId, 'position');";
-                $this->runSql($sql);
-                $flatTable = $this->resourceConnection->getTableName("catalog_category_flat_store_$storeId");
-                $updateData = ['default_sort_by' => 'position'];
-                $where = ['entity_id = ?' => $categoryId];
-                $conn->update($flatTable, $updateData, $where);
-            } catch(\Exception $e){
-                // Ignoring base table not found exception
-            }
-        }
-        return true;
     }
 
     public function bulkAssignProductsToCategoryAndRemove($storeId, $categoryId, $productPositions) {
@@ -990,22 +945,29 @@ class Category extends \Magento\Framework\App\Helper\AbstractHelper
         $conn = $this->resourceConnection->getConnection();
         return $conn->fetchAll($sql);
     }
-    public function reindexUpdatedCategories($categoryIds=null){
-        if (isset($categoryIds)){
-            array_push($this->updatedCategories, $categoryIds);
+    public function reindexUpdatedCategories($categoryId=null){
+        if (isset($categoryId)){
+            array_push($this->updatedCategories, $categoryId);
         }
         $this->updatedCategories = array_unique($this->updatedCategories);
         $this->logger->info("reindexUpdatedCategories: categoryIds: ".json_encode($this->updatedCategories));
         $indexer = $this->indexerFactory->create()->load('catalog_category_product');
         $indexer->reindexList($this->updatedCategories);
-        foreach($this->updatedCategories as $categoryId) {
+        $clearCache = $this->tagalysConfiguration->getConfig('listing_pages:clear_cache_automatically', true);
+        if ($clearCache) {
+            $this->clearCacheForCategories($this->updatedCategories);
+        }
+        $this->updatedCategories = [];
+    }
+
+    public function clearCacheForCategories($categoryIds) {
+        foreach($categoryIds as $categoryId) {
             // clear magento cache
             $category = $this->categoryFactory->create()->load($categoryId);
             $this->eventManager->dispatch('clean_cache_by_tags', ['object' => $category]);
         }
-        $this->updatedCategories = [];
         // Tagalys custom cache clear event
-        $categoryIdsObj = new \Magento\Framework\DataObject(array('category_ids' => $this->updatedCategories));
+        $categoryIdsObj = new \Magento\Framework\DataObject(array('category_ids' => $categoryIds));
         $this->eventManager->dispatch('tagalys_category_positions_updated', ['tgls_data' => $categoryIdsObj]);
     }
 

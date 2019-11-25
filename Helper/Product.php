@@ -65,7 +65,7 @@ class Product extends \Magento\Framework\App\Helper\AbstractHelper
         }
     }
 
-    public function getProductImageUrl($imageAttributeCode, $allowPlaceholder, $product, $forceRegenerateThumbnail) {
+    public function getProductImageUrl($storeId, $imageAttributeCode, $allowPlaceholder, $product, $forceRegenerateThumbnail) {
         try {
             $productImagePath = $product->getData($imageAttributeCode);
             if ($productImagePath != null) {
@@ -421,7 +421,7 @@ class Product extends \Magento\Framework\App\Helper\AbstractHelper
             'scheduled_updates' => array(),
             'introduced_at' => date(\DateTime::ATOM, strtotime($product->getCreatedAt())),
             'in_stock' => $stockItem->getIsInStock(),
-            'image_url' => $this->getProductImageUrl($this->tagalysConfiguration->getConfig('product_image_attribute'), true, $product, $forceRegenerateThumbnail),
+            'image_url' => $this->getProductImageUrl($storeId, $this->tagalysConfiguration->getConfig('product_image_attribute'), true, $product, $forceRegenerateThumbnail),
             '__tags' => $this->getDirectProductTags($product, $storeId)
         );
 
@@ -444,7 +444,7 @@ class Product extends \Magento\Framework\App\Helper\AbstractHelper
         $productDetails = $this->addProductRatingsFields($storeId, $product, $productDetails);
 
         if ($this->tagalysConfiguration->getConfig("product_image_hover_attribute") != '') {
-            $productDetails['image_hover_url'] = $this->getProductImageUrl($this->tagalysConfiguration->getConfig('product_image_hover_attribute'), false, $product, $forceRegenerateThumbnail);
+            $productDetails['image_hover_url'] = $this->getProductImageUrl($storeId, $this->tagalysConfiguration->getConfig('product_image_hover_attribute'), false, $product, $forceRegenerateThumbnail);
         }
 
         $productDetails = array_merge($productDetails, $this->getProductFields($product));

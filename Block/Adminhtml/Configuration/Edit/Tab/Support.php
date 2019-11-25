@@ -97,49 +97,21 @@ class Support extends Generic
             'text' => '<a href="http://support.tagalys.com/support/tickets/new" target="_blank">Submit a new Ticket</a><br><a href="http://support.tagalys.com/support/tickets" target="_blank">Check status</a>',
         ));
 
-        $troubleshootingInfoFieldset = $form->addFieldset("troubleshootingInfoFieldset", array('legend' => __("Troubleshooting Info")));
-
-        $info = array('config' => array(), 'files_in_media_folder' => array());
-
-        $queueCollection = $this->configFactory->create()->getCollection()->setOrder('id', 'ASC');
-        foreach($queueCollection as $i) {
-            $info['config'][$i->getData('path')] = $i->getData('value');
-        }
-        $mediaDirectory = $this->filesystem->getDirectoryRead('media')->getAbsolutePath('tagalys');
-        if (!is_dir($mediaDirectory)) {
-            mkdir($mediaDirectory);
-        }
-        $filesInMediaDirectory = scandir($mediaDirectory);
-        foreach ($filesInMediaDirectory as $key => $value) {
-            if (!is_dir($mediaDirectory . DIRECTORY_SEPARATOR . $value)) {
-                if (!preg_match("/^\./", $value)) {
-                    $info['files_in_media_folder'][] = $value;
-                }
-            }
-        }
-
-        $troubleshootingInfoFieldset->addField('troubleshooting_info', 'textarea', array(
-            'name' => 'troubleshooting_info',
-            'label' => '',
-            'readonly' => true,
-            'value' => json_encode($info),
-            'style' => "width:100%; height: 100px;",
-            'after_element_html' => 'Please copy and send the above content to <a href="mailto:support@tagalys.com">support@tagalys.com</a> to help us troubleshoot issues.',
-            'tabindex' => 1
-        ));
-
         $setupStatus = $this->tagalysConfiguration->getConfig('setup_status');
         if (in_array($setupStatus, array('sync', 'completed'))) {
             $tagalysCategoriesFieldset = $form->addFieldset('tagalys_categories_fieldset', array('legend' => __('Tagalys Categories')));
 
-            $tagalysCategoriesFieldset->addField('update_positions_for_all_categories', 'submit', array(
-                'label' => '',
-                'name' => 'tagalys_submit_action',
-                'value' => 'Update positions for all categories',
-                'onclick' => 'if (this.classList.contains(\'clicked\')) { return false; } else {  this.className += \' clicked\'; var that = this; setTimeout(function(){ that.value=\'Please wait…\'; that.disabled=true; }, 50); return true; }',
-                'class'=> "tagalys-button-submit",
-                'tabindex' => 1
-            ));
+            $clearCacheAutomatically = $this->tagalysConfiguration->getConfig('listing_pages:clear_cache_automatically', true);
+            if ($clearCacheAutomatically) {
+                $tagalysCategoriesFieldset->addField('update_positions_for_all_categories', 'submit', array(
+                    'label' => '',
+                    'name' => 'tagalys_submit_action',
+                    'value' => 'Update positions for all categories',
+                    'onclick' => 'if (this.classList.contains(\'clicked\')) { return false; } else {  this.className += \' clicked\'; var that = this; setTimeout(function(){ that.value=\'Please wait…\'; that.disabled=true; }, 50); return true; }',
+                    'class'=> "tagalys-button-submit",
+                    'tabindex' => 1
+                ));
+            }
 
             $tagalysCategoriesFieldset->addField('retry_syncing_failed_categories', 'submit', array(
                 'label' => '',
@@ -240,6 +212,42 @@ class Support extends Generic
             'value' => 'Restart Tagalys Setup',
             'onclick' => 'if (confirm(\'Are you sure? This will disable Tagalys from your installation and you will have to start over. There is no undo.\')) { if (this.classList.contains(\'clicked\')) { return false; } else {  this.className += \' clicked\'; var that = this; setTimeout(function(){ that.value=\'Please wait…\'; that.disabled=true; }, 50); return true; } } else { return false; }',
             'class'=> "tagalys-button-submit",
+            'tabindex' => 1
+        ));
+
+        $troubleshootingInfoFieldset = $form->addFieldset("troubleshootingInfoFieldset", array('legend' => __("Troubleshooting Info")));
+
+        $troubleshootingInfoFieldset->addField('extension_version', 'note', array(
+            'label' => 'Extention Version',
+            'text' => $this->tagalysApi->getPluginVersion()
+        ));
+
+        $info = array('config' => array(), 'files_in_media_folder' => array());
+
+        $queueCollection = $this->configFactory->create()->getCollection()->setOrder('id', 'ASC');
+        foreach($queueCollection as $i) {
+            $info['config'][$i->getData('path')] = $i->getData('value');
+        }
+        $mediaDirectory = $this->filesystem->getDirectoryRead('media')->getAbsolutePath('tagalys');
+        if (!is_dir($mediaDirectory)) {
+            mkdir($mediaDirectory);
+        }
+        $filesInMediaDirectory = scandir($mediaDirectory);
+        foreach ($filesInMediaDirectory as $key => $value) {
+            if (!is_dir($mediaDirectory . DIRECTORY_SEPARATOR . $value)) {
+                if (!preg_match("/^\./", $value)) {
+                    $info['files_in_media_folder'][] = $value;
+                }
+            }
+        }
+
+        $troubleshootingInfoFieldset->addField('troubleshooting_info', 'textarea', array(
+            'name' => 'troubleshooting_info',
+            'label' => 'Debug info',
+            'readonly' => true,
+            'value' => json_encode($info),
+            'style' => "width:100%; height: 100px;",
+            'after_element_html' => 'Please copy and send the above content to <a href="mailto:support@tagalys.com">support@tagalys.com</a> to help us troubleshoot issues.',
             'tabindex' => 1
         ));
 
