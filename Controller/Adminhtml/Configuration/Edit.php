@@ -190,7 +190,11 @@ class Edit extends \Magento\Backend\App\Action
                                     $categoryIds[] = intval(end($path));
                                 }
                                 foreach ($categoryIds as $categoryId) {
-                                    $category = $this->categoryRepository->get($categoryId, $storeId);
+                                    try {
+                                        $category = $this->categoryRepository->get($categoryId, $storeId);
+                                    } catch (\Exception $e) {
+                                        continue;
+                                    }
                                     if ($category->getDisplayMode() == 'PAGE') {
                                         // skip
                                         $firstItem = $this->tagalysCategoryFactory->create()->getCollection()

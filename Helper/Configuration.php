@@ -227,7 +227,7 @@ class Configuration extends \Magento\Framework\App\Helper\AbstractHelper
                             $pathNames[] = '(NA)';
                         }
                     } catch (\Exception $th) {
-                        $pathNames[] = '(NA)';
+                        $pathNames[] = '(N/A)';
                     }
                 }
             }

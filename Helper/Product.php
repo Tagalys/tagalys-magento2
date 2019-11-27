@@ -214,7 +214,11 @@ class Product extends \Magento\Framework\App\Helper\AbstractHelper
     public function detailsFromCategoryTree($categoriesTree, $storeId) {
         $detailsTree = array();
         foreach($categoriesTree as $categoryId => $subCategoriesTree) {
-            $category = $this->categoryRepository->get($categoryId, $storeId);
+            try {
+                $category = $this->categoryRepository->get($categoryId, $storeId);
+            } catch (\Exception $e) {
+                continue;
+            }
             $categoryEnabled = (($category->getIsActive() === true || $category->getIsActive() === '1') ? true : false);
             $categoryIncludedInMenu = (($category->getIncludeInMenu() === true || $category->getIncludeInMenu() === '1') ? true : false);
             $thisCategoryDetails = array("id" => $category->getId() , "label" => $category->getName(), "is_active" => $categoryEnabled, "include_in_menu" => $categoryIncludedInMenu);
@@ -244,7 +248,12 @@ class Product extends \Magento\Framework\App\Helper\AbstractHelper
         $activeCategoryPaths = array();
         $categoriesAssigned = array();
         foreach ($categoryIds as $key => $categoryId) {
-            $category = $this->categoryRepository->get($categoryId, $this->storeManager->getStore()->getId());
+            try {
+                // TODO: should we use $storeId instead?
+                $category = $this->categoryRepository->get($categoryId, $this->storeManager->getStore()->getId());
+            } catch (\Exception $e) {
+                continue;
+            }
             if ($category->getIsActive()) {
                 $path = $category->getPath();
                 $activeCategoryPaths[] = $path;
