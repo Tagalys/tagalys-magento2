@@ -220,7 +220,15 @@ class Configuration extends \Magento\Framework\App\Helper\AbstractHelper
             }
             foreach($pathIds as $id){
                 if($id != 1){
-                    $pathNames[] = $unorderedPathNames[$id];
+                    try {
+                        if (array_key_exists($id, $unorderedPathNames)){
+                            $pathNames[] = $unorderedPathNames[$id];
+                        } else {
+                            $pathNames[] = '(NA)';
+                        }
+                    } catch (\Exception $th) {
+                        $pathNames[] = '(NA)';
+                    }
                 }
             }
         }
