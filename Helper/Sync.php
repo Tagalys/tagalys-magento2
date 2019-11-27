@@ -425,7 +425,13 @@ class Sync extends \Magento\Framework\App\Helper\AbstractHelper
                             }
                             $triggerDatetime = strtotime($syncFileStatus['triggered_at']);
                             if ($type == 'feed') {
-                                $collection->clear()->setPageSize($this->perPage)->setCurPage($currentPage)->load();
+                                $totalProducts = $collection->clear()->getSize();
+                                if ($syncFileStatus['completed_count'] >= $totalProducts){
+                                    $fileGenerationCompleted = true;    
+                                    break;
+                                } else {
+                                    $collection->clear()->setPageSize($this->perPage)->setCurPage($currentPage)->load();
+                                }
                             }
                             $loopCurrentlyCompleted = 0;
                             $productsToWrite = array();
@@ -462,7 +468,7 @@ class Sync extends \Magento\Framework\App\Helper\AbstractHelper
                             $this->tagalysConfiguration->setConfig("store:$storeId:{$type}_status", $syncFileStatus, true);
                             $timeEnd = time();
 
-                            if ($type == 'updates' || $loopCurrentlyCompleted < $this->perPage) {
+                            if ($type == 'updates') {
                                 $fileGenerationCompleted = true;
                                 break;
                             }
