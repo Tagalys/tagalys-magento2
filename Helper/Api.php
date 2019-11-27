@@ -18,7 +18,7 @@ class Api extends \Magento\Framework\App\Helper\AbstractHelper
         $this->tagalysLogger = new \Zend\Log\Logger();
         $this->tagalysLogger->addWriter($writer);
 
-        $this->pluginVersion = '2.0.3';
+        $this->pluginVersion = '2.0.4';
         
         $this->cacheApiCredentials();
     }
