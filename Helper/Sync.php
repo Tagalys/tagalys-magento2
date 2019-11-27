@@ -428,7 +428,7 @@ class Sync extends \Magento\Framework\App\Helper\AbstractHelper
                             if ($type == 'feed') {
                                 $totalProducts = $collection->clear()->getSize();
                                 if ($syncFileStatus['completed_count'] >= $totalProducts){
-                                    $fileGenerationCompleted = true;    
+                                    $fileGenerationCompleted = true;
                                     break;
                                 } else {
                                     $collection->clear()->setPageSize($this->perPage)->setCurPage($currentPage)->load();
