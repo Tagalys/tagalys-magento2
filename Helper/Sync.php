@@ -17,7 +17,8 @@ class Sync extends \Magento\Framework\App\Helper\AbstractHelper
         \Magento\Store\Model\StoreManagerInterface $storeManager,
         \Tagalys\Sync\Model\QueueFactory $queueFactory,
         \Tagalys\Sync\Helper\Queue $queueHelper,
-        \Magento\Framework\App\ResourceConnection $resourceConnection
+        \Magento\Framework\App\ResourceConnection $resourceConnection,
+        \Magento\Sales\Model\Order $order
     )
     {
         $this->tagalysConfiguration = $tagalysConfiguration;
@@ -32,6 +33,7 @@ class Sync extends \Magento\Framework\App\Helper\AbstractHelper
         $this->queueFactory = $queueFactory;
         $this->queueHelper = $queueHelper;
         $this->resourceConnection = $resourceConnection;
+        $this->order = $order;
 
         $this->filesystem = $filesystem;
         $this->directory = $filesystem->getDirectoryWrite(\Magento\Framework\App\Filesystem\DirectoryList::MEDIA);
@@ -745,5 +747,29 @@ class Sync extends \Magento\Framework\App\Helper\AbstractHelper
         $permissions = $this->tagalysConfiguration->getConfig('integration_permissions');
         $this->authorizationService->grantPermissions($integration->getId(), $permissions);
         return $permissions;
+    }
+
+    public function getOrderData($storeId, $from, $to=false){
+        $from = date('Y-m-d H:i:s', $from);
+        $orders = $this->order->getCollection()->addFieldToFilter('store_id',$storeId)->addAttributeToFilter('created_at', ['from' => $from]);
+        if($to){
+            $to = date('Y-m-d H:i:s', $to);
+            $orders->addAttributeToFilter('created_at', ['to' => $to]);
+        }
+        $data = [];
+        foreach($orders as $order){
+            $items = $order->getAllVisibleItems();
+            foreach($items as $item){
+                $data[] = [
+                    'order_id' => $order->getId(),
+                    'item_sku' => $item->getSku(),
+                    'product_sku' => $item->getProduct()->getSku(),
+                    'qty' => $item->getQtyOrdered(),
+                    'user_id' => $order->getCustomerId(),
+                    'timestamp' => $order->getCreatedAt(),
+                ];
+            }
+        }
+        return $data;
     }
 }
