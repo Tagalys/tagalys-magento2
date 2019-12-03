@@ -510,6 +510,7 @@ class Category extends \Magento\Framework\App\Helper\AbstractHelper
             return array(
                 "id" => "__categories-$categoryId",
                 "slug" => $category->getUrl(),
+                "path" => $category->getUrlPath(),
                 "enabled" => true,
                 "name" => implode(' / ', array_slice(explode(' |>| ', $this->tagalysConfiguration->getCategoryName($category)), 1)),
                 "filters" => array(
