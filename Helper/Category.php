@@ -917,11 +917,15 @@ class Category extends \Magento\Framework\App\Helper\AbstractHelper
     private function _paginateSqlRemove($categoryId, $products){
         $perPage = 100;
         $offset = 0;
-        $tableName = $this->resourceConnection->getTableName('catalog_category_product');
+        $ccp = $this->resourceConnection->getTableName('catalog_category_product');
+        $urpc = $this->resourceConnection->getTableName('catalog_url_rewrite_product_category');
+        $ur = $this->resourceConnection->getTableName('url_rewrite');
         $productsToDelete = array_slice($products, $offset, $perPage);
         while(count($productsToDelete)>0){
             $productsToDelete = implode(', ', $productsToDelete);
-            $sql = "DELETE FROM $tableName WHERE category_id=$categoryId AND product_id IN ($productsToDelete);";
+            $sql = "DELETE FROM $ccp WHERE category_id=$categoryId AND product_id IN ($productsToDelete);";
+            $this->runSql($sql);
+            $sql = "DELETE FROM $ur WHERE url_rewrite_id IN (SELECT url_rewrite_id FROM $urpc WHERE category_id=$categoryId AND product_id IN ($productsToDelete))";
             $this->runSql($sql);
             $offset += $perPage;
             $productsToDelete = array_slice($products, $offset, $perPage);
