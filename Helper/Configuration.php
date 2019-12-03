@@ -420,6 +420,7 @@ class Configuration extends \Magento\Framework\App\Helper\AbstractHelper
         $productsCount = $this->productFactory->create()->getCollection()->setStoreId($storeId)->addStoreFilter($storeId)->addAttributeToFilter('status', 1)->addAttributeToFilter('visibility', array("neq" => 1))->count();
         $storeUrl = $this->storeManager->getStore($storeId)->getBaseUrl(\Magento\Framework\UrlInterface::URL_TYPE_WEB, true);
         $storeDomain = parse_url($storeUrl)['host'];
+        $urlSuffix = $this->scopeConfigInterface->getValue('catalog/seo/category_url_suffix', \Magento\Store\Model\ScopeInterface::SCOPE_STORE, $storeId);
         $configuration = array(
             'id' => $storeId,
             'label' => $store->getName(),
@@ -432,7 +433,12 @@ class Configuration extends \Magento\Framework\App\Helper\AbstractHelper
             'sort_options' =>  $this->getSortOptions($storeId),
             'products_count' => $productsCount,
             'domain' => $storeDomain,
-            'platform_details' => ['plugin_version' => $this->tagalysApi->getPluginVersion(), 'access_token' => $this->getAccessToken()]
+            'base_url' => $storeUrl,
+            'platform_details' => [
+                'plugin_version' => $this->tagalysApi->getPluginVersion(),
+                'access_token' => $this->getAccessToken(),
+                'url_suffix' => $urlSuffix,
+            ]
         );
 
         $configurationObj = new \Magento\Framework\DataObject(array('configuration' => $configuration, 'store_id' => $storeId));

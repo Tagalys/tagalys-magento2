@@ -176,7 +176,7 @@ class Edit extends \Magento\Backend\App\Action
                                 try{
                                     $this->saveSmartPageParentCategory($storeId, $params);
                                 } catch(\Exception $e) {
-                                    $this->messageManager->addErrorMessage($e->getMessage());
+                                    $this->messageManager->addErrorMessage("Error while saving Smart category: ".$e->getMessage());
                                     $this->logger->err(json_encode(["saveSmartPageParentCategory: failed", $e->getMessage(), $e->getTrace()]));
                                 }
                             }
