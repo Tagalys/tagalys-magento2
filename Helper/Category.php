@@ -392,6 +392,7 @@ class Category extends \Magento\Framework\App\Helper\AbstractHelper
         if($this->isProductPushDownAllowed($categoryId)){
             $pushDown = true;
         } else {
+            // Logic depends on index table. Not idle.
             $sql = "SELECT product_id FROM $indexTable WHERE category_id = $categoryId AND position <= $positionOffset AND store_id = $storeId AND visibility IN (2, 4); ";
             $result = $this->runSqlSelect($sql);
             $productsInStore = array();
@@ -938,16 +939,19 @@ class Category extends \Magento\Framework\App\Helper\AbstractHelper
         return $conn->fetchAll($sql);
     }
     public function reindexUpdatedCategories($categoryId=null){
-        if (isset($categoryId)){
-            array_push($this->updatedCategories, $categoryId);
-        }
-        $this->updatedCategories = array_unique($this->updatedCategories);
-        $this->logger->info("reindexUpdatedCategories: categoryIds: ".json_encode($this->updatedCategories));
-        $indexer = $this->indexerFactory->create()->load('catalog_category_product');
-        $indexer->reindexList($this->updatedCategories);
-        $clearCache = $this->tagalysConfiguration->getConfig('listing_pages:clear_cache_automatically', true);
-        if ($clearCache) {
-            $this->clearCacheForCategories($this->updatedCategories);
+        $reindex = $this->tagalysConfiguration->getConfig('listing_pages:reindex_after_position_updates', true);
+        if($reindex){
+            if (isset($categoryId)){
+                array_push($this->updatedCategories, $categoryId);
+            }
+            $this->updatedCategories = array_unique($this->updatedCategories);
+            $this->logger->info("reindexUpdatedCategories: categoryIds: ".json_encode($this->updatedCategories));
+            $indexer = $this->indexerFactory->create()->load('catalog_category_product');
+            $indexer->reindexList($this->updatedCategories);
+            $clearCache = $this->tagalysConfiguration->getConfig('listing_pages:clear_cache_after_reindex', true);
+            if ($clearCache) {
+                $this->clearCacheForCategories($this->updatedCategories);
+            }
         }
         $this->updatedCategories = [];
     }
