@@ -101,18 +101,6 @@ class Support extends Generic
         if (in_array($setupStatus, array('sync', 'completed'))) {
             $tagalysCategoriesFieldset = $form->addFieldset('tagalys_categories_fieldset', array('legend' => __('Tagalys Categories')));
 
-            $clearCacheAutomatically = $this->tagalysConfiguration->getConfig('listing_pages:clear_cache_automatically', true);
-            if ($clearCacheAutomatically) {
-                $tagalysCategoriesFieldset->addField('update_positions_for_all_categories', 'submit', array(
-                    'label' => '',
-                    'name' => 'tagalys_submit_action',
-                    'value' => 'Update positions for all categories',
-                    'onclick' => 'if (this.classList.contains(\'clicked\')) { return false; } else {  this.className += \' clicked\'; var that = this; setTimeout(function(){ that.value=\'Please wait…\'; that.disabled=true; }, 50); return true; }',
-                    'class'=> "tagalys-button-submit",
-                    'tabindex' => 1
-                ));
-            }
-
             $tagalysCategoriesFieldset->addField('retry_syncing_failed_categories', 'submit', array(
                 'label' => '',
                 'name' => 'tagalys_submit_action',

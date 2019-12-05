@@ -127,6 +127,7 @@ class Sync extends \Magento\Framework\App\Helper\AbstractHelper
     }
 
     public function sync($maxProducts = 500, $max_categories = 50) {
+        // Don't use $this->maxProducts. Write to file for 4 min 45 sec instead
         $this->maxProducts = $maxProducts;
         if ($this->perPage > $maxProducts) {
             $this->perPage = $maxProducts;

@@ -56,26 +56,21 @@ class TagalysApi implements TagalysManagementInterface
         try {
             switch ($params['info_type']) {
                 case 'status':
-                    try {
-                        $info = array('config' => array(), 'files_in_media_folder' => array(), 'sync_status' => $this->tagalysSync->status());
-                        $configCollection = $this->configFactory->create()->getCollection()->setOrder('id', 'ASC');
-                        foreach ($configCollection as $i) {
-                            $info['config'][$i->getData('path')] = $i->getData('value');
-                        }
-                        $mediaDirectory = $this->filesystem->getDirectoryRead('media')->getAbsolutePath('tagalys');
-                        $filesInMediaDirectory = scandir($mediaDirectory);
-                        foreach ($filesInMediaDirectory as $key => $value) {
-                            if (!is_dir($mediaDirectory . DIRECTORY_SEPARATOR . $value)) {
-                                if (!preg_match("/^\./", $value)) {
-                                    $info['files_in_media_folder'][] = $value;
-                                }
+                    $info = array('config' => array(), 'files_in_media_folder' => array(), 'sync_status' => $this->tagalysSync->status());
+                    $configCollection = $this->configFactory->create()->getCollection()->setOrder('id', 'ASC');
+                    foreach ($configCollection as $i) {
+                        $info['config'][$i->getData('path')] = $i->getData('value');
+                    }
+                    $mediaDirectory = $this->filesystem->getDirectoryRead('media')->getAbsolutePath('tagalys');
+                    $filesInMediaDirectory = scandir($mediaDirectory);
+                    foreach ($filesInMediaDirectory as $key => $value) {
+                        if (!is_dir($mediaDirectory . DIRECTORY_SEPARATOR . $value)) {
+                            if (!preg_match("/^\./", $value)) {
+                                $info['files_in_media_folder'][] = $value;
                             }
                         }
-                        $response = $info;
-                    } catch (Exception $e) {
-                        $response = array('result' => false, 'exception' => true);
-                        $this->tagalysApi->log('warn', 'Error in indexAction: ' . $e->getMessage(), array('params' => $params));
                     }
+                    $response = $info;
                     break;
                 case 'product_details':
                     $productDetails = array();

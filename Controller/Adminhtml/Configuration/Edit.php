@@ -253,11 +253,6 @@ class Edit extends \Magento\Backend\App\Action
                     $this->tagalysApi->log('warn', 'search:enabled:'.$params['enable_mystore']);
                     $redirectToTab = 'mystore';
                     break;
-                case 'Update positions for all categories':
-                    $this->tagalysApi->log('warn', 'Updating positions for all categories');
-                    $this->tagalysCategoryHelper->markPositionsSyncRequiredForCategories('all', 'all');
-                    $redirectToTab = 'support';
-                    break;
                 case 'Retry syncing failed categories':
                     $this->tagalysApi->log('warn', 'Retrying failed categories sync');
                     $this->tagalysCategoryHelper->markFailedCategoriesForRetrying();
