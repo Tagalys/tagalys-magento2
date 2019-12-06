@@ -113,7 +113,8 @@ class Configuration extends \Magento\Framework\App\Helper\AbstractHelper
                 'product_update_detection_methods' => '["events"]',
                 'use_optimized_product_updated_at' => 'true',
                 'listing_pages:clear_cache_after_reindex' => 'false',
-                'listing_pages:reindex_after_position_updates' => 'false'
+                'listing_pages:reindex_after_updates' => 'false',
+                'listing_pages:force_allow_product_push_down' => 'false'
             );
             if (array_key_exists($configPath, $defaultConfigValues)) {
                 $configValue = $defaultConfigValues[$configPath];

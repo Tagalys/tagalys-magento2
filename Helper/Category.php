@@ -174,6 +174,10 @@ class Category extends \Magento\Framework\App\Helper\AbstractHelper
 
     public function isProductPushDownAllowed($categoryId)
     {
+        $forced = $this->tagalysConfiguration->getConfig('listing_pages:force_allow_product_push_down', true);
+        if ($forced){
+            return true;
+        }
         $allStores = $this->storeManagerInterface->getStores();
         $activeInStores = 0;
         if (count($allStores) == 1) {
@@ -672,12 +676,8 @@ class Category extends \Magento\Framework\App\Helper\AbstractHelper
                         // reindex if index mode is update on save. not required for schedule because we don't want these showing up so it has the same effect. when tagalys syncs and updates positions, reindex will be triggered.
                         switch($indexerToRun) {
                             case 'product':
-                                $reindexAndClearCacheImmediately = $this->tagalysConfiguration->getConfig('listing_pages:reindex_and_clear_cache_immediately');
-                                if ($reindexAndClearCacheImmediately == '1') {
-                                    $indexer = $this->indexerFactory->create()->load('catalog_product_category');
-                                    $indexer->reindexList($productIds);
-                                }
                                 // cache may already be getting updated. even otherwise, we don't need to update here as we don't want products to show up anyway. caches are cleared when positions are updated via Tagalys.
+                                $this->reindexUpdatedProducts($productIds);
                                 break;
                             case 'category':
                                 array_push($this->updatedCategories, $tagalysCategories);
@@ -943,7 +943,7 @@ class Category extends \Magento\Framework\App\Helper\AbstractHelper
         return $conn->fetchAll($sql);
     }
     public function reindexUpdatedCategories($categoryId=null){
-        $reindex = $this->tagalysConfiguration->getConfig('listing_pages:reindex_after_position_updates', true);
+        $reindex = $this->tagalysConfiguration->getConfig('listing_pages:reindex_after_updates', true);
         if($reindex){
             if (isset($categoryId)){
                 array_push($this->updatedCategories, $categoryId);
@@ -969,6 +969,18 @@ class Category extends \Magento\Framework\App\Helper\AbstractHelper
         // Tagalys custom cache clear event
         $categoryIdsObj = new \Magento\Framework\DataObject(array('category_ids' => $categoryIds));
         $this->eventManager->dispatch('tagalys_category_positions_updated', ['tgls_data' => $categoryIdsObj]);
+    }
+
+    public function reindexUpdatedProducts($productIds) {
+        $indexer = $this->indexerFactory->create()->load('catalog_product_category');
+        $reindex = $this->tagalysConfiguration->getConfig('listing_pages:reindex_after_updates', true);
+        if ($reindex) {
+            if (!is_array($productIds)) {
+                $productIds = [$productIds];
+            }
+            $this->logger->info("reindexUpdatedProducts: productIds: " . json_encode($productIds));
+            $indexer->reindexList($productIds);
+        }
     }
 
     public function isTagalysCreated($category) {
