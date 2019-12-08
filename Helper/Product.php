@@ -237,8 +237,7 @@ class Product extends \Magento\Framework\App\Helper\AbstractHelper
 
     public function reindexRequiredProducts() {
         if (count($this->productsToReindex) > 0) {
-            $indexer = $this->indexerRegistry->get('catalog_product_category');
-            $indexer->reindexList($this->productsToReindex);
+            $this->tagalysCategory->reindexUpdatedProducts($this->productsToReindex);
             $this->productsToReindex = array();
         }
     }
