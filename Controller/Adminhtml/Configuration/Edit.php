@@ -161,7 +161,6 @@ class Edit extends \Magento\Backend\App\Action
                             $params['category_pages_rendering_method'] = 'platform';
                         }
                         $this->tagalysConfiguration->setConfig('listing_pages:rendering_method', $params['category_pages_rendering_method']);
-                        $this->tagalysConfiguration->setConfig('listing_pages:reindex_and_clear_cache_immediately', $params['reindex_and_clear_cache_immediately']);
                         $this->tagalysConfiguration->setConfig('listing_pages:position_sort_direction', $params['position_sort_direction']);
                         $this->tagalysConfiguration->setConfig('listing_pages:understand_and_agree', $params['understand_and_agree']);
                         $this->tagalysConfiguration->setConfig("enable_smart_pages", $params["enable_smart_pages"]);

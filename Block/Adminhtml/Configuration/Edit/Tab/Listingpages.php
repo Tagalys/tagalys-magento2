@@ -191,18 +191,6 @@ class Listingpages extends Generic
             'class' => 'visible-for-rendering-method visible-for-rendering-method-platform',
             'value' => $this->tagalysConfiguration->getConfig("listing_pages:position_sort_direction")
         ));
-        $technicalConsiderationsFieldset->addField('reindex_and_clear_cache_immediately', 'select',  array(
-            'label' => 'Reindex and clear cache after category product positions are updated?',
-            'name' => 'reindex_and_clear_cache_immediately',
-            'options' => array(
-                '1' => 'Yes (Recommended)',
-                '0' => 'No'
-            ),
-            'required' => true,
-            'style' => 'width:100%',
-            'class' => 'visible-for-rendering-method visible-for-rendering-method-platform',
-            'value' => $this->tagalysConfiguration->getConfig("listing_pages:reindex_and_clear_cache_immediately")
-        ));
 
         // Tagalys Render mode
         $technicalConsiderationsFieldset->addField('note', 'note', array(

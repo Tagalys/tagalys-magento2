@@ -100,7 +100,6 @@ class Configuration extends \Magento\Framework\App\Helper\AbstractHelper
                 'listing_pages:override_layout'=> '1',
                 'listing_pages:override_layout_name'=> '1column',
                 'listing_pages:position_sort_direction' => 'asc',
-                'listing_pages:reindex_and_clear_cache_immediately' => '1',
                 'listing_pages:rendering_method' => 'platform',
                 'product_image_attribute' => 'small_image',
                 'product_image_hover_attribute' => '',
