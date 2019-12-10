@@ -382,7 +382,22 @@ class Category extends \Magento\Framework\App\Helper\AbstractHelper
         }
     }
 
-    public function _updatePositions($storeId, $categoryId, $positions) {
+    private function _updatePositions($storeId, $categoryId, $newPositions) {
+        // test this for multi store with different products in same category
+        $productCount = count($newPositions);
+        $category = $this->categoryFactory->create()->setStoreId($storeId)->load($categoryId);
+        $positions = $category->getProductsPosition();
+        foreach ($positions as $productId => $position) {
+            if(array_key_exists($productId, $newPositions)){
+                $positions[$productId] = $newPositions[$productId];
+            } else {
+                $positions[$productId] = $productCount + 1;
+            }
+        }
+        $category->setPostedProducts($positions)->save();
+    }
+
+    public function _updatePositionsViaDb($storeId, $categoryId, $positions) {
         $indexTable = $this->getIndexTableName($storeId);
         $pushDown = false;
         $positionOffset = count($positions) + 1;
@@ -426,7 +441,7 @@ class Category extends \Magento\Framework\App\Helper\AbstractHelper
         return true;
     }
 
-    public function _updatePositionsReverse($storeId, $categoryId, $positions) {
+    public function _updatePositionsReverseViaDb($storeId, $categoryId, $positions) {
         $indexTable = $this->getIndexTable($storeId);
         // check magento version before getting table name
         $pushDown = false;
@@ -714,11 +729,18 @@ class Category extends \Magento\Framework\App\Helper\AbstractHelper
 
     public function performCategoryPositionUpdate($storeId, $categoryId, $positions) {
         $sortOrder = $this->tagalysConfiguration->getConfig('listing_pages:position_sort_direction');
+        $updateViaDb = $this->tagalysConfiguration->getConfig('listing_pages:update_position_via_db', true);
+        // unify reverse and normal position updates
         if($sortOrder == 'asc') {
-            $this->_updatePositions($storeId, $categoryId, $positions);
+            if ($updateViaDb){
+                $this->_updatePositionsViaDb($storeId, $categoryId, $positions);
+            } else {
+                $this->_updatePositions($storeId, $categoryId, $positions);
+            }
         } else {
-            $this->_updatePositionsReverse($storeId, $categoryId, $positions);
+            $this->_updatePositionsReverseViaDb($storeId, $categoryId, $positions);
         }
+        $this->updateWithData($storeId, $categoryId, ['positions_sync_required' => 0, 'positions_synced_at' => date("Y-m-d H:i:s")]);
         $this->_setPositionSortOrder($storeId, $categoryId);
         $this->reindexUpdatedCategories($categoryId);
         return true;

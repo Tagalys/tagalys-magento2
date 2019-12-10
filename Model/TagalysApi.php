@@ -160,16 +160,18 @@ class TagalysApi implements TagalysManagementInterface
                     break;
                 case 'update_product_positions':
                     $this->logger->info("update_product_positions: params: " . json_encode($params));
-                    if ($params['product_positions'] == -1) {
-                        $params['product_positions'] = [];
+                    if(!array_key_exists('async', $params)){
+                        $params['async'] = true;
                     }
-                    $res = $this->tagalysCategoryHelper->performCategoryPositionUpdate($params['store_id'], $params['category_id'], $params['product_positions']);
-                    $this->tagalysCategoryHelper->updateWithData($params['store_id'], $params['category_id'], array('positions_sync_required' => 0, 'positions_synced_at' => date("Y-m-d H:i:s")));
-                    if ($res) {
-                        $response = ['status' => 'OK', 'message' => $res];
+                    if($params['async']){
+                        $this->tagalysCategoryHelper->updateWithData($params['store_id'], $params['category_id'], ['positions_sync_required' => 1]);
                     } else {
-                        $response = ['status' => 'error', 'message' => 'Unknown error occurred'];
+                        if ($params['product_positions'] == -1) {
+                            $params['product_positions'] = [];
+                        }
+                        $this->tagalysCategoryHelper->performCategoryPositionUpdate($params['store_id'], $params['category_id'], $params['product_positions']);
                     }
+                    $response = ['status' => 'OK', 'message' => 'updated', 'async' => $params['async']];
                     break;
                 case 'clear_category_caches':
                     $this->logger->info("clear_category_caches: params: " . json_encode($params));
