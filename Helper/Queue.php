@@ -44,6 +44,10 @@ class Queue extends \Magento\Framework\App\Helper\AbstractHelper
     }
 
     public function importProductsToSync() {
+        // force UTC timezone
+        $conn = $this->resourceConnection->getConnection();
+        $conn->query("SET time_zone = '+00:00'");
+
         $tq = $this->resourceConnection->getTableName('tagalys_queue');
         $cpe = $this->resourceConnection->getTableName('catalog_product_entity');
         $lastDetected = $this->tagalysConfiguration->getConfig("sync:method:db.catalog_product_entity.updated_at:last_detected_change");
@@ -82,11 +86,13 @@ class Queue extends \Magento\Framework\App\Helper\AbstractHelper
 
     private function runSql($sql){
         $conn = $this->resourceConnection->getConnection();
+        $conn->query("SET time_zone = '+00:00'");
         return $conn->query($sql);
     }
 
     private function runSqlSelect($sql){
         $conn = $this->resourceConnection->getConnection();
+        $conn->query("SET time_zone = '+00:00'");
         return $conn->fetchAll($sql);
     }
 

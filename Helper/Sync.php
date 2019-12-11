@@ -62,6 +62,7 @@ class Sync extends \Magento\Framework\App\Helper\AbstractHelper
             // triggerFeedForStore is generally called in a loop for all stores, so working without store context in sync:method:db.catalog_product_entity.updated_at:last_detected_change is safe
 
             $conn = $this->resourceConnection->getConnection();
+            $conn->query("SET time_zone = '+00:00'");
             $tableName = $this->resourceConnection->getTableName('catalog_product_entity');
             $lastUpdatedAt = $conn->fetchAll("SELECT updated_at from $tableName ORDER BY updated_at DESC LIMIT 1")[0]['updated_at'];
             $this->tagalysConfiguration->setConfig("sync:method:db.catalog_product_entity.updated_at:last_detected_change", $lastUpdatedAt);
