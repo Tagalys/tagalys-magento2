@@ -114,7 +114,8 @@ class Configuration extends \Magento\Framework\App\Helper\AbstractHelper
                 'listing_pages:clear_cache_after_reindex' => 'false',
                 'listing_pages:reindex_after_updates' => 'false',
                 'listing_pages:force_allow_product_push_down' => 'false',
-                'listing_pages:update_position_via_db' => 'false'
+                'listing_pages:update_position_via_db' => 'false',
+                'listing_pages:update_position_async' => 'true'
             );
             if (array_key_exists($configPath, $defaultConfigValues)) {
                 $configValue = $defaultConfigValues[$configPath];

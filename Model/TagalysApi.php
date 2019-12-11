@@ -160,10 +160,8 @@ class TagalysApi implements TagalysManagementInterface
                     break;
                 case 'update_product_positions':
                     $this->logger->info("update_product_positions: params: " . json_encode($params));
-                    if(!array_key_exists('async', $params)){
-                        $params['async'] = true;
-                    }
-                    if($params['async']){
+                    $async = $this->tagalysConfiguration->getConfig('listing_pages:update_position_async', true);
+                    if($async){
                         $this->tagalysCategoryHelper->updateWithData($params['store_id'], $params['category_id'], ['positions_sync_required' => 1]);
                     } else {
                         if ($params['product_positions'] == -1) {
@@ -171,7 +169,7 @@ class TagalysApi implements TagalysManagementInterface
                         }
                         $this->tagalysCategoryHelper->performCategoryPositionUpdate($params['store_id'], $params['category_id'], $params['product_positions']);
                     }
-                    $response = ['status' => 'OK', 'message' => 'updated', 'async' => $params['async']];
+                    $response = ['status' => 'OK', 'message' => 'updated', 'async' => $async];
                     break;
                 case 'clear_category_caches':
                     $this->logger->info("clear_category_caches: params: " . json_encode($params));

@@ -442,7 +442,7 @@ class Category extends \Magento\Framework\App\Helper\AbstractHelper
     }
 
     public function _updatePositionsReverseViaDb($storeId, $categoryId, $positions) {
-        $indexTable = $this->getIndexTable($storeId);
+        $indexTable = $this->getIndexTableName($storeId);
         // check magento version before getting table name
         $pushDown = false;
         $positionOffset = 100;
