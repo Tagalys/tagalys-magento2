@@ -33,6 +33,7 @@ class Edit extends \Magento\Backend\App\Action
         \Tagalys\Sync\Model\CategoryFactory $tagalysCategoryFactory,
         \Magento\Indexer\Model\IndexerFactory $indexerFactory,
         \Magento\Catalog\Model\CategoryFactory $categoryFactory,
+        \Magento\Framework\Module\Manager $moduleManager,
         \Magento\Framework\App\Config\ScopeConfigInterface $scopeConfig
     ) {
         parent::__construct($context);
@@ -48,6 +49,7 @@ class Edit extends \Magento\Backend\App\Action
         $this->tagalysCategoryFactory = $tagalysCategoryFactory;
         $this->indexerFactory = $indexerFactory;
         $this->categoryFactory = $categoryFactory;
+        $this->moduleManager = $moduleManager;
         $this->scopeConfig = $scopeConfig;
         $writer = new \Zend\Log\Writer\Stream(BP . '/var/log/tagalys_core.log');
         $this->logger = new \Zend\Log\Logger();
@@ -259,7 +261,11 @@ class Edit extends \Magento\Backend\App\Action
                     break;
                 case 'Update Popular Searches now':
                     $this->tagalysApi->log('warn', 'Triggering update popular searches');
-                    $this->tagalysSync->cachePopularSearches();
+                    if ($this->moduleManager->isEnabled('Tagalys_Frontend')) {
+                        $objectManager = \Magento\Framework\App\ObjectManager::getInstance();
+                        $tagalysSearchHelper = $objectManager->create('Tagalys\Frontend\Helper\Search');
+                        $tagalysSearchHelper->cachePopularSearches();
+                    }
                     $redirectToTab = 'support';
                     break;
                 case 'Trigger full products resync now':

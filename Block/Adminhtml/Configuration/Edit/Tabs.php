@@ -86,6 +86,11 @@ class Tabs extends \Magento\Backend\Block\Widget\Tabs
             // go to current status tab
             $this->setActiveTab($setupStatus);
         } else {
+            $this->addTab('listingpages', array(
+                'label' => __('Category Pages'),
+                'title' => __('Category Pages'),
+                'content' => $this->getChildHtml('listingpages'),
+            ));
             if ($this->moduleManager->isEnabled('Tagalys_Frontend')) {
                 $this->addTab('search', array(
                     'label' => __('Search'),
@@ -93,11 +98,6 @@ class Tabs extends \Magento\Backend\Block\Widget\Tabs
                     'content' => $this->getChildHtml('search'),
                 ));
             }
-            $this->addTab('listingpages', array(
-                'label' => __('Category Pages'),
-                'title' => __('Category Pages'),
-                'content' => $this->getChildHtml('listingpages'),
-            ));
             if ($this->moduleManager->isEnabled('Tagalys_Mystore')) {
                 $this->addTab('mystore', array(
                     'label' => __('My Store'),
