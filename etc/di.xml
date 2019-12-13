@@ -4,15 +4,9 @@
     <type name="Magento\Framework\Console\CommandList">
         <arguments>
             <argument name="commands" xsi:type="array">
-                <item name="tagalys_assign_parent_categories_to_all_products" xsi:type="object">Tagalys\Sync\Console\Command\AssignParentCategoriesToAllProducts</item>
-                <item name="tagalys_assign_parent_categories_to_all_products_via_db" xsi:type="object">Tagalys\Sync\Console\Command\AssignParentCategoriesToAllProductsViaDb</item>
-                <item name="tagalys_run_maintenance" xsi:type="object">Tagalys\Sync\Console\Command\RunMaintenance</item>
                 <item name="tagalys_sync" xsi:type="object">Tagalys\Sync\Console\Command\Sync</item>
-                <item name="tagalys_trigger_full_sync" xsi:type="object">Tagalys\Sync\Console\Command\TriggerFullSync</item>
-                <item name="tagalys_update_caches" xsi:type="object">Tagalys\Sync\Console\Command\UpdateCaches</item>
                 <item name="tagalys_update_product_positions" xsi:type="object">Tagalys\Sync\Console\Command\UpdateProductPositions</item>
-                <item name="tagalys_transition_from_categories_config" xsi:type="object">Tagalys\Sync\Console\Command\TransitionFromCategoriesConfig</item>
-                <item name="tagalys_transfer_mpages" xsi:type="object">Tagalys\Sync\Console\Command\TransferMpages</item>
+                <item name="tagalys_run_maintenance" xsi:type="object">Tagalys\Sync\Console\Command\RunMaintenance</item>
             </argument>
         </arguments>
     </type>
