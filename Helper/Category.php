@@ -873,7 +873,7 @@ class Category extends \Magento\Framework\App\Helper\AbstractHelper
     private function bulkAssignProductsToCategoryViaDb($categoryId, $productPositions) {
         if(count($productPositions)>0){
             if($this->tagalysConfiguration->isSortedReverse()){
-                array_reverse($productPositions);
+                $productPositions = array_reverse($productPositions);
             }
             $this->paginateSqlInsert($categoryId, $productPositions);
             $this->updatedCategories[] = $categoryId;
