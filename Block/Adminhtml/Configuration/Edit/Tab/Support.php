@@ -174,7 +174,7 @@ class Support extends Generic
                 'tabindex' => 1
             ));
 
-            if ($this->moduleManager->isEnabled('Tagalys_Search')) {
+            if ($this->moduleManager->isEnabled('Tagalys_Frontend')) {
                 $tagalysUpdateCachesFieldset = $form->addFieldset('tagalys_update_caches_fieldset', array('legend' => __('Update Caches')));
 
                 $tagalysUpdateCachesFieldset->addField('submit_update_popular_searches_cache', 'submit', array(

@@ -86,7 +86,7 @@ class Tabs extends \Magento\Backend\Block\Widget\Tabs
             // go to current status tab
             $this->setActiveTab($setupStatus);
         } else {
-            if ($this->moduleManager->isEnabled('Tagalys_Search')) {
+            if ($this->moduleManager->isEnabled('Tagalys_Frontend')) {
                 $this->addTab('search', array(
                     'label' => __('Search'),
                     'title' => __('Search'),
