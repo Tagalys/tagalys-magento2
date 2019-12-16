@@ -116,41 +116,10 @@ class Category extends \Magento\Framework\App\Helper\AbstractHelper
     public function isMultiStoreWarningRequired()
     {
         $allStores = $this->tagalysConfiguration->getAllWebsiteStores();
-        $showMultiStoreConfig = false;
-        $checkAllCategories = false;
         if (count($allStores) > 1) {
-        $rootCategories = array();
-        foreach ($allStores as $store) {
-            $rootCategoryId = $this->storeManagerInterface->getStore($store['value'])->getRootCategoryId();
-            if (in_array($rootCategoryId, $rootCategories)) {
-            $checkAllCategories = true;
-            break;
-            } else {
-            array_push($rootCategories, $rootCategoryId);
-            }
+            return true;
         }
-        }
-
-        if ($checkAllCategories) {
-        $allCategories = array();
-        foreach ($allStores as $store) {
-            $rootCategoryId = $this->storeManagerInterface->getStore($store['value'])->getRootCategoryId();
-            $categories = $this->categoryCollection
-            ->setStoreId($store['value'])
-            ->addFieldToFilter('is_active', 1)
-            ->addAttributeToFilter('path', array('like' => "1/{$rootCategoryId}/%"))
-            ->addAttributeToSelect('id');
-            foreach ($categories as $cat) {
-            if (in_array($cat->getId(), $allCategories)) {
-                $showMultiStoreConfig = true;
-                break;
-            } else {
-                array_push($allCategories, $cat->getId());
-            }
-            }
-        }
-        }
-        return $showMultiStoreConfig;
+        return false;
     }
 
     public function transitionFromCategoriesConfig()
@@ -174,6 +143,8 @@ class Category extends \Magento\Framework\App\Helper\AbstractHelper
 
     public function isProductPushDownAllowed($categoryId)
     {
+        // If this returns false, selective push down will be done.
+        // Always do the selective push down instead?
         $forced = $this->tagalysConfiguration->getConfig('listing_pages:force_allow_product_push_down', true);
         if ($forced){
             return true;
@@ -181,22 +152,23 @@ class Category extends \Magento\Framework\App\Helper\AbstractHelper
         $allStores = $this->storeManagerInterface->getStores();
         $activeInStores = 0;
         if (count($allStores) == 1) {
-        // Single Store
-        return true;
+            // Single Store
+            return true;
         }
         // Multiple Stores
         foreach ($allStores as $store) {
-        $categories = $this->categoryCollection
-            ->setStoreId($store['value'])
-            ->addFieldToFilter('is_active', 1)
-            ->addFieldToFilter('entity_id', $categoryId)
-            ->addAttributeToSelect('id');
-        if ($categories->count() > 0) {
-            $activeInStores++;
-            if ($activeInStores > 1) {
-            return ($this->tagalysConfiguration->getConfig("listing_pages:same_or_similar_products_across_all_stores") == '1');
+            $categories = $this->categoryCollection
+                ->setStoreId($store['value'])
+                ->addFieldToFilter('is_active', 1)
+                ->addFieldToFilter('entity_id', $categoryId)
+                ->addAttributeToSelect('id');
+            if ($categories->count() > 0) {
+                $activeInStores++;
+                if ($activeInStores > 1) {
+                    // This category is active in multiple stores, push down is allowed only if the stores have the same products
+                    return ($this->tagalysConfiguration->getConfig("listing_pages:same_or_similar_products_across_all_stores") == '1');
+                }
             }
-        }
         }
         return true;
     }
