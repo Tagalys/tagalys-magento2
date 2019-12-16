@@ -506,6 +506,7 @@
             }
             if (agreeValue == 'I agree') {
                 var renderingMethod = tgls_jq('#category_pages_rendering_method').val();
+                renderingMethod = renderingMethod ? renderingMethod : 'platform';
                 var sameProductsAcrossStores = tgls_jq('#same_or_similar_products_across_all_stores').val();
                 if (renderingMethod == 'platform' && sameProductsAcrossStores == '1') {
                     var storeIdForCategoryPages = tgls_jq('#store_id_for_category_pages').val();
