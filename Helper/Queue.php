@@ -33,6 +33,7 @@ class Queue extends \Magento\Framework\App\Helper\AbstractHelper
         $perPage = 100;
         $offset = 0;
         $queueTable = $this->resourceConnection->getTableName('tagalys_queue');
+        $productIds = array_filter($productIds);
         $productsToInsert = array_slice($productIds, $offset, $perPage);
         while(count($productsToInsert) > 0){
             $productsToInsert = implode('),(', $productsToInsert);
@@ -151,6 +152,9 @@ class Queue extends \Magento\Framework\App\Helper\AbstractHelper
                     if (count($parentIds) > 0) {
                         // check and return configurable product id
                         return $this->getPrimaryProductId($parentIds[0]);
+                    } else {
+                        // simple product which is not visible / an orphan simple product
+                        return false;
                     }
                 } else {
                     // configurable / grouped / bundled product that is not visible individually
@@ -164,5 +168,6 @@ class Queue extends \Magento\Framework\App\Helper\AbstractHelper
             // product not found. might have to delete
             return $productId;
         }
+        return false;
     }
 }
