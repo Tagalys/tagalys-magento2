@@ -730,11 +730,11 @@ class Category extends \Magento\Framework\App\Helper\AbstractHelper
     }
 
     public function bulkAssignProductsToCategoryAndRemove($storeId, $categoryId, $productPositions) {
-        // TODO receive $productPositions as magento compatible hash
         if($this->isTagalysCreated($categoryId)){
             if ($this->tagalysConfiguration->isProductSortingReverse()) {
                 $productPositions = $this->reverseProductPositionsHash($productPositions);
             }
+            $productPositions = $this->filterDeletedProducts($productPositions);
             $updateViaDb = $this->tagalysConfiguration->getConfig('listing_pages:update_position_via_db', true);
             if($updateViaDb){
                 $productsToRemove = $this->getProductsToRemove($storeId, $categoryId, $productPositions);
@@ -743,6 +743,7 @@ class Category extends \Magento\Framework\App\Helper\AbstractHelper
             } else {
                 $this->categoryFactory->create()->setStoreId($storeId)->load($categoryId)->setPostedProducts($productPositions)->save();
             }
+            $this->_setPositionSortOrder($storeId, $categoryId);
             $this->updateWithData($storeId, $categoryId, ['positions_sync_required' => 0, 'positions_synced_at' => date("Y-m-d H:i:s"), 'status' => 'powered_by_tagalys']);
             $this->reindexUpdatedCategories();
             return true;
@@ -783,8 +784,6 @@ class Category extends \Magento\Framework\App\Helper\AbstractHelper
     private function paginateSqlInsert($categoryId, $productPositions) {
         $productsInCategory = [];
         $rowsToInsert = [];
-        $deletedProducts = [];
-        $productsInSystem = $this->filterDeletedProducts($productPositions);
         $tableName = $this->resourceConnection->getTableName('catalog_category_product');
         $sql = "SELECT product_id FROM $tableName WHERE category_id=$categoryId;";
         $rows = $this->runSqlSelect($sql);
@@ -792,35 +791,29 @@ class Category extends \Magento\Framework\App\Helper\AbstractHelper
             $productsInCategory[] = $row['product_id'];
         }
         foreach ($productPositions as $productId => $position) {
-            if (in_array($productId, $productsInSystem)) {
-                if (in_array($productId, $productsInCategory)) {
-                    // product is already in this category, update position
-                    $updateSql = "UPDATE $tableName SET position=$position WHERE category_id=$categoryId AND product_id=$productId;";
-                    $this->runSql($updateSql);
-                } else {
-                    // to be inserted into the category with the correct position
-                    $rowsToInsert[] = "($categoryId, $productId, $position)";
-                }
+            if (in_array($productId, $productsInCategory)) {
+                // product is already in this category, update position
+                $updateSql = "UPDATE $tableName SET position=$position WHERE category_id=$categoryId AND product_id=$productId;";
+                $this->runSql($updateSql);
             } else {
-                // deleted from system. inserting this will raise a foreign key error.
-                $deletedProducts[] = $productId;
+                // to be inserted into the category with the correct position
+                $rowsToInsert[] = "($categoryId, $productId, $position)";
             }
         }
         $insertBatch = array_splice($rowsToInsert, 0, 500);
         while(count($insertBatch) > 0){
             $insertSql = "INSERT INTO $tableName (category_id, product_id, position) VALUES ";
-            $values = implode(', ', $rowsToInsert);
+            $values = implode(', ', $insertBatch);
             $query = $insertSql . $values . ';';
             $this->runSql($query);
             $insertBatch = array_splice($rowsToInsert, 0, 500);
         }
-        // add deleted product ids to sync queue
-        $this->tagalysQueue->insertUnique($deletedProducts);
     }
 
     public function filterDeletedProducts($productPositions){
         $cpe = $this->resourceConnection->getTableName('catalog_product_entity');
         $productInSystem = [];
+        $deletedProducts = [];
         $productIds = array_flip($productPositions);
         $thisBatch = array_splice($productIds, 0, 500);
         while(count($thisBatch) > 0){
@@ -832,7 +825,15 @@ class Category extends \Magento\Framework\App\Helper\AbstractHelper
             }
             $thisBatch = array_splice($productIds, 0, 500);
         }
-        return $productInSystem;
+        foreach ($productPositions as $productId => $position) {
+            if(!in_array($productId, $productInSystem)){
+                $deletedProducts[] = $productId;
+                unset($productPositions[$productId]);
+            }
+        }
+        // add deleted product ids to sync queue
+        $this->tagalysQueue->insertUnique($deletedProducts);
+        return $productPositions;
     }
 
     private function _paginateSqlRemove($categoryId, $products){
