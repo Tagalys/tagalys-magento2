@@ -733,7 +733,7 @@ class Category extends \Magento\Framework\App\Helper\AbstractHelper
         // TODO receive $productPositions as magento compatible hash
         if($this->isTagalysCreated($categoryId)){
             if ($this->tagalysConfiguration->isProductSortingReverse()) {
-                $productPositions = array_reverse($productPositions);
+                $productPositions = $this->reverseProductPositionsHash($productPositions);
             }
             $updateViaDb = $this->tagalysConfiguration->getConfig('listing_pages:update_position_via_db', true);
             if($updateViaDb){
@@ -741,8 +741,7 @@ class Category extends \Magento\Framework\App\Helper\AbstractHelper
                 $this->_paginateSqlRemove($categoryId, $productsToRemove);
                 $this->bulkAssignProductsToCategoryViaDb($categoryId, $productPositions);
             } else {
-                $productPositionsHash = $this->getProductPositionHash($productPositions);
-                $this->categoryFactory->create()->setStoreId($storeId)->load($categoryId)->setPostedProducts($productPositionsHash)->save();
+                $this->categoryFactory->create()->setStoreId($storeId)->load($categoryId)->setPostedProducts($productPositions)->save();
             }
             $this->updateWithData($storeId, $categoryId, ['positions_sync_required' => 0, 'positions_synced_at' => date("Y-m-d H:i:s"), 'status' => 'powered_by_tagalys']);
             $this->reindexUpdatedCategories();
@@ -767,7 +766,7 @@ class Category extends \Magento\Framework\App\Helper\AbstractHelper
         $sql = "SELECT product_id FROM $indexTable WHERE category_id = $categoryId AND store_id = $storeId AND visibility IN (2, 4); ";
         $result = $this->runSqlSelect($sql);
         foreach ($result as $row) {
-            if(!in_array($row['product_id'], $newProducts)){
+            if(!array_key_exists($row['product_id'], $newProducts)){
                 $productsToRemove[] = $row['product_id'];
             }
         }
@@ -782,57 +781,56 @@ class Category extends \Magento\Framework\App\Helper\AbstractHelper
     }
 
     private function paginateSqlInsert($categoryId, $productPositions) {
-        $existingProducts = [];
+        $productsInCategory = [];
         $rowsToInsert = [];
         $deletedProducts = [];
-        $productCount = count($productPositions);
         $productsInSystem = $this->filterDeletedProducts($productPositions);
         $tableName = $this->resourceConnection->getTableName('catalog_category_product');
         $sql = "SELECT product_id FROM $tableName WHERE category_id=$categoryId;";
         $rows = $this->runSqlSelect($sql);
         foreach ($rows as $row) {
-            $existingProducts[] = $row['product_id'];
+            $productsInCategory[] = $row['product_id'];
         }
-        for ($index=1; $index <= $productCount; $index++) {
-            $productId = $productPositions[$index-1];
-            if(in_array($productId, $existingProducts)){
-                $updateSql = "UPDATE $tableName SET position=$index WHERE category_id=$categoryId AND product_id=$productId;";
-                $this->runSql($updateSql);
-            } else {
-                if (in_array($productId, $productsInSystem)){
-                    $rowsToInsert[] = "($categoryId, $productId, $index)";
+        foreach ($productPositions as $productId => $position) {
+            if (in_array($productId, $productsInSystem)) {
+                if (in_array($productId, $productsInCategory)) {
+                    // product is already in this category, update position
+                    $updateSql = "UPDATE $tableName SET position=$position WHERE category_id=$categoryId AND product_id=$productId;";
+                    $this->runSql($updateSql);
                 } else {
-                    $deletedProducts[] = $productId;
+                    // to be inserted into the category with the correct position
+                    $rowsToInsert[] = "($categoryId, $productId, $position)";
                 }
+            } else {
+                // deleted from system. inserting this will raise a foreign key error.
+                $deletedProducts[] = $productId;
             }
-            if( ($index % 500 == 0 || $index == $productCount) && count($rowsToInsert) > 0 ){
-                $insertSql = "INSERT INTO $tableName (category_id, product_id, position) VALUES ";
-                $values = implode(', ', $rowsToInsert);
-                $query = $insertSql . $values . ';';
-                $rowsToInsert = [];
-                $this->runSql($query);
-            }
+        }
+        $insertBatch = array_splice($rowsToInsert, 0, 500);
+        while(count($insertBatch) > 0){
+            $insertSql = "INSERT INTO $tableName (category_id, product_id, position) VALUES ";
+            $values = implode(', ', $rowsToInsert);
+            $query = $insertSql . $values . ';';
+            $this->runSql($query);
+            $insertBatch = array_splice($rowsToInsert, 0, 500);
         }
         // add deleted product ids to sync queue
         $this->tagalysQueue->insertUnique($deletedProducts);
     }
 
-    private function filterDeletedProducts($productIds){
+    public function filterDeletedProducts($productPositions){
         $cpe = $this->resourceConnection->getTableName('catalog_product_entity');
         $productInSystem = [];
-        $count = count($productIds);
-        $thisBatch = [];
-        for ($index = 0; $index < $count; $index++) {
-            $thisBatch[] = $productIds[$index];
-            if (($index % 500 == 0 || $index == $count-1)) {
-                $thisBatch = implode(',', $thisBatch);
-                $sql = "SELECT entity_id FROM $cpe WHERE entity_id IN ($thisBatch)";
-                $rows = $this->runSqlSelect($sql);
-                foreach ($rows as $row) {
-                    $productInSystem[] = $row['entity_id'];
-                }
-                $thisBatch = [];
+        $productIds = array_flip($productPositions);
+        $thisBatch = array_splice($productIds, 0, 500);
+        while(count($thisBatch) > 0){
+            $thisBatch = implode(',', $thisBatch);
+            $sql = "SELECT entity_id FROM $cpe WHERE entity_id IN ($thisBatch)";
+            $rows = $this->runSqlSelect($sql);
+            foreach ($rows as $row) {
+                $productInSystem[] = $row['entity_id'];
             }
+            $thisBatch = array_splice($productIds, 0, 500);
         }
         return $productInSystem;
     }
