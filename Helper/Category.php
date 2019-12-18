@@ -677,10 +677,13 @@ class Category extends \Magento\Framework\App\Helper\AbstractHelper
         foreach ($forStores as $storeId) {
             $category = $this->categoryFactory->create()->setStoreId($storeId)->load($categoryId);
             $category->addData($categoryDetails)->save();
-            if($category->getIsActive() == '1'){
-                $this->createOrUpdateWithData($storeId, $categoryId, ['positions_sync_required' => 1, 'status' => 'powered_by_tagalys']);
-            } else {
-                $this->deleteCategoryEntries($storeId, $categoryId);
+            $parentCategoryId = $this->getTagalysParentCategory($storeId);
+            if($parentCategoryId != $categoryId){
+                if($category->getIsActive() == '1'){
+                    $this->createOrUpdateWithData($storeId, $categoryId, ['positions_sync_required' => 1, 'status' => 'powered_by_tagalys']);
+                } else {
+                    $this->deleteCategoryEntries($storeId, $categoryId);
+                }
             }
         }
         $this->categoryUpdateAfter($category);
