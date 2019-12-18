@@ -215,7 +215,7 @@ class TagalysApi implements TagalysManagementInterface
                     $response = array('status' => 'OK', 'message' => $res);
                     break;
                 case 'update_tagalys_category_table':
-                    $this->tagalysCategoryHelper->updateWithData($params['store_id'], $params['category_id'], $params['update_data']);
+                    $this->tagalysCategoryHelper->createOrUpdateWithData($params['store_id'], $params['category_id'], $params['data']);
                     $response = array('status' => 'OK', 'updated' => true);
                     break;
             }

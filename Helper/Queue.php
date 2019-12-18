@@ -33,7 +33,7 @@ class Queue extends \Magento\Framework\App\Helper\AbstractHelper
         $perPage = 100;
         $offset = 0;
         $queueTable = $this->resourceConnection->getTableName('tagalys_queue');
-        $productIds = array_filter($productIds);
+        $productIds = array_filter($productIds); // remove null values - this will cause a crash when used in the replace command below
         $productsToInsert = array_slice($productIds, $offset, $perPage);
         while(count($productsToInsert) > 0){
             $productsToInsert = implode('),(', $productsToInsert);

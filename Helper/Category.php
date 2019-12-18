@@ -584,10 +584,15 @@ class Category extends \Magento\Framework\App\Helper\AbstractHelper
     public function _updatePositions($storeId, $categoryId, $newPositions) {
         $category = $this->categoryFactory->create()->setStoreId($storeId)->load($categoryId);
         $positions = $category->getProductsPosition();
-        
+        $productCount = count($positions);
+        $pushDownInSetPostedProducts = $this->tagalysConfiguration->getConfig('listing_pages:push_down_in_set_posted_products', true);
         foreach ($positions as $productId => $position) {
             if (array_key_exists($productId, $newPositions)) {
                 $positions[$productId] = $newPositions[$productId];
+            } else {
+                if ($pushDownInSetPostedProducts) {
+                    $positions[$productId] = $productCount + 1;
+                }
             }
         }
         $category->setPostedProducts($positions)->save();
@@ -666,6 +671,11 @@ class Category extends \Magento\Framework\App\Helper\AbstractHelper
             foreach ($forStores as $storeId) {
                 $category = $this->categoryFactory->create()->setStoreId($storeId)->load($categoryId);
                 $category->addData($categoryDetails)->save();
+                if($category->getIsActive() == '1'){
+                    $this->createOrUpdateWithData($storeId, $categoryId, ['positions_sync_required' => 1, 'status' => 'powered_by_tagalys']);
+                } else {
+                    // TODO delete tagalys_category entry
+                }
             }
         } else {
             $category->addData($categoryDetails)->save();
@@ -716,6 +726,7 @@ class Category extends \Magento\Framework\App\Helper\AbstractHelper
     }
 
     public function bulkAssignProductsToCategoryAndRemove($storeId, $categoryId, $productPositions) {
+        // TODO receive $productPositions as magento compatible hash
         if($this->isTagalysCreated($categoryId)){
             if ($this->tagalysConfiguration->isProductSortingReverse()) {
                 $productPositions = array_reverse($productPositions);

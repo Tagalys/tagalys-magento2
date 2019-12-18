@@ -194,7 +194,7 @@ class Edit extends \Magento\Backend\App\Action
                                     try {
                                         $category = $this->categoryRepository->get($categoryId, $storeId);
                                         if ($this->tagalysCategoryHelper->isTagalysCreated($category)){
-                                            continue;
+                                            continue; // skip if tagalys category - we don't show them in the front-end and marked_for_deletion should not apply
                                         }
                                     } catch (\Exception $e) {
                                         continue;
