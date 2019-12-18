@@ -61,7 +61,7 @@ class Category extends \Magento\Framework\App\Helper\AbstractHelper
         $connection->truncateTable($tableName);
     }
 
-    public function createOrUpdateWithData($storeId, $categoryId, $createData, $updateData)
+    public function createOrUpdateWithData($storeId, $categoryId, $data)
     {
         $firstItem = $this->tagalysCategoryFactory->create()->getCollection()
             ->addFieldToFilter('category_id', $categoryId)
@@ -70,14 +70,14 @@ class Category extends \Magento\Framework\App\Helper\AbstractHelper
 
         try {
             if ($id = $firstItem->getId()) {
-                $updateData['category_id'] = $categoryId;
-                $updateData['store_id'] = $storeId;
-                $model = $this->tagalysCategoryFactory->create()->load($id)->addData($updateData);
+                $data['category_id'] = $categoryId;
+                $data['store_id'] = $storeId;
+                $model = $this->tagalysCategoryFactory->create()->load($id)->addData($data);
                 $model->setId($id)->save();
             } else {
-                $createData['category_id'] = $categoryId;
-                $createData['store_id'] = $storeId;
-                $model = $this->tagalysCategoryFactory->create()->setData($createData);
+                $data['category_id'] = $categoryId;
+                $data['store_id'] = $storeId;
+                $model = $this->tagalysCategoryFactory->create()->setData($data);
                 $insertId = $model->save()->getId();
             }
         } catch (Exception $e) {
@@ -107,9 +107,13 @@ class Category extends \Magento\Framework\App\Helper\AbstractHelper
     public function markStoreCategoryIdsForDeletionExcept($storeId, $categoryIds) {
         $collection = $this->tagalysCategoryFactory->create()->getCollection()->addFieldToFilter('store_id', $storeId);
         foreach ($collection as $collectionItem) {
-        if (!in_array((int)$collectionItem->getCategoryId(), $categoryIds)) {
-            $collectionItem->addData(array('marked_for_deletion' => 1))->save();
-        }
+            $categoryId = $collectionItem->getCategoryId();
+            if (!in_array((int)$categoryId, $categoryIds)) {
+                if ($this->isTagalysCreated($categoryId)) {
+                    continue;
+                }
+                $collectionItem->addData(array('marked_for_deletion' => 1))->save();
+            }
         }
     }
 
@@ -134,43 +138,11 @@ class Category extends \Magento\Framework\App\Helper\AbstractHelper
             $categoryActive = $category->getIsActive();
             if ($categoryActive && ($category->getDisplayMode() != 'PAGE')) {
             // TODO: createOrUpdateWithData() & Mage_Catalog_Model_Category::DM_PAGE -> PAGE
-            $this->createOrUpdateWithData($storeId, $categoryId, array('positions_sync_required' => 0, 'marked_for_deletion' => 0, 'status' => 'pending_sync'), array('marked_for_deletion' => 0));
+            $this->createOrUpdateWithData($storeId, $categoryId, array('positions_sync_required' => 0, 'marked_for_deletion' => 0, 'status' => 'pending_sync'));
             }
         }
         $this->storeManagerInterface->setCurrentStore($originalStoreId);
         }
-    }
-
-    public function isProductPushDownAllowed($categoryId)
-    {
-        // If this returns false, selective push down will be done.
-        // Always do the selective push down instead?
-        $forced = $this->tagalysConfiguration->getConfig('listing_pages:force_allow_product_push_down', true);
-        if ($forced){
-            return true;
-        }
-        $allStores = $this->storeManagerInterface->getStores();
-        $activeInStores = 0;
-        if (count($allStores) == 1) {
-            // Single Store
-            return true;
-        }
-        // Multiple Stores
-        foreach ($allStores as $store) {
-            $categories = $this->categoryCollection
-                ->setStoreId($store['value'])
-                ->addFieldToFilter('is_active', 1)
-                ->addFieldToFilter('entity_id', $categoryId)
-                ->addAttributeToSelect('id');
-            if ($categories->count() > 0) {
-                $activeInStores++;
-                if ($activeInStores > 1) {
-                    // This category is active in multiple stores, push down is allowed only if the stores have the same products
-                    return ($this->tagalysConfiguration->getConfig("listing_pages:same_or_similar_products_across_all_stores") == '1');
-                }
-            }
-        }
-        return true;
     }
 
     public function maintenanceSync()
@@ -309,13 +281,12 @@ class Category extends \Magento\Framework\App\Helper\AbstractHelper
                 $utcNow = new \DateTime("now", new \DateTimeZone('UTC'));
                 $timeNow = $utcNow->format(\DateTime::ATOM);
                 $syncStatus = array(
-                'updated_at' => $timeNow,
-                'locked_by' => $pid
+                    'updated_at' => $timeNow,
+                    'locked_by' => $pid
                 );
                 $this->tagalysConfiguration->setConfig('categories_sync_status', $syncStatus, true);
                 $collection = $this->getRequiresPositionsSyncCollection();
                 $remainingCount = $collection->count();
-                // $this->logger("updatePositionsIfRequired: remainingCount: {$remainingCount}", null, 'tagalys_processes.log', true);
                 $countToSyncInCronRun = min($remainingCount, $maxProductsPerCronRun);
                 $numberCompleted = 0;
                 $circuitBreaker = 0;
@@ -329,16 +300,19 @@ class Category extends \Magento\Framework\App\Helper\AbstractHelper
                     foreach ($categoriesToSync as $categoryToSync) {
                         $storeId = $categoryToSync->getStoreId();
                         $categoryId = $categoryToSync->getCategoryId();
-                        $newPositions = $this->tagalysApi->storeApiCall($storeId . '', '/v1/mpages/_platform/__categories-' . $categoryId . '/positions', array());
-                        if ($newPositions != false) {
-                            $this->performCategoryPositionUpdate($storeId, $categoryId, $newPositions['positions']);
-                            $categoryToSync->addData(array('positions_sync_required' => 0, 'positions_synced_at' => date("Y-m-d H:i:s")))->save();
+                        if($this->isTagalysCreated($categoryId)){
+                            $response = $this->tagalysApi->storeApiCall($storeId . '', "/v1/mpages/_tagalys/$categoryId/products", []);
+                            if ($response != false) {
+                                $this->bulkAssignProductsToCategoryAndRemove($storeId, $categoryId, $response['products']);
+                            }
                         } else {
-                            // api call failed
+                            $response = $this->tagalysApi->storeApiCall($storeId . '', '/v1/mpages/_platform/__categories-' . $categoryId . '/positions', []);
+                            if ($response != false) {
+                                $this->performCategoryPositionUpdate($storeId, $categoryId, $response['positions']);
+                            }
                         }
                     }
                     $numberCompleted += $categoriesToSync->count();
-                    // $this->logger("updatePositionsIfRequired: completed {$numberCompleted}", null, 'tagalys_processes.log', true);
                 }
                 $syncStatus['locked_by'] = null;
                 $this->tagalysConfiguration->setConfig('categories_sync_status', $syncStatus, true);
@@ -352,121 +326,6 @@ class Category extends \Magento\Framework\App\Helper\AbstractHelper
             $category = $this->categoryFactory->create()->setStoreId($mappedStoreId)->load($categoryId);
             $category->setDefaultSortBy('position')->save();
         }
-    }
-
-    private function _updatePositions($storeId, $categoryId, $newPositions) {
-        // test this for multi store with different products in same category
-        $productCount = count($newPositions);
-        $category = $this->categoryFactory->create()->setStoreId($storeId)->load($categoryId);
-        $positions = $category->getProductsPosition();
-        foreach ($positions as $productId => $position) {
-            if(array_key_exists($productId, $newPositions)){
-                $positions[$productId] = $newPositions[$productId];
-            } else {
-                $positions[$productId] = $productCount + 1;
-            }
-        }
-        $category->setPostedProducts($positions)->save();
-    }
-
-    public function _updatePositionsViaDb($storeId, $categoryId, $positions) {
-        $indexTable = $this->getIndexTableName($storeId);
-        $pushDown = false;
-        $positionOffset = count($positions) + 1;
-        $whereData = array(
-            'category_id = ?' => (int)$categoryId,
-            'position <= ?' => $positionOffset
-        );
-        $updateData = array(
-            'position' => (count($positions) + 2)
-        );
-        if($this->isProductPushDownAllowed($categoryId)){
-            $pushDown = true;
-        } else {
-            // Logic depends on index table. Not idle.
-            $sql = "SELECT product_id FROM $indexTable WHERE category_id = $categoryId AND position <= $positionOffset AND store_id = $storeId AND visibility IN (2, 4); ";
-            $result = $this->runSqlSelect($sql);
-            $productsInStore = array();
-            foreach ($result as $row) {
-                $productsInStore[] = (int) $row['product_id'];
-            }
-            if(count($productsInStore) > 0){
-                $pushDown = true;
-                $productsInStore = implode(', ', $productsInStore);
-                $whereData["product_id IN ($productsInStore)"] = "";
-            }
-        }
-        if ($pushDown) {
-            $this->runSqlForCategoryPositions($updateData, $whereData);
-        }
-
-        foreach ($positions as $productId => $productPosition) {
-            $whereData = array(
-                'category_id = ?' => (int)$categoryId,
-                'product_id = ?' => (int)$productId
-            );
-            $updateData = array(
-                'position' => (int)$productPosition
-            );
-            $this->runSqlForCategoryPositions($updateData, $whereData);
-        }
-        return true;
-    }
-
-    public function _updatePositionsReverseViaDb($storeId, $categoryId, $positions) {
-        $indexTable = $this->getIndexTableName($storeId);
-        // check magento version before getting table name
-        $pushDown = false;
-        $positionOffset = 100;
-        $whereData = array(
-            'category_id = ?' => (int) $categoryId,
-            'position <= ?' => $positionOffset
-        );
-        $updateData = array(
-            'position' => (count($positions) + 2)
-        );
-        if ($this->isProductPushDownAllowed($categoryId)) {
-            $pushDown = true;
-        } else {
-            $sql = "SELECT product_id FROM $indexTable WHERE category_id = $categoryId AND position <= $positionOffset AND store_id = $storeId AND visibility IN (2, 4); ";
-            $result = $this->runSqlSelect($sql);
-            $productsInStore = array();
-            foreach ($result as $row) {
-                $productsInStore[] = (int) $row['product_id'];
-            }
-            if (count($productsInStore) > 0) {
-                $pushDown = true;
-                $productsInStore = implode(', ', $productsInStore);
-                $whereData["product_id IN ($productsInStore)"] = "";
-            }
-        }
-        if ($pushDown) {
-            $this->runSqlForCategoryPositions($updateData, $whereData);
-        }
-
-        if ($this->isProductPushDownAllowed($categoryId)) {
-            $whereData = array(
-                'category_id = ?' => (int)$categoryId,
-                'position >= ?' => 100
-            );
-            $updateData = array(
-                'position' => 99
-            );
-            $this->runSqlForCategoryPositions($updateData, $whereData);
-        }
-
-        $totalPositions = count($positions);
-        foreach ($positions as $productId => $productPosition) {
-            $whereData = array(
-                'category_id = ?' => (int)$categoryId,
-                'product_id = ?' => (int)$productId
-            );
-            $updateData = array(
-                'position' => 101 + $totalPositions - (int)$productPosition
-            );
-            $this->runSqlForCategoryPositions($updateData, $whereData);
-        }
-        return true;
     }
 
     public function getRemainingForSync()
@@ -530,8 +389,13 @@ class Category extends \Magento\Framework\App\Helper\AbstractHelper
             ->addFieldToFilter('marked_for_deletion', 0)
             ->setPageSize($max);
         foreach ($categoriesToSync as $i => $categoryToSync) {
-            $storeId = $categoryToSync->getStoreId();
-            array_push($detailsToSync, array('perform' => 'save', 'store_id' => $storeId, 'payload' => $this->getStoreCategoryDetails($storeId, $categoryToSync->getCategoryId())));
+            $categoryId = $categoryToSync->getCategoryId();
+            if($this->isTagalysCreated($categoryId)){
+                $categoryToSync->setStatus('powered_by_tagalys')->save();
+            } else {
+                $storeId = $categoryToSync->getStoreId();
+                array_push($detailsToSync, array('perform' => 'save', 'store_id' => $storeId, 'payload' => $this->getStoreCategoryDetails($storeId, $categoryToSync->getCategoryId())));
+            }
         }
         // delete
         $categoriesToDelete = $this->tagalysCategoryFactory->create()->getCollection()
@@ -700,22 +564,67 @@ class Category extends \Magento\Framework\App\Helper\AbstractHelper
     }
 
     public function performCategoryPositionUpdate($storeId, $categoryId, $positions) {
-        $sortOrder = $this->tagalysConfiguration->getConfig('listing_pages:position_sort_direction');
-        $updateViaDb = $this->tagalysConfiguration->getConfig('listing_pages:update_position_via_db', true);
-        // unify reverse and normal position updates
-        if($sortOrder == 'asc') {
-            if ($updateViaDb){
-                $this->_updatePositionsViaDb($storeId, $categoryId, $positions);
-            } else {
-                $this->_updatePositions($storeId, $categoryId, $positions);
-            }
-        } else {
-            $this->_updatePositionsReverseViaDb($storeId, $categoryId, $positions);
+        if ($this->tagalysConfiguration->isProductSortingReverse()) {
+            $positions = $this->reverseProductPositionsHash($positions);
         }
-        $this->updateWithData($storeId, $categoryId, ['positions_sync_required' => 0, 'positions_synced_at' => date("Y-m-d H:i:s")]);
+        $updateViaDb = $this->tagalysConfiguration->getConfig('listing_pages:update_position_via_db', true);
+        // Product push down is still done using SQL.
+        $this->pushDownProductsNotIn($storeId, $categoryId, $positions);
+        if ($updateViaDb){
+            $this->_updatePositionsViaDb($storeId, $categoryId, $positions);
+        } else {
+            $this->_updatePositions($storeId, $categoryId, $positions);
+        }
         $this->_setPositionSortOrder($storeId, $categoryId);
+        $this->updateWithData($storeId, $categoryId, ['positions_sync_required' => 0, 'positions_synced_at' => date("Y-m-d H:i:s"), 'status' => 'powered_by_tagalys']);
         $this->reindexUpdatedCategories($categoryId);
         return true;
+    }
+
+    public function _updatePositions($storeId, $categoryId, $newPositions) {
+        $category = $this->categoryFactory->create()->setStoreId($storeId)->load($categoryId);
+        $positions = $category->getProductsPosition();
+        
+        foreach ($positions as $productId => $position) {
+            if (array_key_exists($productId, $newPositions)) {
+                $positions[$productId] = $newPositions[$productId];
+            }
+        }
+        $category->setPostedProducts($positions)->save();
+    }
+
+    public function _updatePositionsViaDb($storeId, $categoryId, $positions) {
+        foreach ($positions as $productId => $productPosition) {
+            $whereData = array(
+                'category_id = ?' => (int) $categoryId,
+                'product_id = ?' => (int) $productId
+            );
+            $updateData = array(
+                'position' => (int) $productPosition
+            );
+            $this->runSqlForCategoryPositions($updateData, $whereData);
+        }
+        return true;
+    }
+
+    public function pushDownProductsNotIn($storeId, $categoryId, $positions) {
+        $desc = $this->tagalysConfiguration->isProductSortingReverse();
+        $indexTable = $this->getIndexTableName($storeId);
+        $ccp = $this->resourceConnection->getTableName('catalog_category_product');
+        $total = count($positions);
+        $positionCondition = $desc ? "position >= 100" : "position <= $total";
+        $pushDownPosition = $desc ? 99 : $total + 1;
+        $sql = "UPDATE $ccp SET position = $pushDownPosition WHERE category_id = $categoryId AND $positionCondition AND product_id IN (SELECT DISTINCT product_id FROM $indexTable WHERE category_id = $categoryId AND $positionCondition AND store_id = $storeId AND visibility IN (2, 4));";
+        $this->runSql($sql);
+    }
+
+    public function reverseProductPositionsHash($positions){
+        $reversedPositions = [];
+        $maxPosition = count($positions) + 100;
+        foreach ($positions as $productId => $position) {
+            $reversedPositions[$productId] = $maxPosition - $position;
+        }
+        return $reversedPositions;
     }
     
     public function createTagalysParentCategory($storeId, $categoryDetails) {
@@ -736,8 +645,9 @@ class Category extends \Magento\Framework\App\Helper\AbstractHelper
         }
         $categoryDetails['is_active'] = false;
         $categoryId = $this->_createCategory($parentCategoryId, $categoryDetails);
-        foreach ($forStores as $sid) {
-            $this->updateCategoryDetails($categoryId, ['is_active'=> true], $sid);
+        foreach ($forStores as $storeId) {
+            $this->createOrUpdateWithData($storeId, $categoryId, ['positions_sync_required' => 1, 'status' => 'powered_by_tagalys']);
+            $this->updateCategoryDetails($categoryId, ['is_active'=> true], $storeId);
         }
         return $categoryId;
     }
@@ -807,13 +717,31 @@ class Category extends \Magento\Framework\App\Helper\AbstractHelper
 
     public function bulkAssignProductsToCategoryAndRemove($storeId, $categoryId, $productPositions) {
         if($this->isTagalysCreated($categoryId)){
-          $productsToRemove = $this->getProductsToRemove($storeId, $categoryId, $productPositions);
-          $this->_paginateSqlRemove($categoryId, $productsToRemove);
-          $this->bulkAssignProductsToCategoryViaDb($categoryId, $productPositions);
-          $this->reindexUpdatedCategories();
-          return true;
+            if ($this->tagalysConfiguration->isProductSortingReverse()) {
+                $productPositions = array_reverse($productPositions);
+            }
+            $updateViaDb = $this->tagalysConfiguration->getConfig('listing_pages:update_position_via_db', true);
+            if($updateViaDb){
+                $productsToRemove = $this->getProductsToRemove($storeId, $categoryId, $productPositions);
+                $this->_paginateSqlRemove($categoryId, $productsToRemove);
+                $this->bulkAssignProductsToCategoryViaDb($categoryId, $productPositions);
+            } else {
+                $productPositionsHash = $this->getProductPositionHash($productPositions);
+                $this->categoryFactory->create()->setStoreId($storeId)->load($categoryId)->setPostedProducts($productPositionsHash)->save();
+            }
+            $this->updateWithData($storeId, $categoryId, ['positions_sync_required' => 0, 'positions_synced_at' => date("Y-m-d H:i:s"), 'status' => 'powered_by_tagalys']);
+            $this->reindexUpdatedCategories();
+            return true;
         }
         throw new \Exception("Error: this category wasn't created by Tagalys");
+    }
+
+    public function getProductPositionHash($productsArray){
+        $productsHash = [];
+        foreach ($productsArray as $index => $productId) {
+            $productsHash[$productId] = $index + 1;
+        }
+        return $productsHash;
     }
 
     private function getProductsToRemove($storeId, $categoryId, $newProducts){
@@ -831,22 +759,8 @@ class Category extends \Magento\Framework\App\Helper\AbstractHelper
         return $productsToRemove;
     }
 
-    private function getProductsNotIn($categoryId, $productPositions){
-        $tableName = $this->resourceConnection->getTableName('catalog_category_product');
-        $sql = "SELECT product_id FROM $tableName WHERE category_id=$categoryId";
-        $select = $this->runSqlSelect($sql);
-        $productsInTable = [];
-        foreach($select as $row){
-            $productsInTable[] = $row['product_id'];
-        }
-        return array_diff($productsInTable, $productPositions);
-    }
-
     private function bulkAssignProductsToCategoryViaDb($categoryId, $productPositions) {
         if(count($productPositions)>0){
-            if($this->tagalysConfiguration->isSortedReverse()){
-                $productPositions = array_reverse($productPositions);
-            }
             $this->paginateSqlInsert($categoryId, $productPositions);
             $this->updatedCategories[] = $categoryId;
         }
@@ -948,6 +862,7 @@ class Category extends \Magento\Framework\App\Helper\AbstractHelper
             $indexer->reindexList($this->updatedCategories);
             $clearCache = $this->tagalysConfiguration->getConfig('listing_pages:clear_cache_after_reindex', true);
             if ($clearCache) {
+                // move this check inside the cache clear function
                 $this->clearCacheForCategories($this->updatedCategories);
             }
         }

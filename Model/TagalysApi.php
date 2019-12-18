@@ -148,12 +148,17 @@ class TagalysApi implements TagalysManagementInterface
                     break;
                 case 'assign_products_to_category_and_remove':
                     $this->logger->info("assign_products_to_category_and_remove: params: " . json_encode($params));
-                    if ($params['product_positions'] == -1) {
-                        $params['product_positions'] = [];
+                    $async = $this->tagalysConfiguration->getConfig('listing_pages:update_position_async', true);
+                    if ($async) {
+                        $res = $this->tagalysCategoryHelper->updateWithData($params['store_id'], $params['category_id'], ['positions_sync_required' => 1]);
+                    } else {
+                        if ($params['product_positions'] == -1) {
+                            $params['product_positions'] = [];
+                        }
+                        $res = $this->tagalysCategoryHelper->bulkAssignProductsToCategoryAndRemove($params['store_id'], $params['category_id'], $params['product_positions']);
                     }
-                    $res = $this->tagalysCategoryHelper->bulkAssignProductsToCategoryAndRemove($params['store_id'], $params['category_id'], $params['product_positions']);
                     if ($res) {
-                        $response = ['status' => 'OK', 'message' => $res];
+                        $response = ['status' => 'OK', 'message' => $res, 'async' => $async];
                     } else {
                         $response = ['status' => 'error', 'message' => 'Unknown error occurred'];
                     }
@@ -208,6 +213,10 @@ class TagalysApi implements TagalysManagementInterface
                 case 'get_order_data':
                     $res = $this->tagalysSync->getOrderData($params['store_id'], $params['from'], $params['to']);
                     $response = array('status' => 'OK', 'message' => $res);
+                    break;
+                case 'update_tagalys_category_table':
+                    $this->tagalysCategoryHelper->updateWithData($params['store_id'], $params['category_id'], $params['update_data']);
+                    $response = array('status' => 'OK', 'updated' => true);
                     break;
             }
         } catch (\Exception $e) {

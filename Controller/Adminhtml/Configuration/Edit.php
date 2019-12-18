@@ -193,6 +193,9 @@ class Edit extends \Magento\Backend\App\Action
                                 foreach ($categoryIds as $categoryId) {
                                     try {
                                         $category = $this->categoryRepository->get($categoryId, $storeId);
+                                        if ($this->tagalysCategoryHelper->isTagalysCreated($category)){
+                                            continue;
+                                        }
                                     } catch (\Exception $e) {
                                         continue;
                                     }
@@ -206,7 +209,7 @@ class Edit extends \Magento\Backend\App\Action
                                             $firstItem->addData(array('marked_for_deletion' => 1))->save();
                                         }
                                     } else {
-                                        $this->tagalysCategoryHelper->createOrUpdateWithData($storeId, $categoryId, array('positions_sync_required' => 0, 'marked_for_deletion' => 0, 'status' => 'pending_sync'), array('marked_for_deletion' => 0));
+                                        $this->tagalysCategoryHelper->createOrUpdateWithData($storeId, $categoryId, array('positions_sync_required' => 0, 'marked_for_deletion' => 0, 'status' => 'pending_sync'));
                                     }
                                 }
                             }
