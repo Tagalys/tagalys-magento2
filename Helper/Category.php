@@ -61,8 +61,11 @@ class Category extends \Magento\Framework\App\Helper\AbstractHelper
         $connection->truncateTable($tableName);
     }
 
-    public function createOrUpdateWithData($storeId, $categoryId, $data)
+    public function createOrUpdateWithData($storeId, $categoryId, $data, $updateData = null)
     {
+        if ($updateData == null) {
+            $updateData = $data;
+        }
         $firstItem = $this->tagalysCategoryFactory->create()->getCollection()
             ->addFieldToFilter('category_id', $categoryId)
             ->addFieldToFilter('store_id', $storeId)
@@ -72,7 +75,7 @@ class Category extends \Magento\Framework\App\Helper\AbstractHelper
             if ($id = $firstItem->getId()) {
                 $data['category_id'] = $categoryId;
                 $data['store_id'] = $storeId;
-                $model = $this->tagalysCategoryFactory->create()->load($id)->addData($data);
+                $model = $this->tagalysCategoryFactory->create()->load($id)->addData($updateData);
                 $model->setId($id)->save();
             } else {
                 $data['category_id'] = $categoryId;
