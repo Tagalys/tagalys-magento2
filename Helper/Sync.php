@@ -17,7 +17,8 @@ class Sync extends \Magento\Framework\App\Helper\AbstractHelper
         \Magento\Store\Model\StoreManagerInterface $storeManager,
         \Tagalys\Sync\Model\QueueFactory $queueFactory,
         \Tagalys\Sync\Helper\Queue $queueHelper,
-        \Magento\Framework\App\ResourceConnection $resourceConnection
+        \Magento\Framework\App\ResourceConnection $resourceConnection,
+        \Magento\Indexer\Model\IndexerFactory $indexerFactory
     )
     {
         $this->tagalysConfiguration = $tagalysConfiguration;
@@ -32,6 +33,7 @@ class Sync extends \Magento\Framework\App\Helper\AbstractHelper
         $this->queueFactory = $queueFactory;
         $this->queueHelper = $queueHelper;
         $this->resourceConnection = $resourceConnection;
+        $this->indexerFactory = $indexerFactory;
 
         $this->filesystem = $filesystem;
         $this->directory = $filesystem->getDirectoryWrite(\Magento\Framework\App\Filesystem\DirectoryList::MEDIA);
@@ -346,6 +348,7 @@ class Sync extends \Magento\Framework\App\Helper\AbstractHelper
 
                 $deletedIds = array();
                 if ($type == 'updates') {
+                    $this->reindexProductsForUpdate($productIdsFromUpdatesQueueForCronInstance);
                     $collection = $this->_getCollection($storeId, $type, $productIdsFromUpdatesQueueForCronInstance);
                     $productIdsInCollection = array();
                     $select = $collection->getSelect();
@@ -753,5 +756,13 @@ class Sync extends \Magento\Framework\App\Helper\AbstractHelper
             }
         }
         return $data;
+    }
+
+    public function reindexProductsForUpdate($productIds){
+        $reindexBeforeUpdate = $this->tagalysConfiguration->getConfig('sync:reindex_products_before_updates', true);
+        if($reindexBeforeUpdate){
+            $this->indexerFactory->create()->load('cataloginventory_stock')->reindexList($productIds);
+            $this->indexerFactory->create()->load('catalog_product_price')->reindexList($productIds);
+        }
     }
 }
