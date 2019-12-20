@@ -310,7 +310,7 @@ class Category extends \Magento\Framework\App\Helper\AbstractHelper
                     foreach ($categoriesToSync as $categoryToSync) {
                         $storeId = $categoryToSync->getStoreId();
                         $categoryId = $categoryToSync->getCategoryId();
-                        $response = $this->tagalysApi->storeApiCall($storeId . '', "/v1/mpages/_product_positions", ['category_id' => $categoryId]);
+                        $response = $this->tagalysApi->storeApiCall($storeId . '', "/v1/mpages/_product_positions", ['id_at_platform' => $categoryId]);
                         if ($response != false) {
                             if($this->isTagalysCreated($categoryId)){
                                 $this->bulkAssignProductsToCategoryAndRemove($storeId, $categoryId, $response['positions']);
