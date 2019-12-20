@@ -686,6 +686,7 @@ class Category extends \Magento\Framework\App\Helper\AbstractHelper
                 }
             }
         }
+        $this->reindexFlatCategories();
         $this->categoryUpdateAfter($category);
         return $categoryId;
     }
