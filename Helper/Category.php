@@ -678,7 +678,7 @@ class Category extends \Magento\Framework\App\Helper\AbstractHelper
             $category = $this->categoryFactory->create()->setStoreId($storeId)->load($categoryId);
             $category->addData($categoryDetails)->save();
             $parentCategoryId = $this->getTagalysParentCategory($storeId);
-            if($parentCategoryId != $categoryId){
+             if($parentCategoryId != $categoryId && $this->tagalysConfiguration->isPrimaryStore($storeId)){
                 if($category->getIsActive() == '1'){
                     $this->createOrUpdateWithData($storeId, $categoryId, ['positions_sync_required' => 1, 'status' => 'powered_by_tagalys']);
                 } else {
