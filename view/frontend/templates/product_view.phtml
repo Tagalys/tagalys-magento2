@@ -9,7 +9,7 @@
                     'sku' => $thisProduct->getSku()
                 );
             }
-        } catch (Exception $e) {
+        } catch (\Exception $e) {
             // don't log this as it might happen too often
         }
     ?>

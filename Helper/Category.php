@@ -83,7 +83,7 @@ class Category extends \Magento\Framework\App\Helper\AbstractHelper
                 $model = $this->tagalysCategoryFactory->create()->setData($data);
                 $insertId = $model->save()->getId();
             }
-        } catch (Exception $e) {
+        } catch (\Exception $e) {
         
         }
     }
@@ -103,7 +103,7 @@ class Category extends \Magento\Framework\App\Helper\AbstractHelper
                 return true;
             }
             return false;
-        } catch (Exception $e) {
+        } catch (\Exception $e) {
             return false;
         }
     }
@@ -511,7 +511,7 @@ class Category extends \Magento\Framework\App\Helper\AbstractHelper
             } else {
                 return false;
             }
-        } catch (Exception $e) {
+        } catch (\Exception $e) {
             return false;
         }
     }
