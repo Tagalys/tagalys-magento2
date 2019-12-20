@@ -743,13 +743,13 @@ class Category extends \Magento\Framework\App\Helper\AbstractHelper
             if($updateViaDb){
                 $productsToRemove = $this->getProductsToRemove($storeId, $categoryId, $productPositions);
                 $this->_paginateSqlRemove($categoryId, $productsToRemove);
-                $this->bulkAssignProductsToCategoryViaDb($categoryId, $productPositions);
+                $this->paginateSqlInsert($categoryId, $productPositions);
             } else {
                 $this->categoryFactory->create()->setStoreId($storeId)->load($categoryId)->setPostedProducts($productPositions)->save();
             }
             $this->_setPositionSortOrder($storeId, $categoryId);
             $this->updateWithData($storeId, $categoryId, ['positions_sync_required' => 0, 'positions_synced_at' => date("Y-m-d H:i:s"), 'status' => 'powered_by_tagalys']);
-            $this->reindexUpdatedCategories();
+            $this->reindexUpdatedCategories($categoryId);
             return true;
         }
         throw new \Exception("Error: this category wasn't created by Tagalys");
@@ -778,39 +778,34 @@ class Category extends \Magento\Framework\App\Helper\AbstractHelper
         return $productsToRemove;
     }
 
-    private function bulkAssignProductsToCategoryViaDb($categoryId, $productPositions) {
-        if(count($productPositions)>0){
-            $this->paginateSqlInsert($categoryId, $productPositions);
-            $this->updatedCategories[] = $categoryId;
-        }
-    }
-
     private function paginateSqlInsert($categoryId, $productPositions) {
-        $productsInCategory = [];
-        $rowsToInsert = [];
-        $tableName = $this->resourceConnection->getTableName('catalog_category_product');
-        $sql = "SELECT product_id FROM $tableName WHERE category_id=$categoryId;";
-        $rows = $this->runSqlSelect($sql);
-        foreach ($rows as $row) {
-            $productsInCategory[] = $row['product_id'];
-        }
-        foreach ($productPositions as $productId => $position) {
-            if (in_array($productId, $productsInCategory)) {
-                // product is already in this category, update position
-                $updateSql = "UPDATE $tableName SET position=$position WHERE category_id=$categoryId AND product_id=$productId;";
-                $this->runSql($updateSql);
-            } else {
-                // to be inserted into the category with the correct position
-                $rowsToInsert[] = "($categoryId, $productId, $position)";
+        if (count($productPositions) > 0) {
+            $productsInCategory = [];
+            $rowsToInsert = [];
+            $tableName = $this->resourceConnection->getTableName('catalog_category_product');
+            $sql = "SELECT product_id FROM $tableName WHERE category_id=$categoryId;";
+            $rows = $this->runSqlSelect($sql);
+            foreach ($rows as $row) {
+                $productsInCategory[] = $row['product_id'];
             }
-        }
-        $insertBatch = array_splice($rowsToInsert, 0, 500);
-        while(count($insertBatch) > 0){
-            $insertSql = "INSERT INTO $tableName (category_id, product_id, position) VALUES ";
-            $values = implode(', ', $insertBatch);
-            $query = $insertSql . $values . ';';
-            $this->runSql($query);
+            foreach ($productPositions as $productId => $position) {
+                if (in_array($productId, $productsInCategory)) {
+                    // product is already in this category, update position
+                    $updateSql = "UPDATE $tableName SET position=$position WHERE category_id=$categoryId AND product_id=$productId;";
+                    $this->runSql($updateSql);
+                } else {
+                    // to be inserted into the category with the correct position
+                    $rowsToInsert[] = "($categoryId, $productId, $position)";
+                }
+            }
             $insertBatch = array_splice($rowsToInsert, 0, 500);
+            while(count($insertBatch) > 0){
+                $insertSql = "INSERT INTO $tableName (category_id, product_id, position) VALUES ";
+                $values = implode(', ', $insertBatch);
+                $query = $insertSql . $values . ';';
+                $this->runSql($query);
+                $insertBatch = array_splice($rowsToInsert, 0, 500);
+            }
         }
     }
 
@@ -869,7 +864,7 @@ class Category extends \Magento\Framework\App\Helper\AbstractHelper
         return $conn->fetchAll($sql);
     }
     public function reindexUpdatedCategories($categoryId=null){
-        $reindex = $this->tagalysConfiguration->getConfig('listing_pages:reindex_after_updates', true);
+        $reindex = $this->tagalysConfiguration->getConfig('listing_pages:reindex_category_product_after_updates', true);
         if($reindex){
             if (isset($categoryId)){
                 array_push($this->updatedCategories, $categoryId);
@@ -900,7 +895,7 @@ class Category extends \Magento\Framework\App\Helper\AbstractHelper
 
     public function reindexUpdatedProducts($productIds) {
         $indexer = $this->indexerFactory->create()->load('catalog_product_category');
-        $reindex = $this->tagalysConfiguration->getConfig('listing_pages:reindex_after_updates', true);
+        $reindex = $this->tagalysConfiguration->getConfig('listing_pages:reindex_category_product_after_updates', true);
         if ($reindex) {
             if (!is_array($productIds)) {
                 $productIds = [$productIds];
@@ -1003,8 +998,10 @@ class Category extends \Magento\Framework\App\Helper\AbstractHelper
 
     public function reindexFlatCategories() {
         try{
-            $categoryFlatIndexer = $this->indexerFactory->create()->load('catalog_category_flat');
-            $categoryFlatIndexer->reindexAll();
+            $reindexFlatCategory = $this->tagalysConfiguration->getConfig('listing_pages:reindex_category_flat_after_updates', true);
+            if($reindexFlatCategory){
+                $this->indexerFactory->create()->load('catalog_category_flat')->reindexAll();
+            }
         } catch(\Exception $e) {
             $this->logger->err("reindexFlatCategories: {$e->getMessage()}");
         }
