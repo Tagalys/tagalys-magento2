@@ -668,7 +668,7 @@ class Category extends \Magento\Framework\App\Helper\AbstractHelper
     }
 
     public function updateCategoryDetails($categoryId, $categoryDetails, $forStores) {
-        $this->logger->info("updateCategoryDetails: category_id: $categoryId, categoryDetails: ".json_encode($categoryDetails));
+        $this->logger->info("updateCategoryDetails: category_id: $categoryId, categoryDetails: " . json_encode([$categoryDetails, $forStores]));
         if(!is_array($forStores)){
             $forStores = [$forStores];
         }
@@ -683,8 +683,10 @@ class Category extends \Magento\Framework\App\Helper\AbstractHelper
             $parentCategoryId = $this->getTagalysParentCategory($storeId);
              if($parentCategoryId != $categoryId && $this->tagalysConfiguration->isPrimaryStore($storeId)){
                 if($category->getIsActive() == '1'){
+                    $this->logger->info("enabling category: $categoryId for store: $storeId");
                     $this->createOrUpdateWithData($storeId, $categoryId, ['positions_sync_required' => 1, 'status' => 'powered_by_tagalys']);
                 } else {
+                    $this->logger->info("disabling category: $categoryId for store: $storeId");
                     $this->deleteCategoryEntries($storeId, $categoryId);
                 }
             }
@@ -737,6 +739,7 @@ class Category extends \Magento\Framework\App\Helper\AbstractHelper
     }
 
     public function bulkAssignProductsToCategoryAndRemove($storeId, $categoryId, $productPositions) {
+        $this->logger->info("bulkAssignProductsToCategoryAndRemove: store_id: $storeId, category_id: $categoryId, productPositions count: " . count($productPositions));
         if($this->isTagalysCreated($categoryId)){
             if ($this->tagalysConfiguration->isProductSortingReverse()) {
                 $productPositions = $this->reverseProductPositionsHash($productPositions);

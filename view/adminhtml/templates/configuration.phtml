@@ -141,7 +141,7 @@
         ], function(tgls_jq) {
             if (isTagalysEnabled(tgls_jq)) {
                 tagalysStatusUpdateInterval = new tagalysInterval(tagalysGetAndUpdateSyncStatus, 5000);
-                tagalysManualSyncIndicatorInterval = new tagalysInterval(tagalysUpdateManualSyncIndicator, 2000);
+                // tagalysManualSyncIndicatorInterval = new tagalysInterval(tagalysUpdateManualSyncIndicator, 2000);
                 // monitoring
                 tagalysMonitorInterval = new tagalysInterval(tagalysMonitorTimers, 5000);
                 tagalysMonitorInterval.start();
@@ -162,7 +162,7 @@
                 tagalysManualSyncTimeout = setTimeout(tagalysSyncManually, 100);
             }
         } else {
-            tagalysManualSyncIndicatorInterval.stop();
+            // tagalysManualSyncIndicatorInterval.stop();
             tagalysStatusUpdateInterval.start();
         }
     }
@@ -316,16 +316,11 @@
         } else {
             tagalysWaitingForTagalys = false;
         }
-        tagalysUpdateSyncButtonLabel();
+        // tagalysUpdateSyncButtonLabel();
         document.getElementById('note_sync_status').innerHTML = syncStatus.status;
         for (store_id in syncStatus.stores) {
             document.getElementById('store_' + store_id + '_note_setup_complete').innerHTML = (syncStatus.stores[store_id].setup_complete ? 'Yes' : 'No');
-            var toggleButton = document.getElementById('tagalys-toggle-manual-sync');
-            if (toggleButton.innerHTML == 'Sync Now') {
-                var feed_status = syncStatus.stores[store_id].feed_status;
-            } else {
-                var feed_status = syncStatus.stores[store_id].feed_status.replace('Waiting to write', 'Writing');
-            }
+            var feed_status = syncStatus.stores[store_id].feed_status;
             document.getElementById('store_' + store_id + '_note_feed_status').innerHTML = feed_status;
             document.getElementById('store_' + store_id + '_note_updates_status').innerHTML = syncStatus.stores[store_id].updates_status;
             document.getElementById('store_' + store_id + '_note_listing_pages_status').innerHTML = syncStatus.stores[store_id].listing_pages_status;
@@ -352,7 +347,7 @@
             if (tree_type == 'category') {
                 multiselect = 'categories_for_tagalys_store_' + storeId;
                 target_div = 'categories-jtree-store-' + storeId;
-                if (tgls_jq('#'+target_div).length == 0) {
+                if (tgls_jq('#' + target_div).length == 0) {
                     return;
                 }
                 tgls_jq('#select-all-category-store-' + storeId).on('click', function(e) {
@@ -421,7 +416,7 @@
         "jquery"
     ], function(tgls_jq) {
         var storesVisibilityTimer = false;
-        tgls_jq(function(){
+        tgls_jq(function() {
             tgls_jq('.force-hide-store-categories').parents('.fieldset-wrapper').children().hide();
         })
         tgls_jq('#enable_listingpages').change(function() {

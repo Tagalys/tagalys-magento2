@@ -718,7 +718,7 @@ class Sync extends \Magento\Framework\App\Helper\AbstractHelper
         }
 
         if ($resyncScheduled) {
-            $syncStatus['status'] = $syncStatus['status'] . '. Resync scheduled as per Cron settings. You can resync manually by using the <strong>Trigger full products resync now</strong> option in the <strong>Support & Troubleshooting</strong> tab and then clicking on the <strong>Sync Manually</strong> button that will show below.';
+            $syncStatus['status'] = $syncStatus['status'] . '. Resync scheduled as per Cron settings. You can trigger it manually by using the <strong>Trigger full products resync now</strong> option in the <strong>Support & Troubleshooting</strong> tab.';
         }
 
         return $syncStatus;
@@ -760,7 +760,7 @@ class Sync extends \Magento\Framework\App\Helper\AbstractHelper
 
     public function reindexProductsForUpdate($productIds){
         $reindexBeforeUpdate = $this->tagalysConfiguration->getConfig('sync:reindex_products_before_updates', true);
-        if($reindexBeforeUpdate){
+        if($reindexBeforeUpdate && count($productIds) > 0){
             $this->indexerFactory->create()->load('cataloginventory_stock')->reindexList($productIds);
             $this->indexerFactory->create()->load('catalog_product_price')->reindexList($productIds);
         }
