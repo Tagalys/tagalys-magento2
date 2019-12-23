@@ -226,6 +226,11 @@ class TagalysApi implements TagalysManagementInterface
                     $res = $this->queueHelper->removeProductIdsIn($params['product_ids']);
                     $response = array('status' => 'OK', 'removed' => $res);
                     break;
+                case 'get_positions':
+                    $positions = $this->tagalysCategoryHelper->getProductPosition($params['category_id']);
+                    $indexPositions = $this->tagalysCategoryHelper->getProductPositionFromIndex($params['store_id'], $params['category_id']);
+                    $response = array('status' => 'OK', 'positions' => $positions, 'index_positions' => $indexPositions);
+                    break;
             }
         } catch (\Exception $e) {
             $response = ['status' => 'error', 'message' => $e->getMessage(), 'trace' => $e->getTrace()];

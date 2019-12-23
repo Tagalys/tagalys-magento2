@@ -1076,4 +1076,18 @@ class Category extends \Magento\Framework\App\Helper\AbstractHelper
             return ($this->resourceConnection->getTableName("catalog_category_product_index_store$storeId"));
         }
     }
+
+    public function getProductPosition($categoryId) {
+        $ccp = $this->resourceConnection->getTableName('catalog_category_product');
+        $sql = "SELECT product_id, position FROM $ccp WHERE category_id=$categoryId ORDER BY position";
+        $positions = $this->runSqlSelect($sql);
+        return $positions;
+    }
+
+    public function getProductPositionFromIndex($storeId, $categoryId) {
+        $indexTable = $this->getIndexTableName($storeId);
+        $sql = "SELECT product_id, position FROM $indexTable WHERE store_id=$storeId AND category_id=$categoryId ORDER BY position";
+        $positions = $this->runSqlSelect($sql);
+        return $positions;
+    }
 }
