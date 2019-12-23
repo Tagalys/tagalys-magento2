@@ -115,6 +115,7 @@ class Configuration extends \Magento\Framework\App\Helper\AbstractHelper
                 'listing_pages:reindex_category_product_after_updates' => 'false',
                 'listing_pages:reindex_category_flat_after_updates' => 'false',
                 'listing_pages:update_position_via_db' => 'false',
+                'listing_pages:update_smart_category_products_via_db' => 'true',
                 'listing_pages:update_position_async' => 'true',
                 'listing_pages:push_down_in_set_posted_products' => 'false',
                 'sync:reindex_products_before_updates' => 'false'

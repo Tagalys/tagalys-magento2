@@ -362,30 +362,37 @@ class Category extends \Magento\Framework\App\Helper\AbstractHelper
         }
     }
     public function getStoreCategoryDetails($storeId, $categoryId) {
-        $originalStoreId = $this->storeManagerInterface->getStore()->getId();
-        $this->storeManagerInterface->setCurrentStore($storeId);
-        $category = null;
-        $category = $this->categoryFactory->create()->load($categoryId);
-        $categoryActive = $category->getIsActive();
-        if ($categoryActive) {
-            return array(
-                "id" => "__categories-$categoryId",
-                "slug" => $category->getUrl(),
-                "path" => $category->getUrlPath(),
-                "enabled" => true,
-                "name" => implode(' / ', array_slice(explode(' |>| ', $this->tagalysConfiguration->getCategoryName($category)), 1)),
-                "filters" => array(
-                array(
-                    "field" => "__categories",
-                    "value" => $categoryId
-                ),
-                array(
-                    "field" => "visibility",
-                    "tag_jsons" => array("{\"id\":\"2\",\"name\":\"Catalog\"}", "{\"id\":\"4\",\"name\":\"Catalog, Search\"}")
-                )
-            ));
+        try {
+            $originalStoreId = $this->storeManagerInterface->getStore()->getId();
+            $this->storeManagerInterface->setCurrentStore($storeId);
+            $category = null;
+            $category = $this->categoryFactory->create()->load($categoryId);
+            $categoryActive = $category->getIsActive();
+            if ($categoryActive) {
+                $output = array(
+                    "id" => "__categories-$categoryId",
+                    "slug" => $category->getUrl(),
+                    "path" => $category->getUrlPath(),
+                    "enabled" => true,
+                    "name" => implode(' / ', array_slice(explode(' |>| ', $this->tagalysConfiguration->getCategoryName($category)), 1)),
+                    "filters" => array(
+                    array(
+                        "field" => "__categories",
+                        "value" => $categoryId
+                    ),
+                    array(
+                        "field" => "visibility",
+                        "tag_jsons" => array("{\"id\":\"2\",\"name\":\"Catalog\"}", "{\"id\":\"4\",\"name\":\"Catalog, Search\"}")
+                    )
+                ));
+                $this->storeManagerInterface->setCurrentStore($originalStoreId);
+                return $output;
+            }
+            $this->storeManagerInterface->setCurrentStore($originalStoreId);
+            return false;
+        } catch (\Exception $e) {
+            return false;
         }
-        $this->storeManagerInterface->setCurrentStore($originalStoreId);
     }
     public function sync($max, $force = false)
     {
@@ -404,7 +411,12 @@ class Category extends \Magento\Framework\App\Helper\AbstractHelper
                 $categoryToSync->setStatus('powered_by_tagalys')->save();
             } else {
                 $storeId = $categoryToSync->getStoreId();
-                array_push($detailsToSync, array('perform' => 'save', 'store_id' => $storeId, 'payload' => $this->getStoreCategoryDetails($storeId, $categoryToSync->getCategoryId())));
+                $payload = $this->getStoreCategoryDetails($storeId, $categoryToSync->getCategoryId());
+                if ($payload === false) {
+                    $categoryToSync->setStatus('failed')->save();
+                } else {
+                    array_push($detailsToSync, array('perform' => 'save', 'store_id' => $storeId, 'payload' => $payload));
+                }
             }
         }
         // delete
@@ -745,8 +757,8 @@ class Category extends \Magento\Framework\App\Helper\AbstractHelper
                 $productPositions = $this->reverseProductPositionsHash($productPositions);
             }
             $productPositions = $this->filterDeletedProducts($productPositions);
-            $updateViaDb = $this->tagalysConfiguration->getConfig('listing_pages:update_position_via_db', true);
-            if($updateViaDb){
+            $updateSmartCategoryProductsViaDb = $this->tagalysConfiguration->getConfig('listing_pages:update_smart_category_products_via_db', true);
+            if($updateSmartCategoryProductsViaDb){
                 $productsToRemove = $this->getProductsToRemove($storeId, $categoryId, $productPositions);
                 $this->_paginateSqlRemove($categoryId, $productsToRemove);
                 $this->paginateSqlInsert($categoryId, $productPositions);
