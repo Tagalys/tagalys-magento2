@@ -50,7 +50,7 @@ class Queue extends \Magento\Framework\App\Helper\AbstractHelper
                 $productsToInsert = array_slice($productIds, $offset, $perPage);
             }
         } catch (\Exception $e){
-            $this->tagalysApi->log('error', 'Error in insertUnique', ['message'=> $e->getMessage(), 'product_ids' => $productIds, 'backtrace'=> $e->getTrace()]);
+            $this->tagalysLogger->warn("insertUnique exception: " . json_encode(['message' => $e->getMessage(), 'product_ids' => $productIds, 'backtrace' => $e->getTrace()]));
         }
     }
 
