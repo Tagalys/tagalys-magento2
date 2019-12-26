@@ -10,7 +10,8 @@ class Queue extends \Magento\Framework\App\Helper\AbstractHelper
         \Magento\ConfigurableProduct\Model\Product\Type\Configurable $configurableProduct,
         \Magento\Catalog\Model\ProductFactory $productFactory,
         \Magento\Framework\App\ResourceConnection $resourceConnection,
-        \Magento\Framework\App\ProductMetadataInterface $productMetadataInterface
+        \Magento\Framework\App\ProductMetadataInterface $productMetadataInterface,
+        \Tagalys\Sync\Helper\Api $tagalysApi
     )
     {
         $this->queueFactory = $queueFactory;
@@ -20,6 +21,7 @@ class Queue extends \Magento\Framework\App\Helper\AbstractHelper
         $this->productFactory = $productFactory;
         $this->resourceConnection = $resourceConnection;
         $this->productMetadataInterface = $productMetadataInterface;
+        $this->tagalysApi = $tagalysApi;
 
         $writer = new \Zend\Log\Writer\Stream(BP . '/var/log/tagalys_core.log');
         $this->tagalysLogger = new \Zend\Log\Logger();
@@ -27,20 +29,28 @@ class Queue extends \Magento\Framework\App\Helper\AbstractHelper
     }
 
     public function insertUnique($productIds) {
-        if (!is_array($productIds)) {
-            $productIds = array($productIds);
-        }
-        $perPage = 100;
-        $offset = 0;
-        $queueTable = $this->resourceConnection->getTableName('tagalys_queue');
-        $productIds = array_filter($productIds); // remove null values - this will cause a crash when used in the replace command below
-        $productsToInsert = array_slice($productIds, $offset, $perPage);
-        while(count($productsToInsert) > 0){
-            $productsToInsert = implode('),(', $productsToInsert);
-            $sql = "REPLACE $queueTable (product_id) VALUES ($productsToInsert);";
-            $this->runSql($sql);
-            $offset += $perPage;
+        try {
+            if (!is_array($productIds)) {
+                $productIds = array($productIds);
+            }
+            $logInsert = $this->tagalysConfiguration->getConfig('sync:log_product_ids_during_insert_to_queue', true);
+            if($logInsert){
+                $this->tagalysLogger->info("insertUnique: ProductIds: ". json_encode($productIds));
+            }
+            $perPage = 100;
+            $offset = 0;
+            $queueTable = $this->resourceConnection->getTableName('tagalys_queue');
+            $productIds = array_filter($productIds); // remove null values - this will cause a crash when used in the replace command below
             $productsToInsert = array_slice($productIds, $offset, $perPage);
+            while(count($productsToInsert) > 0){
+                $productsToInsert = implode('),(', $productsToInsert);
+                $sql = "REPLACE $queueTable (product_id) VALUES ($productsToInsert);";
+                $this->runSql($sql);
+                $offset += $perPage;
+                $productsToInsert = array_slice($productIds, $offset, $perPage);
+            }
+        } catch (\Exception $e){
+            $this->tagalysApi->log('error', 'Error in insertUnique', ['message'=> $e->getMessage(), 'product_ids' => $productIds, 'backtrace'=> $e->getTrace()]);
         }
     }
 
