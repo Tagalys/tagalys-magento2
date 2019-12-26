@@ -16,7 +16,8 @@ class TagalysApi implements TagalysManagementInterface
         \Tagalys\Sync\Model\ConfigFactory $configFactory,
         \Tagalys\Sync\Model\CategoryFactory $tagalysCategoryFactory,
         \Magento\Framework\Filesystem $filesystem,
-        \Tagalys\Sync\Helper\Product $tagalysProduct
+        \Tagalys\Sync\Helper\Product $tagalysProduct,
+        \Magento\Framework\Registry $_registry
     ) {
         $this->tagalysConfiguration = $tagalysConfiguration;
         $this->tagalysApi = $tagalysApi;
@@ -27,6 +28,7 @@ class TagalysApi implements TagalysManagementInterface
         $this->tagalysCategoryFactory = $tagalysCategoryFactory;
         $this->filesystem = $filesystem;
         $this->tagalysProduct = $tagalysProduct;
+        $this->_registry = $_registry;
 
         $writer = new \Zend\Log\Writer\Stream(BP . '/var/log/tagalys_rest_api.log');
         $this->logger = new \Zend\Log\Logger();
@@ -52,6 +54,7 @@ class TagalysApi implements TagalysManagementInterface
 
     public function info($params)
     {
+        $this->_registry->register("tagalys_context", true);
         $response = array('status' => 'error', 'message' => 'invalid info_type');
         try {
             switch ($params['info_type']) {

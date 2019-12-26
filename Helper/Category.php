@@ -283,8 +283,8 @@ class Category extends \Magento\Framework\App\Helper\AbstractHelper
         return $categoriesToSync;
     }
 
-    public function updatePositionsIfRequired($maxProductsPerCronRun = 50, $perPage = 5, $force = false)
-    {
+    public function updatePositionsIfRequired($maxProductsPerCronRun = 50, $perPage = 5, $force = false) {
+        $this->_registry->register("tagalys_context", true);
         $listingPagesEnabled = ($this->tagalysConfiguration->getConfig("module:listingpages:enabled") == '1');
         if ($listingPagesEnabled || $force) {
             $pid = $this->random->getRandomString(24);
@@ -586,6 +586,7 @@ class Category extends \Magento\Framework\App\Helper\AbstractHelper
     }
 
     public function performCategoryPositionUpdate($storeId, $categoryId, $positions) {
+        $this->logger->info("performCategoryPositionUpdate: store_id: $storeId, category_id: $categoryId, productPositions count: " . count($positions));
         if ($this->tagalysConfiguration->isProductSortingReverse()) {
             $positions = $this->reverseProductPositionsHash($positions);
         }

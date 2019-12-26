@@ -6,11 +6,13 @@ class UpdateCategory implements \Magento\Framework\Event\ObserverInterface
     public function __construct(
         \Tagalys\Sync\Helper\Queue $queueHelper,
         \Tagalys\Sync\Helper\Category $tagalysCategory,
+        \Magento\Framework\Registry $_registry,
         \Tagalys\Sync\Model\CategoryFactory $tagalysCategoryFactory
     )
     {
         $this->queueHelper = $queueHelper;
         $this->tagalysCategory = $tagalysCategory;
+        $this->_registry = $_registry;
         $this->tagalysCategoryFactory = $tagalysCategoryFactory;
     }
     public function execute(\Magento\Framework\Event\Observer $observer)
@@ -18,7 +20,9 @@ class UpdateCategory implements \Magento\Framework\Event\ObserverInterface
         try {
             $category = $observer->getEvent()->getCategory();
             $products = $category->getPostedProducts();
-            if($this->tagalysCategory->isTagalysCreated($category) || $products == null){
+            $tagalysCreated = $this->tagalysCategory->isTagalysCreated($category);
+            $tagalysContext = $this->_registry->registry("tagalys_context");
+            if($tagalysCreated || $tagalysContext){
                 return true;
             }
             $this->markPendingSync($category->getId());
