@@ -78,10 +78,10 @@ class Queue extends \Magento\Framework\App\Helper\AbstractHelper
             $cpr = $this->resourceConnection->getTableName('catalog_product_relation');
             $attrId = $this->getProductVisibilityAttrId();
             $columnToMap = $this->getResourceColumnToJoin();
-            // insert the primary products
+            // insert individually visible products
             $sql = "REPLACE $tq (product_id) SELECT DISTINCT cpe.entity_id as product_id FROM $cpe as cpe INNER JOIN $cpei as cpei ON cpe.{$columnToMap} = cpei.{$columnToMap} WHERE cpe.updated_at > '$lastDetected' AND cpei.attribute_id = $attrId AND cpei.value IN (2,3,4) AND cpei.store_id IN ($stores);";
             $this->runSql($sql);
-            // insert the primary products of the child (non-primary) products
+            // insert parent products of associated child products
             $sql = "REPLACE $tq (product_id) SELECT DISTINCT cpr.parent_id as product_id FROM $cpr as cpr INNER JOIN $cpe as cpe ON cpe.entity_id = cpr.child_id WHERE cpe.updated_at > '$lastDetected'";
             $this->runSql($sql);
         } else {
@@ -143,11 +143,11 @@ class Queue extends \Magento\Framework\App\Helper\AbstractHelper
         $cpr = $this->resourceConnection->getTableName('catalog_product_relation');
         // find the attribute id for product visibility
         $visibilityAttr = $this->getProductVisibilityAttrId();
-        // insert the primary products
         $columnToJoin = $this->getResourceColumnToJoin();
+        // insert individually visible products
         $sql = "REPLACE $tq (product_id) SELECT DISTINCT cpe.entity_id FROM $cpe as cpe INNER JOIN $cpei as cpei ON cpe.{$columnToJoin} = cpei.{$columnToJoin} WHERE cpe.entity_id IN ($productIds) AND cpei.attribute_id = $visibilityAttr AND cpei.value IN (2,3,4) AND cpei.store_id IN ($tagalysStores);";
         $this->runSql($sql);
-        // insert the primary products of the child (non-primary) products
+        // insert parent products of associated child products
         $sql = "REPLACE $tq (product_id) SELECT DISTINCT cpr.parent_id FROM $cpr as cpr WHERE cpr.child_id IN ($productIds);";
         $this->runSql($sql);
     }
