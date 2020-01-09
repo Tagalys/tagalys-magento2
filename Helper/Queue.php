@@ -37,15 +37,20 @@ class Queue extends \Magento\Framework\App\Helper\AbstractHelper
             if($logInsert){
                 $this->tagalysLogger->info("insertUnique: ProductIds: ". json_encode($productIds));
             }
+            $insertPrimary = $this->tagalysConfiguration->getConfig('sync:insert_primary_products_in_insert_unique', true);
             $perPage = 100;
             $offset = 0;
             $queueTable = $this->resourceConnection->getTableName('tagalys_queue');
             $productIds = array_filter($productIds); // remove null values - this will cause a crash when used in the replace command below
             $productsToInsert = array_slice($productIds, $offset, $perPage);
             while(count($productsToInsert) > 0){
-                $productsToInsert = implode('),(', $productsToInsert);
-                $sql = "REPLACE $queueTable (product_id) VALUES ($productsToInsert);";
-                $this->runSql($sql);
+                if($insertPrimary){
+                    $this->insertPrimaryProducts($productsToInsert);
+                } else {
+                    $productsToInsert = implode('),(', $productsToInsert);
+                    $sql = "REPLACE $queueTable (product_id) VALUES ($productsToInsert);";
+                    $this->runSql($sql);
+                }
                 $offset += $perPage;
                 $productsToInsert = array_slice($productIds, $offset, $perPage);
             }
@@ -69,21 +74,14 @@ class Queue extends \Magento\Framework\App\Helper\AbstractHelper
         if ($optimize) {
             $stores = $this->tagalysConfiguration->getStoresForTagalys(true);
             $stores = implode(',', $stores);
-            $ea = $this->resourceConnection->getTableName('eav_attribute');
-            $eet = $this->resourceConnection->getTableName('eav_entity_type');
             $cpei = $this->resourceConnection->getTableName('catalog_product_entity_int');
             $cpr = $this->resourceConnection->getTableName('catalog_product_relation');
-            $sql = "SELECT ea.attribute_id FROM $ea as ea INNER JOIN $eet as eet ON ea.entity_type_id = eet.entity_type_id WHERE eet.entity_table = 'catalog_product_entity' AND ea.attribute_code = 'visibility'";
-            $rows = $this->runSqlSelect($sql);
-            $attrId = $rows[0]['attribute_id'];
-            $edition = $this->productMetadataInterface->getEdition();
-            if ($edition == "Community"){
-                $columnToMap = 'entity_id';
-            } else {
-                $columnToMap = 'row_id';
-            }
+            $attrId = $this->getProductVisibilityAttrId();
+            $columnToMap = $this->getResourceColumnToJoin();
+            // insert the primary products
             $sql = "REPLACE $tq (product_id) SELECT DISTINCT cpe.entity_id as product_id FROM $cpe as cpe INNER JOIN $cpei as cpei ON cpe.{$columnToMap} = cpei.{$columnToMap} WHERE cpe.updated_at > '$lastDetected' AND cpei.attribute_id = $attrId AND cpei.value IN (2,3,4) AND cpei.store_id IN ($stores);";
             $this->runSql($sql);
+            // insert the primary products of the child (non-primary) products
             $sql = "REPLACE $tq (product_id) SELECT DISTINCT cpr.parent_id as product_id FROM $cpr as cpr INNER JOIN $cpe as cpe ON cpe.entity_id = cpr.child_id WHERE cpe.updated_at > '$lastDetected'";
             $this->runSql($sql);
         } else {
@@ -133,6 +131,25 @@ class Queue extends \Magento\Framework\App\Helper\AbstractHelper
             $this->insertUnique($primaryProductId);
         }
         return $primaryProductId;
+    }
+
+    public function insertPrimaryProducts($productIds){
+        $productIds = implode(',', $productIds);
+        $tagalysStores = $this->tagalysConfiguration->getStoresForTagalys(true);
+        $tagalysStores = implode(',', $tagalysStores);
+        $tq = $this->resourceConnection->getTableName('tagalys_queue');
+        $cpe = $this->resourceConnection->getTableName('catalog_product_entity');
+        $cpei = $this->resourceConnection->getTableName('catalog_product_entity_int');
+        $cpr = $this->resourceConnection->getTableName('catalog_product_relation');
+        // find the attribute id for product visibility
+        $visibilityAttr = $this->getProductVisibilityAttrId();
+        // insert the primary products
+        $columnToJoin = $this->getResourceColumnToJoin();
+        $sql = "REPLACE $tq (product_id) SELECT DISTINCT cpe.entity_id FROM $cpe as cpe INNER JOIN $cpei as cpei ON cpe.{$columnToJoin} = cpei.{$columnToJoin} WHERE cpe.entity_id IN ($productIds) AND cpei.attribute_id = $visibilityAttr AND cpei.value IN (2,3,4) AND cpei.store_id IN ($tagalysStores);";
+        $this->runSql($sql);
+        // insert the primary products of the child (non-primary) products
+        $sql = "REPLACE $tq (product_id) SELECT DISTINCT cpr.parent_id FROM $cpr as cpr WHERE cpr.child_id IN ($productIds);";
+        $this->runSql($sql);
     }
 
     public function _visibleInAnyStore($product) {
@@ -204,5 +221,23 @@ class Queue extends \Magento\Framework\App\Helper\AbstractHelper
             return true;
         }
         return false;
+    }
+
+    public function getResourceColumnToJoin(){
+        $edition = $this->productMetadataInterface->getEdition();
+        if ($edition == "Community") {
+            $columnToJoin = 'entity_id';
+        } else {
+            $columnToJoin = 'row_id';
+        }
+        return $columnToJoin;
+    }
+
+    public function getProductVisibilityAttrId(){
+        $ea = $this->resourceConnection->getTableName('eav_attribute');
+        $eet = $this->resourceConnection->getTableName('eav_entity_type');
+        $sql = "SELECT ea.attribute_id FROM $ea as ea INNER JOIN $eet as eet ON ea.entity_type_id = eet.entity_type_id WHERE eet.entity_table = 'catalog_product_entity' AND ea.attribute_code = 'visibility'";
+        $rows = $this->runSqlSelect($sql);
+        return $rows[0]['attribute_id'];
     }
 }

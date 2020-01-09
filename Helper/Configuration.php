@@ -119,7 +119,8 @@ class Configuration extends \Magento\Framework\App\Helper\AbstractHelper
                 'listing_pages:update_position_async' => 'true',
                 'listing_pages:push_down_in_set_posted_products' => 'false',
                 'sync:reindex_products_before_updates' => 'false',
-                'sync:log_product_ids_during_insert_to_queue' => 'false'
+                'sync:log_product_ids_during_insert_to_queue' => 'false',
+                'sync:insert_primary_products_in_insert_unique' => 'true'
             );
             if (array_key_exists($configPath, $defaultConfigValues)) {
                 $configValue = $defaultConfigValues[$configPath];
