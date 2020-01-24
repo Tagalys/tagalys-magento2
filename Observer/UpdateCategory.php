@@ -25,7 +25,7 @@ class UpdateCategory implements \Magento\Framework\Event\ObserverInterface
             if($tagalysCreated || $tagalysContext){
                 return true;
             }
-            $this->markPendingSync($category->getId());
+            $this->updateTagalysCategoryStatus($category);
             $oldProducts = $category->getProductsPosition();
             $insert = array_diff_key($products, $oldProducts);
             $delete = array_diff_key($oldProducts, $products);
@@ -47,11 +47,16 @@ class UpdateCategory implements \Magento\Framework\Event\ObserverInterface
         } catch (\Exception $e) { }
     }
 
-    private function markPendingSync($categoryId){
-        $categories = $this->tagalysCategoryFactory->create()->getCollection()->addFieldToFilter('category_id', $categoryId);
-        foreach($categories as $category) {
-            if($category->getStatus()== 'powered_by_tagalys'){
-                $category->setStatus('pending_sync')->save();
+    private function updateTagalysCategoryStatus($category){
+        $powerAllCategories = ($this->tagalysConfiguration->getConfig('module:listingpages:enabled') == '2');
+        if($powerAllCategories){
+            $this->tagalysCategory->powerCategoryForAllStores($category);
+        } else {
+            $categories = $this->tagalysCategoryFactory->create()->getCollection()->addFieldToFilter('category_id', $category->getId());
+            foreach($categories as $category) {
+                if($category->getStatus()== 'powered_by_tagalys'){
+                    $category->setStatus('pending_sync')->save();
+                }
             }
         }
     }

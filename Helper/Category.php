@@ -334,7 +334,9 @@ class Category extends \Magento\Framework\App\Helper\AbstractHelper
         $mappedStoreIds = $this->tagalysConfiguration->getMappedStores($storeId, true);
         foreach ($mappedStoreIds as $mappedStoreId) {
             $category = $this->categoryFactory->create()->setStoreId($mappedStoreId)->load($categoryId);
-            $category->setDefaultSortBy('position')->save();
+            if ($category->getDefaultSortBy() != 'position') {
+                $category->setDefaultSortBy('position')->save();
+            }
         }
     }
 
@@ -1090,5 +1092,30 @@ class Category extends \Magento\Framework\App\Helper\AbstractHelper
         $sql = "SELECT product_id, position FROM $indexTable WHERE store_id=$storeId AND category_id=$categoryId ORDER BY position";
         $positions = $this->runSqlSelect($sql);
         return $positions;
+    }
+
+    public function powerCategoryForAllStores($category){
+        $tagalysStores = $this->tagalysConfiguration->getStoresForTagalys();
+        foreach ($tagalysStores as $storeId) {
+            if($this->tagalysConfiguration->isPrimaryStore($storeId)){
+                $store = $this->storeManagerInterface->getStore($storeId);
+                $storeRoot = $store->getRootCategoryId();
+                $categoryRoot = explode('/', $category->getPath())[1];
+                if($storeRoot == $categoryRoot){
+                    $this->createOrUpdateWithData($storeId, $category->getId(), ['positions_sync_required' => 0, 'marked_for_deletion' => 0, 'status' => 'pending_sync']);
+                }
+            }
+        }
+    }
+
+    public function powerAllCategoriesForStore($storeId){
+        $categories = $this->categoryFactory->create()->setStoreId(5)->getCollection()->addAttributeToSelect(['display_mode']);
+        $storeRoot = $this->storeManagerInterface->getStore($storeId)->getRootCategoryId();
+        foreach ($categories as $category) {
+            $path = explode('/',$category->getPath());
+            if(in_array($storeRoot, $path) && $category->getDisplayMode() != 'PAGE'){
+                $this->createOrUpdateWithData($storeId, $category->getId(), ['positions_sync_required' => 0, 'marked_for_deletion' => 0, 'status' => 'pending_sync'], ['marked_for_deletion' => 0]);
+            }
+        }
     }
 }

@@ -90,7 +90,8 @@ class Listingpages extends Generic
             'title' => 'Use Tagalys to power Category pages',
             'options' => array(
                 '0' => __('No'),
-                '1' => __('Yes - For selected category pages')
+                '1' => __('Yes - For selected category pages'),
+                '2' => __('Yes - For all category pages')
             ),
             'required' => true,
             'style' => 'width:100%',
@@ -261,7 +262,7 @@ class Listingpages extends Generic
                 'name' => "smart_page_parent_category_name_store_$storeId",
                 'label' => "Smart Categories parent category name",
                 'value'  => $smartPageParentCategory->getName(),
-                'placeholder' => 'Tagalys (default)',
+                'placeholder' => 'Buy (default)',
                 'after_element_html' => '<p><small>For your reference, not shown in the front-end.</small></p>',
             ));
             $storeListingPagesFieldset->addField("smart_page_parent_category_url_key_store_$storeId", 'text', array(

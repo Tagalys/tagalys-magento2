@@ -156,7 +156,7 @@ class Edit extends \Magento\Backend\App\Action
                     $redirectToTab = 'search';
                     break;
                 case 'Save Listing Pages Settings':
-                    if ($params['enable_listingpages'] == '1' && $params['understand_and_agree'] == 'I agree') {
+                    if ($params['enable_listingpages'] != '0' && $params['understand_and_agree'] == 'I agree') {
                         $this->tagalysConfiguration->setConfig('module:listingpages:enabled', $params['enable_listingpages']);
                         $this->messageManager->addNoticeMessage("Settings have been saved. Selected categories will be visible in your Tagalys Dashboard within 10 minutes and product positions on these categories will be updated within 15 minutes unless specificed below.");
                         if (!array_key_exists('category_pages_rendering_method', $params)){
@@ -185,31 +185,37 @@ class Edit extends \Magento\Backend\App\Action
                             $originalStoreId = $this->storeManager->getStore()->getId();
                             $this->storeManager->setCurrentStore($storeId);
                             $categoryIds = array();
-                            if (count($params['categories_for_tagalys_store_'. $storeId]) > 0) {
-                                foreach($params['categories_for_tagalys_store_' . $storeId] as $categoryPath) {
-                                    $path = explode('/', $categoryPath);
-                                    $categoryIds[] = intval(end($path));
+                            if ($params['enable_listingpages'] == '2'){
+                                if ($this->tagalysConfiguration->isPrimaryStore($storeId)){
+                                    $this->tagalysCategoryHelper->powerAllCategoriesForStore($storeId);
                                 }
-                                foreach ($categoryIds as $categoryId) {
-                                    try {
-                                        $category = $this->categoryRepository->get($categoryId, $storeId);
-                                        if ($this->tagalysCategoryHelper->isTagalysCreated($category)){
-                                            continue; // skip if tagalys category - we don't show them in the front-end and marked_for_deletion should not apply
-                                        }
-                                    } catch (\Exception $e) {
-                                        continue;
+                            } else {
+                                if (count($params['categories_for_tagalys_store_'. $storeId]) > 0) {
+                                    foreach($params['categories_for_tagalys_store_' . $storeId] as $categoryPath) {
+                                        $path = explode('/', $categoryPath);
+                                        $categoryIds[] = intval(end($path));
                                     }
-                                    if ($category->getDisplayMode() == 'PAGE') {
-                                        // skip
-                                        $firstItem = $this->tagalysCategoryFactory->create()->getCollection()
-                                            ->addFieldToFilter('store_id', $storeId)
-                                            ->addFieldToFilter('category_id', $categoryId)
-                                            ->getFirstItem();
-                                        if ($id = $firstItem->getId()) {
-                                            $firstItem->addData(array('marked_for_deletion' => 1))->save();
+                                    foreach ($categoryIds as $categoryId) {
+                                        try {
+                                            $category = $this->categoryRepository->get($categoryId, $storeId);
+                                            if ($this->tagalysCategoryHelper->isTagalysCreated($category)){
+                                                continue; // skip if tagalys category - we don't show them in the front-end and marked_for_deletion should not apply
+                                            }
+                                        } catch (\Exception $e) {
+                                            continue;
                                         }
-                                    } else {
-                                        $this->tagalysCategoryHelper->createOrUpdateWithData($storeId, $categoryId, array('positions_sync_required' => 0, 'marked_for_deletion' => 0, 'status' => 'pending_sync'), array('marked_for_deletion' => 0));
+                                        if ($category->getDisplayMode() == 'PAGE') {
+                                            // skip
+                                            $firstItem = $this->tagalysCategoryFactory->create()->getCollection()
+                                                ->addFieldToFilter('store_id', $storeId)
+                                                ->addFieldToFilter('category_id', $categoryId)
+                                                ->getFirstItem();
+                                            if ($id = $firstItem->getId()) {
+                                                $firstItem->addData(array('marked_for_deletion' => 1))->save();
+                                            }
+                                        } else {
+                                            $this->tagalysCategoryHelper->createOrUpdateWithData($storeId, $categoryId, array('positions_sync_required' => 0, 'marked_for_deletion' => 0, 'status' => 'pending_sync'), array('marked_for_deletion' => 0));
+                                        }
                                     }
                                 }
                             }
@@ -338,7 +344,7 @@ class Edit extends \Magento\Backend\App\Action
             $mappedStores = $this->tagalysConfiguration->getMappedStores($storeId, true);
             $categoryDetails = [];
             if ($params["smart_page_parent_category_name_store_$storeId"] == "") {
-                $categoryDetails['name'] = 'Tagalys';
+                $categoryDetails['name'] = 'Buy';
             } else {
                 $categoryDetails['name'] = $params["smart_page_parent_category_name_store_$storeId"];
             }

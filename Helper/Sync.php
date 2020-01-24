@@ -759,6 +759,10 @@ class Sync extends \Magento\Framework\App\Helper\AbstractHelper
     }
 
     public function reindexProductsForUpdate($productIds){
+        /* 
+            In certain cases (flat_products enabled maybe?), when a new product is created the product update for that product ID will come as 'product delete'
+            If that happens, enable sync:reindex_products_before_updates
+        */
         $reindexBeforeUpdate = $this->tagalysConfiguration->getConfig('sync:reindex_products_before_updates', true);
         if($reindexBeforeUpdate && count($productIds) > 0){
             $this->indexerFactory->create()->load('cataloginventory_stock')->reindexList($productIds);
