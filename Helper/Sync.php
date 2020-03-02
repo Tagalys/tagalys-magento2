@@ -89,8 +89,7 @@ class Sync extends \Magento\Framework\App\Helper\AbstractHelper
     }
 
     public function getProductsCount($storeId) {
-        // TODO: does this run a count query or does it actually retrieve all products? compare with getSize()
-        return $this->_getCollection($storeId, 'feed')->count();
+        return $this->_getCollection($storeId, 'feed')->getSize();
     }
 
     public function _getCollection($storeId, $type, $productIdsFromUpdatesQueueForCronInstance = array()) {
