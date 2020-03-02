@@ -280,6 +280,7 @@ class Edit extends \Magento\Backend\App\Action
                 case 'Trigger full products resync now':
                     $triggered = true;
                     $this->tagalysApi->log('warn', 'Triggering full products resync');
+                    $this->tagalysConfiguration->setConfig("config_sync_required", '1');
                     foreach ($this->tagalysConfiguration->getStoresForTagalys() as $storeId) {
                         $storeTriggered = $this->tagalysSync->triggerFeedForStore($storeId, true, false, true);
                         if (!$storeTriggered) {

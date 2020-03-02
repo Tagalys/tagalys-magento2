@@ -120,6 +120,7 @@ class Sync extends \Magento\Framework\App\Helper\AbstractHelper
                   $syncTypeStatus['status'] = 'finished';
                   $this->tagalysConfiguration->setConfig("store:$storeId:" . $syncType . "_status", $syncTypeStatus, true);
                 }
+                $this->tagalysConfiguration->setConfig("config_sync_required", '1');
                 $this->triggerFeedForStore($storeId, false, false, true);
                 $this->tagalysConfiguration->setConfig("store:$storeId:resync_required", '0');
             }
