@@ -742,17 +742,22 @@ class Sync extends \Magento\Framework\App\Helper\AbstractHelper
             $orders->addAttributeToFilter('created_at', ['to' => $to]);
         }
         $data = [];
+        $successStates = $this->tagalysConfiguration->getConfig('success_order_states', true);
         foreach($orders as $order){
-            $items = $order->getAllVisibleItems();
-            foreach($items as $item){
-                $data[] = [
-                    'order_id' => $order->getId(),
-                    'item_sku' => $item->getSku(),
-                    'product_sku' => $item->getProduct()->getSku(),
-                    'qty' => $item->getQtyOrdered(),
-                    'user_id' => $order->getCustomerId(),
-                    'timestamp' => $order->getCreatedAt(),
-                ];
+            if (in_array($order->getState(), $successStates)) {
+                $items = $order->getAllVisibleItems();
+                foreach($items as $item){
+                    $data[] = [
+                        'order_id' => $order->getId(),
+                        'order_status' => $order->getStatus(),
+                        'order_state' => $order->getState(),
+                        'item_sku' => $item->getSku(),
+                        'product_sku' => $item->getProduct()->getSku(),
+                        'qty' => $item->getQtyOrdered(),
+                        'user_id' => $order->getCustomerId(),
+                        'timestamp' => $order->getCreatedAt(),
+                    ];
+                }
             }
         }
         return $data;
