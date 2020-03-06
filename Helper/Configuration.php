@@ -121,7 +121,8 @@ class Configuration extends \Magento\Framework\App\Helper\AbstractHelper
                 'sync:reindex_products_before_updates' => 'false',
                 'sync:log_product_ids_during_insert_to_queue' => 'false',
                 'sync:insert_primary_products_in_insert_unique' => 'true',
-                'success_order_states' => '["new", "payment_review", "processing", "complete", "closed"]'
+                'success_order_states' => '["new", "payment_review", "processing", "complete", "closed"]',
+                'sync:record_price_rule_updates_for_each_product' => 'false'
             );
             if (array_key_exists($configPath, $defaultConfigValues)) {
                 $configValue = $defaultConfigValues[$configPath];

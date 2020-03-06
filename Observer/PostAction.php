@@ -26,6 +26,7 @@ class PostAction implements \Magento\Framework\Event\ObserverInterface
                 'system_currency_saveRates',
                 'system_currencysymbol_save'
             );
+            $catalogPriceRuleEvents = ['promo_catalog_save', 'promo_catalog_applyRules'];
             $controllerActionName = $this->requestInterface->getControllerName() . '_' . $this->requestInterface->getActionName();
 
             if (in_array($controllerActionName, $tagalysConfigEvents)) {
@@ -42,6 +43,9 @@ class PostAction implements \Magento\Framework\Event\ObserverInterface
                 foreach($stores as $i => $storeId) {
                     $this->tagalysConfiguration->setConfig("store:{$storeId}:resync_required", 1);
                 }
+            }
+            if (in_array($controllerActionName, $catalogPriceRuleEvents)) {
+                $this->tagalysConfiguration->setConfig('sync:catalog_price_rule_changed', true, true);
             }
         } catch (\Exception $e) { }
     }

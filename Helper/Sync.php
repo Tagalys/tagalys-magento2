@@ -790,4 +790,11 @@ class Sync extends \Magento\Framework\App\Helper\AbstractHelper
             }
         }
     }
+
+    public function triggerFullSync(){
+        $this->tagalysConfiguration->setConfig("config_sync_required", '1');
+        foreach ($this->tagalysConfiguration->getStoresForTagalys() as $storeId) {
+            $this->triggerFeedForStore($storeId, true, false, true);
+        }
+    }
 }

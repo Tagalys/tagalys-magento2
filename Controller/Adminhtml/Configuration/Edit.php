@@ -280,17 +280,15 @@ class Edit extends \Magento\Backend\App\Action
                 case 'Trigger full products resync now':
                     $triggered = true;
                     $this->tagalysApi->log('warn', 'Triggering full products resync');
-                    $this->tagalysConfiguration->setConfig("config_sync_required", '1');
-                    foreach ($this->tagalysConfiguration->getStoresForTagalys() as $storeId) {
-                        $storeTriggered = $this->tagalysSync->triggerFeedForStore($storeId, true, false, true);
-                        if (!$storeTriggered) {
-                            $triggered = false;
-                        }
-                    }
-                    if (!$triggered) {
+                    try{
+                        $this->tagalysSync->triggerFullSync();
+                    } catch (\Exception $e){
+                        $triggered = false;
                         $this->messageManager->addErrorMessage("Unable to trigger a full resync. There is already a sync in progress.");
                     }
-                    $this->queueHelper->truncate();
+                    if ($triggered){
+                        $this->queueHelper->truncate();
+                    }
                     $redirectToTab = 'support';
                     break;
                 case 'Clear Tagalys sync queue':

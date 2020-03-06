@@ -16,5 +16,8 @@
             </argument>
         </arguments>
     </type>
-	<preference for="Tagalys\Sync\Api\TagalysManagementInterface" type="Tagalys\Sync\Model\TagalysApi"/>
+    <preference for="Tagalys\Sync\Api\TagalysManagementInterface" type="Tagalys\Sync\Model\TagalysApi"/>
+    <type name="\Magento\CatalogRule\Model\Indexer\IndexBuilder">
+        <plugin name="on_catalog_rule_reindex_plugin" type="Tagalys\Sync\Plugin\CatalogRulePlugin" sortOrder="1" />
+    </type>
 </config>
