@@ -186,9 +186,8 @@ class Edit extends \Magento\Backend\App\Action
                             $this->storeManager->setCurrentStore($storeId);
                             $categoryIds = array();
                             if ($params['enable_listingpages'] == '2'){
-                                if ($this->tagalysConfiguration->isPrimaryStore($storeId)){
-                                    $this->tagalysCategoryHelper->powerAllCategoriesForStore($storeId);
-                                }
+                                /* don't do anything here as powering all categories for all stores could take some time.
+                                    the sync cron will do it's job anyway. */
                             } else {
                                 if (count($params['categories_for_tagalys_store_'. $storeId]) > 0) {
                                     foreach($params['categories_for_tagalys_store_' . $storeId] as $categoryPath) {
@@ -218,8 +217,8 @@ class Edit extends \Magento\Backend\App\Action
                                         }
                                     }
                                 }
+                                $this->tagalysCategoryHelper->markStoreCategoryIdsToDisableExcept($storeId, $categoryIds);
                             }
-                            $this->tagalysCategoryHelper->markStoreCategoryIdsForDeletionExcept($storeId, $categoryIds);
                             $this->storeManager->setCurrentStore($originalStoreId);
                         }
                         if ($params['category_pages_rendering_method'] == 'platform') {
@@ -246,7 +245,7 @@ class Edit extends \Magento\Backend\App\Action
                             $this->tagalysConfiguration->setConfig('listing_pages:override_layout_name', $params['override_layout_name_for_listing_pages']);
                         }
                     } else {
-                        if ($params['enable_listingpages'] == '1') {
+                        if ($params['enable_listingpages'] != '0') {
                             $this->messageManager->addErrorMessage("Settings have not been updated because you did not type 'I agree'.");
                         }
                         $this->tagalysConfiguration->setConfig('listing_pages:categories_via_tagalys_js_enabled', '0');

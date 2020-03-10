@@ -456,7 +456,7 @@
             if (typeof(resetIAgree) == 'undefined') {
                 resetIAgree = true;
             }
-            if (tgls_jq('#enable_listingpages').val() != '1') {
+            if (tgls_jq('#enable_listingpages').val() == '0') {
                 tgls_jq('#technical_considerations_fieldset-wrapper').hide();
                 tgls_jq.each(tgls_jq('#stores_for_tagalys').val(), function(i, storeId) {
                     var selectorVal = tgls_jq('#store_' + storeId + '_listing_pages-wrapper').hide();
@@ -503,12 +503,17 @@
                 var renderingMethod = tgls_jq('#category_pages_rendering_method').val();
                 renderingMethod = renderingMethod ? renderingMethod : 'platform';
                 var sameProductsAcrossStores = tgls_jq('#same_or_similar_products_across_all_stores').val();
-                if (renderingMethod == 'platform' && sameProductsAcrossStores == '1') {
-                    var storeIdForCategoryPages = tgls_jq('#store_id_for_category_pages').val();
-                    tgls_jq('.categories-for-tagalys-store').parents('.fieldset-wrapper').hide();
-                    tgls_jq('#store_' + storeIdForCategoryPages + '_listing_pages-wrapper').show();
-                } else {
-                    tgls_jq('.categories-for-tagalys-store').parents('.fieldset-wrapper').show();
+                if (tgls_jq('#enable_listingpages').val() == '1') {
+                    tgls_jq('div[class*="field-jtree_wrap_store"]').show();
+                    if (renderingMethod == 'platform' && sameProductsAcrossStores == '1') {
+                        var storeIdForCategoryPages = tgls_jq('#store_id_for_category_pages').val();
+                        tgls_jq('.categories-for-tagalys-store').parents('.fieldset-wrapper').hide();
+                        tgls_jq('#store_' + storeIdForCategoryPages + '_listing_pages-wrapper').show();
+                    } else {
+                        tgls_jq('.categories-for-tagalys-store').parents('.fieldset-wrapper').show();
+                    }
+                } else if (tgls_jq('#enable_listingpages').val() == '2') {
+                    tgls_jq('div[class*="field-jtree_wrap_store"]').hide();
                 }
                 checkIfSmartPagesEnabled();
             } else {
@@ -522,9 +527,15 @@
             if ($smartPageSelect.val() == 1) {
                 tgls_jq('#smart-pages-info').html('Scroll down to set store preferences');
                 $smartPageDivs.show();
+                if (tgls_jq('#enable_listingpages').val() == '2') {
+                    tgls_jq('div[id*="_listing_pages-wrapper"]').show();
+                }
             } else {
                 tgls_jq('#smart-pages-info').html('This will allow you to create new categories from the Tagalys Dashboard whose products are dynamically managed by Tagalys based on various conditions.');
                 $smartPageDivs.hide();
+                if (tgls_jq('#enable_listingpages').val() == '2') {
+                    tgls_jq('div[id*="_listing_pages-wrapper"]').hide();
+                }
             }
         }
     })

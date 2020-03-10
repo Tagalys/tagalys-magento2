@@ -15,6 +15,9 @@
    <event name="catalog_category_save_after">
        <observer name="tagalys_update_category" instance="Tagalys\Sync\Observer\UpdateCategory" />
    </event>
+   <event name="catalog_category_delete_after">
+       <observer name="tagalys_delete_category" instance="Tagalys\Sync\Observer\DeleteCategory" />
+   </event>
    <event name="catalog_product_import_bunch_save_after">
        <observer name="tagalys_import_save" instance="Tagalys\Sync\Observer\ImportSave" />
    </event>

@@ -7,25 +7,27 @@ class UpdateCategory implements \Magento\Framework\Event\ObserverInterface
         \Tagalys\Sync\Helper\Queue $queueHelper,
         \Tagalys\Sync\Helper\Category $tagalysCategory,
         \Magento\Framework\Registry $_registry,
-        \Tagalys\Sync\Model\CategoryFactory $tagalysCategoryFactory
+        \Tagalys\Sync\Model\CategoryFactory $tagalysCategoryFactory,
+        \Tagalys\Sync\Helper\Configuration $tagalysConfiguration
     )
     {
         $this->queueHelper = $queueHelper;
         $this->tagalysCategory = $tagalysCategory;
         $this->_registry = $_registry;
         $this->tagalysCategoryFactory = $tagalysCategoryFactory;
+        $this->tagalysConfiguration = $tagalysConfiguration;
     }
     public function execute(\Magento\Framework\Event\Observer $observer)
     {
         try {
             $category = $observer->getEvent()->getCategory();
-            $products = $category->getPostedProducts();
             $tagalysCreated = $this->tagalysCategory->isTagalysCreated($category);
             $tagalysContext = $this->_registry->registry("tagalys_context");
             if($tagalysCreated || $tagalysContext){
                 return true;
             }
             $this->updateTagalysCategoryStatus($category);
+            $products = $category->getPostedProducts();
             $oldProducts = $category->getProductsPosition();
             $insert = array_diff_key($products, $oldProducts);
             $delete = array_diff_key($oldProducts, $products);
@@ -61,3 +63,4 @@ class UpdateCategory implements \Magento\Framework\Event\ObserverInterface
         }
     }
 }
+?>

@@ -186,6 +186,7 @@ class Configuration extends \Magento\Framework\App\Helper\AbstractHelper
     public function getCategoriesForTagalys($storeId) {
         $tagalysCategories = $this->tagalysCategoryFactory->create()->getCollection()
             ->addFieldToFilter('store_id', $storeId)
+            ->addFieldToFilter('status',['nin' => ['pending_disable']])
             ->addFieldToFilter('marked_for_deletion', '0')
             ->addFieldToSelect('category_id');
         $categoriesForTagalys = array();

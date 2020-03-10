@@ -152,9 +152,8 @@ class TagalysApi implements TagalysManagementInterface
                 case 'assign_products_to_category_and_remove':
                     $this->logger->info("assign_products_to_category_and_remove: params: " . json_encode($params));
                     $async = $this->tagalysConfiguration->getConfig('listing_pages:update_position_async', true);
-                    if ($async) {
-                        $res = $this->tagalysCategoryHelper->updateWithData($params['store_id'], $params['category_id'], ['positions_sync_required' => 1]);
-                    } else {
+                    $res = $this->tagalysCategoryHelper->updateWithData($params['store_id'], $params['category_id'], ['positions_sync_required' => 1]);
+                    if (!$async) {
                         if ($params['product_positions'] == -1) {
                             $params['product_positions'] = [];
                         }
@@ -169,9 +168,8 @@ class TagalysApi implements TagalysManagementInterface
                 case 'update_product_positions':
                     $this->logger->info("update_product_positions: params: " . json_encode($params));
                     $async = $this->tagalysConfiguration->getConfig('listing_pages:update_position_async', true);
-                    if($async){
-                        $this->tagalysCategoryHelper->updateWithData($params['store_id'], $params['category_id'], ['positions_sync_required' => 1]);
-                    } else {
+                    $this->tagalysCategoryHelper->updateWithData($params['store_id'], $params['category_id'], ['positions_sync_required' => 1]);
+                    if(!$async){
                         if ($params['product_positions'] == -1) {
                             $params['product_positions'] = [];
                         }

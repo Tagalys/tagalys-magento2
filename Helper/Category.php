@@ -130,6 +130,19 @@ class Category extends \Magento\Framework\App\Helper\AbstractHelper
         }
     }
 
+    public function markStoreCategoryIdsToDisableExcept($storeId, $categoryIds){
+        $collection = $this->tagalysCategoryFactory->create()->getCollection()->addFieldToFilter('store_id', $storeId);
+        foreach ($collection as $collectionItem) {
+            $categoryId = $collectionItem->getCategoryId();
+            if (!in_array((int) $categoryId, $categoryIds)) {
+                if ($this->isTagalysCreated($categoryId)) {
+                    continue;
+                }
+                $collectionItem->setStatus('pending_disable')->save();
+            }
+        }
+    }
+
     public function isMultiStoreWarningRequired()
     {
         $allStores = $this->tagalysConfiguration->getAllWebsiteStores();
@@ -389,9 +402,14 @@ class Category extends \Magento\Framework\App\Helper\AbstractHelper
                 ));
                 $this->storeManagerInterface->setCurrentStore($originalStoreId);
                 return $output;
+            } else {
+                /*
+                    The disabled categories can't be selected in the jstree.
+                    If some category is disabled after it was synced to tagalys, we mark it as failed.
+                */
+                $this->storeManagerInterface->setCurrentStore($originalStoreId);
+                return false;
             }
-            $this->storeManagerInterface->setCurrentStore($originalStoreId);
-            return false;
         } catch (\Exception $e) {
             return false;
         }
@@ -399,6 +417,11 @@ class Category extends \Magento\Framework\App\Helper\AbstractHelper
     public function sync($max, $force = false)
     {
         $listingPagesEnabled = ($this->tagalysConfiguration->getConfig("module:listingpages:enabled") == '1');
+        $powerAllListingPages = ($this->tagalysConfiguration->getConfig("module:listingpages:enabled") == '2');
+        if($powerAllListingPages){
+            $this->powerAllCategories();
+            $listingPagesEnabled = true;
+        }
         if ($listingPagesEnabled || $force) {
         $detailsToSync = array();
 
@@ -422,6 +445,15 @@ class Category extends \Magento\Framework\App\Helper\AbstractHelper
             }
         }
         // delete
+        $categoriesToDisable = $this->tagalysCategoryFactory->create()->getCollection()
+            ->addFieldToFilter('status', 'pending_disable')
+            ->addFieldToFilter('marked_for_deletion', 0)
+            ->setPageSize($max);
+        foreach ($categoriesToDisable as $i => $categoryToDisable) {
+            $storeId = $categoryToDisable->getStoreId();
+            $categoryId = $categoryToDisable->getCategoryId();
+            array_push($detailsToSync, array('perform' => 'disable', 'store_id' => $storeId, 'payload' => array('id_at_platform' => $categoryId)));
+        }
         $categoriesToDelete = $this->tagalysCategoryFactory->create()->getCollection()
             ->addFieldToFilter('marked_for_deletion', 1)
             ->setPageSize($max);
@@ -451,6 +483,9 @@ class Category extends \Magento\Framework\App\Helper\AbstractHelper
             }
             foreach ($categoriesToDelete as $i => $categoryToDelete) {
                 $categoryToDelete->delete();
+            }
+            foreach ($categoriesToDisable as $i => $categoryToDisable) {
+                $categoryToDisable->delete();
             }
             }
         }
@@ -1098,10 +1133,12 @@ class Category extends \Magento\Framework\App\Helper\AbstractHelper
         $tagalysStores = $this->tagalysConfiguration->getStoresForTagalys();
         foreach ($tagalysStores as $storeId) {
             if($this->tagalysConfiguration->isPrimaryStore($storeId)){
+                // Check if this category is available in this store
                 $store = $this->storeManagerInterface->getStore($storeId);
                 $storeRoot = $store->getRootCategoryId();
                 $categoryRoot = explode('/', $category->getPath())[1];
                 if($storeRoot == $categoryRoot){
+                    // We do this even for disabled categories as the disabled categories will be marked as failed on sync and will be retried periodically during maintenance
                     $this->createOrUpdateWithData($storeId, $category->getId(), ['positions_sync_required' => 0, 'marked_for_deletion' => 0, 'status' => 'pending_sync']);
                 }
             }
@@ -1109,12 +1146,21 @@ class Category extends \Magento\Framework\App\Helper\AbstractHelper
     }
 
     public function powerAllCategoriesForStore($storeId){
-        $categories = $this->categoryFactory->create()->setStoreId(5)->getCollection()->addAttributeToSelect(['display_mode']);
+        $categories = $this->tagalysConfiguration->getAllCategories($storeId);
         $storeRoot = $this->storeManagerInterface->getStore($storeId)->getRootCategoryId();
         foreach ($categories as $category) {
-            $path = explode('/',$category->getPath());
-            if(in_array($storeRoot, $path) && $category->getDisplayMode() != 'PAGE'){
-                $this->createOrUpdateWithData($storeId, $category->getId(), ['positions_sync_required' => 0, 'marked_for_deletion' => 0, 'status' => 'pending_sync'], ['marked_for_deletion' => 0]);
+            $path = explode('/',$category['value']);
+            if(in_array($storeRoot, $path) && $category['static_block_only'] == false){
+                $this->createOrUpdateWithData($storeId, end($path), ['positions_sync_required' => 0, 'marked_for_deletion' => 0, 'status' => 'pending_sync'], ['marked_for_deletion' => 0]);
+            }
+        }
+    }
+
+    public function powerAllCategories(){
+        $storesForTagalys = $this->tagalysConfiguration->getStoresForTagalys();
+        foreach($storesForTagalys as $storeId){
+            if ($this->tagalysConfiguration->isPrimaryStore($storeId)){
+                $this->powerAllCategoriesForStore($storeId);
             }
         }
     }
