@@ -1164,4 +1164,22 @@ class Category extends \Magento\Framework\App\Helper\AbstractHelper
             }
         }
     }
+
+    public function markCategoryForSyncIfRequired($storeId, $categoryId) {
+        $firstItem = $this->tagalysCategoryFactory->create()->getCollection()
+            ->addFieldToFilter('category_id', $categoryId)
+            ->addFieldToFilter('store_id', $storeId)
+            ->getFirstItem();
+        if ($id = $firstItem->getId()) {
+            $firstItem = $this->tagalysCategoryFactory->create()->load($id);
+            $firstItem->setMarkedForDeletion(0);
+            if ($firstItem->getStatus() == 'pending_disable') {
+                $firstItem->setStatus('pending_sync');
+            }
+        } else {
+            $firstItem = $this->tagalysCategoryFactory->create();
+            $firstItem->setData(['store_id' => $storeId, 'category_id' => $categoryId, 'positions_sync_required' => 0, 'marked_for_deletion' => 0, 'status' => 'pending_sync']);
+        }
+        $firstItem->save();
+    }
 }
