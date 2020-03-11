@@ -632,8 +632,12 @@ class Sync extends \Magento\Framework\App\Helper\AbstractHelper
                     }
                 }
                 if ($statusForClient == 'Writing to file' || $statusForClient == 'Waiting to write to file') {
-                    $completed_percentage = round(((int)$storeFeedStatus['completed_count'] / (int)$storeFeedStatus['products_count']) * 100, 2);
-                    $statusForClient = $statusForClient . ' (completed '.$completed_percentage.'%)';
+                    if ((int)$storeFeedStatus['products_count'] == 0){
+                        $statusForClient = $statusForClient . ' (completed 100%)';
+                    } else {
+                        $completed_percentage = round(((int)$storeFeedStatus['completed_count'] / (int)$storeFeedStatus['products_count']) * 100, 2);
+                        $statusForClient = $statusForClient . ' (completed '.$completed_percentage.'%)';
+                    }
                 }
                 $thisStore['feed_status'] = $statusForClient;
             } else {
