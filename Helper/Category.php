@@ -174,7 +174,7 @@ class Category extends \Magento\Framework\App\Helper\AbstractHelper
     public function maintenanceSync()
     {
         // once a day
-        $listingPagesEnabled = ($this->tagalysConfiguration->getConfig("module:listingpages:enabled") == '1');
+        $listingPagesEnabled = ($this->tagalysConfiguration->getConfig("module:listingpages:enabled") != '0');
         if ($listingPagesEnabled) {
             // 1. try and sync all failed categories - mark positions_sync_required as 1 for all failed categories - this will then try and sync the categories again
             $failedCategories = $this->tagalysCategoryFactory->create()->getCollection()
@@ -298,7 +298,7 @@ class Category extends \Magento\Framework\App\Helper\AbstractHelper
 
     public function updatePositionsIfRequired($maxProductsPerCronRun = 50, $perPage = 5, $force = false) {
         $this->_registry->register("tagalys_context", true);
-        $listingPagesEnabled = ($this->tagalysConfiguration->getConfig("module:listingpages:enabled") == '1');
+        $listingPagesEnabled = ($this->tagalysConfiguration->getConfig("module:listingpages:enabled") != '0');
         if ($listingPagesEnabled || $force) {
             $pid = $this->random->getRandomString(24);
             $this->tagalysApi->log('local', '1. Started updatePositionsIfRequired', array('pid' => $pid));
@@ -568,7 +568,7 @@ class Category extends \Magento\Framework\App\Helper\AbstractHelper
     public function pushDownProductsIfRequired($productIds, $productCategories = null, $indexerToRun = 'product') {
         // called from observers when new products are added to categories - in position ascending order, they should be positioned at the bottom of the page.
         $listingpagesEnabled = $this->tagalysConfiguration->getConfig('module:listingpages:enabled');
-        if($listingpagesEnabled == '1') {
+        if($listingpagesEnabled != '0') {
             $sortDirection = $this->tagalysConfiguration->getConfig('listing_pages:position_sort_direction');
             if($sortDirection == 'asc'){
                 $tagalysCategories = $this->getTagalysCategories($productCategories);

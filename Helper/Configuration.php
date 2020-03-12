@@ -56,7 +56,8 @@ class Configuration extends \Magento\Framework\App\Helper\AbstractHelper
             if ($module === false) {
                 return true;
             } else {
-                if ($this->getConfig("module:$module:enabled") == '1') {
+                $config = $this->getConfig("module:$module:enabled");
+                if ($config != '0' && $config != null) {
                     return true;
                 }
             }
@@ -122,7 +123,8 @@ class Configuration extends \Magento\Framework\App\Helper\AbstractHelper
                 'sync:log_product_ids_during_insert_to_queue' => 'false',
                 'sync:insert_primary_products_in_insert_unique' => 'true',
                 'success_order_states' => '["new", "payment_review", "processing", "complete", "closed"]',
-                'sync:record_price_rule_updates_for_each_product' => 'false'
+                'sync:record_price_rule_updates_for_each_product' => 'false',
+                'module:listingpages:enabled' => '0'
             );
             if (array_key_exists($configPath, $defaultConfigValues)) {
                 $configValue = $defaultConfigValues[$configPath];

@@ -680,7 +680,7 @@ class Sync extends \Magento\Framework\App\Helper\AbstractHelper
             // categories
             $listingPagesEnabled = $this->tagalysConfiguration->getConfig("module:listingpages:enabled");
             $totalEnabled = $this->tagalysCategory->getEnabledCount($storeId);
-            if ($listingPagesEnabled == '1' && $totalEnabled > 0) {
+            if ($listingPagesEnabled != '0' && $totalEnabled > 0) {
                 $pendingSync = $this->tagalysCategory->getPendingSyncCount($storeId);
                 $requiringPositionsSync = $this->tagalysCategory->getRequiringPositionsSyncCount($storeId);
                 $listingPagesStatusMessages = array();
