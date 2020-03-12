@@ -423,72 +423,73 @@ class Category extends \Magento\Framework\App\Helper\AbstractHelper
             $listingPagesEnabled = true;
         }
         if ($listingPagesEnabled || $force) {
-        $detailsToSync = array();
+            $detailsToSync = array();
 
-        // save
-        $categoriesToSync = $this->tagalysCategoryFactory->create()->getCollection()
-            ->addFieldToFilter('status', 'pending_sync')
-            ->addFieldToFilter('marked_for_deletion', 0)
-            ->setPageSize($max);
-        foreach ($categoriesToSync as $i => $categoryToSync) {
-            $categoryId = $categoryToSync->getCategoryId();
-            if($this->isTagalysCreated($categoryId)){
-                $categoryToSync->setStatus('powered_by_tagalys')->save();
-            } else {
-                $storeId = $categoryToSync->getStoreId();
-                $payload = $this->getStoreCategoryDetails($storeId, $categoryToSync->getCategoryId());
-                if ($payload === false) {
-                    $categoryToSync->setStatus('failed')->save();
+            // save
+            $categoriesToSync = $this->tagalysCategoryFactory->create()->getCollection()
+                ->addFieldToFilter('status', 'pending_sync')
+                ->addFieldToFilter('marked_for_deletion', 0)
+                ->setPageSize($max);
+            foreach ($categoriesToSync as $i => $categoryToSync) {
+                $categoryId = $categoryToSync->getCategoryId();
+                if($this->isTagalysCreated($categoryId)){
+                    $categoryToSync->setStatus('powered_by_tagalys')->save();
                 } else {
-                    array_push($detailsToSync, array('perform' => 'save', 'store_id' => $storeId, 'payload' => $payload));
-                }
-            }
-        }
-        // delete
-        $categoriesToDisable = $this->tagalysCategoryFactory->create()->getCollection()
-            ->addFieldToFilter('status', 'pending_disable')
-            ->addFieldToFilter('marked_for_deletion', 0)
-            ->setPageSize($max);
-        foreach ($categoriesToDisable as $i => $categoryToDisable) {
-            $storeId = $categoryToDisable->getStoreId();
-            $categoryId = $categoryToDisable->getCategoryId();
-            array_push($detailsToSync, array('perform' => 'disable', 'store_id' => $storeId, 'payload' => array('id_at_platform' => $categoryId)));
-        }
-        $categoriesToDelete = $this->tagalysCategoryFactory->create()->getCollection()
-            ->addFieldToFilter('marked_for_deletion', 1)
-            ->setPageSize($max);
-        foreach ($categoriesToDelete as $i => $categoryToDelete) {
-            $storeId = $categoryToDelete->getStoreId();
-            $categoryId = $categoryToDelete->getCategoryId();
-            array_push($detailsToSync, array('perform' => 'delete', 'store_id' => $storeId, 'payload' => array('id' => "__categories-{$categoryId}")));
-        }
-
-        if (count($detailsToSync) > 0) {
-            // sync
-            $tagalysResponse = $this->tagalysApi->clientApiCall('/v1/mpages/_sync_platform_pages', array('actions' => $detailsToSync));
-
-            if ($tagalysResponse != false) {
-            foreach ($tagalysResponse['save_actions'] as $i => $saveActionResponse) {
-                $firstItem = $this->tagalysCategoryFactory->create()->getCollection()
-                ->addFieldToFilter('store_id', $saveActionResponse['store_id'])
-                ->addFieldToFilter('category_id', explode('-', $saveActionResponse['id'])[1])
-                ->getFirstItem();
-                if ($id = $firstItem->getId()) {
-                    if ($saveActionResponse['saved']) {
-                        $firstItem->addData(array('status' => 'powered_by_tagalys', 'positions_sync_required' => 1))->save();
+                    $storeId = $categoryToSync->getStoreId();
+                    $payload = $this->getStoreCategoryDetails($storeId, $categoryToSync->getCategoryId());
+                    if ($payload === false) {
+                        $categoryToSync->setStatus('failed')->save();
                     } else {
-                        $firstItem->addData(array('status' => 'failed'))->save();
+                        array_push($detailsToSync, array('perform' => 'save', 'store_id' => $storeId, 'payload' => $payload));
                     }
                 }
             }
-            foreach ($categoriesToDelete as $i => $categoryToDelete) {
-                $categoryToDelete->delete();
-            }
+            // disable
+            $categoriesToDisable = $this->tagalysCategoryFactory->create()->getCollection()
+                ->addFieldToFilter('status', 'pending_disable')
+                ->addFieldToFilter('marked_for_deletion', 0)
+                ->setPageSize($max);
             foreach ($categoriesToDisable as $i => $categoryToDisable) {
-                $categoryToDisable->delete();
+                $storeId = $categoryToDisable->getStoreId();
+                $categoryId = $categoryToDisable->getCategoryId();
+                array_push($detailsToSync, array('perform' => 'disable', 'store_id' => $storeId, 'payload' => array('id_at_platform' => $categoryId)));
             }
+            // delete
+            $categoriesToDelete = $this->tagalysCategoryFactory->create()->getCollection()
+                ->addFieldToFilter('marked_for_deletion', 1)
+                ->setPageSize($max);
+            foreach ($categoriesToDelete as $i => $categoryToDelete) {
+                $storeId = $categoryToDelete->getStoreId();
+                $categoryId = $categoryToDelete->getCategoryId();
+                array_push($detailsToSync, array('perform' => 'delete', 'store_id' => $storeId, 'payload' => array('id' => "__categories-{$categoryId}")));
             }
-        }
+
+            if (count($detailsToSync) > 0) {
+                // sync
+                $tagalysResponse = $this->tagalysApi->clientApiCall('/v1/mpages/_sync_platform_pages', array('actions' => $detailsToSync));
+
+                if ($tagalysResponse != false) {
+                    foreach ($tagalysResponse['save_actions'] as $i => $saveActionResponse) {
+                        $firstItem = $this->tagalysCategoryFactory->create()->getCollection()
+                        ->addFieldToFilter('store_id', $saveActionResponse['store_id'])
+                        ->addFieldToFilter('category_id', explode('-', $saveActionResponse['id'])[1])
+                        ->getFirstItem();
+                        if ($id = $firstItem->getId()) {
+                            if ($saveActionResponse['saved']) {
+                                $firstItem->addData(array('status' => 'powered_by_tagalys', 'positions_sync_required' => 1))->save();
+                            } else {
+                                $firstItem->addData(array('status' => 'failed'))->save();
+                            }
+                        }
+                    }
+                    foreach ($categoriesToDelete as $i => $categoryToDelete) {
+                        $categoryToDelete->delete();
+                    }
+                    foreach ($categoriesToDisable as $i => $categoryToDisable) {
+                        $categoryToDisable->delete();
+                    }
+                }
+            }
         }
     }
 
@@ -1151,7 +1152,8 @@ class Category extends \Magento\Framework\App\Helper\AbstractHelper
         foreach ($categories as $category) {
             $path = explode('/',$category['value']);
             if(in_array($storeRoot, $path) && $category['static_block_only'] == false){
-                $this->createOrUpdateWithData($storeId, end($path), ['positions_sync_required' => 0, 'marked_for_deletion' => 0, 'status' => 'pending_sync'], ['marked_for_deletion' => 0]);
+                $categoryId = end($path);
+                $this->markCategoryForSyncIfRequired($storeId, $categoryId);
             }
         }
     }
