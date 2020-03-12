@@ -788,7 +788,9 @@ class Sync extends \Magento\Framework\App\Helper\AbstractHelper
             if (!is_dir($mediaDirectory . DIRECTORY_SEPARATOR . $value)) {
                 if (!preg_match("/^\./", $value)) {
                     if (substr($value, 0, 8) == 'syncfile'){
-                        unlink($mediaDirectory . DIRECTORY_SEPARATOR . $value);
+                        try {
+                            unlink($mediaDirectory . DIRECTORY_SEPARATOR . $value);
+                        } catch (\Exception $e) { }
                     }
                 }
             }

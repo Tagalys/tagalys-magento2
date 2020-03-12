@@ -80,7 +80,10 @@ class Product extends \Magento\Framework\App\Helper\AbstractHelper
                         // $resizedProductImagePath = $this->directoryList->getPath('media') . DIRECTORY_SEPARATOR . 'tagalys' . DIRECTORY_SEPARATOR . 'product_thumbnails' . $productImagePath;
                         if ($forceRegenerateThumbnail || !file_exists($resizedProductImagePath)) {
                             if (file_exists($resizedProductImagePath)) {
-                                unlink($resizedProductImagePath);
+                                try{
+                                    unlink($resizedProductImagePath);
+                                } catch(\Exception $e){
+                                }
                             }
                             $imageResize = $this->imageFactory->create();
                             $imageResize->open($baseProductImagePath);
