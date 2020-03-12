@@ -59,6 +59,19 @@ class Queue extends \Magento\Framework\App\Helper\AbstractHelper
         }
     }
 
+    public function insertIfRequired($productIds){
+        if (!is_array($productIds)) {
+            $productIds = [$productIds];
+        }
+        foreach ($productIds as $productId) {
+            $queueItem = $this->queueFactory->create()->getCollection()->addFieldToFilter('product_id', $productId)->getFirstItem();
+            if (!$queueItem->getId()){
+                $queueItem = $this->queueFactory->create();
+            }
+            $queueItem->setProductId($productId)->save();
+        }
+    }
+
     public function importProductsToSync() {
         // force UTC timezone
         $conn = $this->resourceConnection->getConnection();

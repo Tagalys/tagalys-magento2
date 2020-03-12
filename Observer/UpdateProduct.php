@@ -19,7 +19,7 @@ class UpdateProduct implements \Magento\Framework\Event\ObserverInterface
             $productUpdateDetectionMethods = $this->tagalysConfiguration->getConfig('product_update_detection_methods', true);
             if (in_array('events', $productUpdateDetectionMethods)) {
                 $product = $observer->getProduct();
-                $this->queueHelper->insertUnique($product->getId());
+                $this->queueHelper->insertIfRequired($product->getId());
                 $categoryIds = null;
                 try{
                     $categoryIds = $product->getCategoryIds();
