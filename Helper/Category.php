@@ -176,28 +176,28 @@ class Category extends \Magento\Framework\App\Helper\AbstractHelper
         // once a day
         $listingPagesEnabled = ($this->tagalysConfiguration->getConfig("module:listingpages:enabled") == '1');
         if ($listingPagesEnabled) {
-        // 1. try and sync all failed categories - mark positions_sync_required as 1 for all failed categories - this will then try and sync the categories again
-        $failedCategories = $this->tagalysCategoryFactory->create()->getCollection()
-            ->addFieldToFilter('status', 'failed')
-            ->addFieldToFilter('marked_for_deletion', 0);
-        foreach ($failedCategories as $i => $failedCategory) {
-            $failedCategory->addData(array('status' => 'pending_sync'))->save();
-        }
-
-        // 2. if preference is to power all categories, loop through all categories and add missing items to the tagalys_core_categories table
-        // TODO
-        // 3. send all category ids to be powered by tagalys - tagalys will delete other ids
-        $storesForTagalys = $this->tagalysConfiguration->getStoresForTagalys();
-        $categoriesForTagalys = array();
-        foreach ($storesForTagalys as $key => $storeId) {
-            $categoriesForTagalys[$storeId] = array();
-            $storeCategories = $this->tagalysCategoryFactory->create()->getCollection()
-            ->addFieldToFilter('store_id', $storeId);
-            foreach ($storeCategories as $i => $storeCategory) {
-            array_push($categoriesForTagalys[$storeId], '__categories--' . $storeCategory->getCategoryId());
+            // 1. try and sync all failed categories - mark positions_sync_required as 1 for all failed categories - this will then try and sync the categories again
+            $failedCategories = $this->tagalysCategoryFactory->create()->getCollection()
+                ->addFieldToFilter('status', 'failed')
+                ->addFieldToFilter('marked_for_deletion', 0);
+            foreach ($failedCategories as $i => $failedCategory) {
+                $failedCategory->addData(array('status' => 'pending_sync'))->save();
             }
-        }
-        $this->tagalysApi->clientApiCall('/v1/mpages/_platform/verify_enabled_pages', array('enabled_pages' => $categoriesForTagalys));
+
+            // 2. if preference is to power all categories, loop through all categories and add missing items to the tagalys_core_categories table
+            // TODO
+            // 3. send all category ids to be powered by tagalys - tagalys will delete other ids
+            $storesForTagalys = $this->tagalysConfiguration->getStoresForTagalys();
+            $categoriesForTagalys = array();
+            foreach ($storesForTagalys as $key => $storeId) {
+                $categoriesForTagalys[$storeId] = array();
+                $storeCategories = $this->tagalysCategoryFactory->create()->getCollection()
+                ->addFieldToFilter('store_id', $storeId);
+                foreach ($storeCategories as $i => $storeCategory) {
+                array_push($categoriesForTagalys[$storeId], '__categories--' . $storeCategory->getCategoryId());
+                }
+            }
+            $this->tagalysApi->clientApiCall('/v1/mpages/_platform/verify_enabled_pages', array('enabled_pages' => $categoriesForTagalys));
         }
         return true;
     }
@@ -229,7 +229,7 @@ class Category extends \Magento\Framework\App\Helper\AbstractHelper
             ->addFieldToFilter('category_id', $categoryId)
             ->getFirstItem();
         if ($id = $firstItem->getId()) {
-        $firstItem->addData(array('positions_sync_required' => 1))->save();
+            $firstItem->addData(array('positions_sync_required' => 1))->save();
         }
         return true;
     }
@@ -370,10 +370,10 @@ class Category extends \Magento\Framework\App\Helper\AbstractHelper
         $remainingForDelete = $this->getRemainingForDelete();
         // echo('syncAll: ' . json_encode(compact('remainingForSync', 'remainingForDelete')));
         while ($remainingForSync > 0 || $remainingForDelete > 0) {
-        $this->sync(50, $force);
-        $remainingForSync = $this->getRemainingForSync();
-        $remainingForDelete = $this->getRemainingForDelete();
-        // echo('syncAll: ' . json_encode(compact('remainingForSync', 'remainingForDelete')));
+            $this->sync(50, $force);
+            $remainingForSync = $this->getRemainingForSync();
+            $remainingForDelete = $this->getRemainingForDelete();
+            // echo('syncAll: ' . json_encode(compact('remainingForSync', 'remainingForDelete')));
         }
     }
     public function getStoreCategoryDetails($storeId, $categoryId) {
@@ -612,7 +612,7 @@ class Category extends \Magento\Framework\App\Helper\AbstractHelper
         $tableName = $this->resourceConnection->getTableName('tagalys_category');
         $select = $conn->select()->from($tableName)->where('marked_for_deletion = ? and status != "failed"', 0);
         if($categoryIds!=null && is_array($categoryIds) && count($categoryIds) > 0 ){
-        $select->where('category_id IN (?)', $categoryIds);
+            $select->where('category_id IN (?)', $categoryIds);
         }
         $result = $conn->fetchAll($select);
         $tagalysCategories = array();
