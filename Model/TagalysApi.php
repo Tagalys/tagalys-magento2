@@ -232,6 +232,13 @@ class TagalysApi implements TagalysManagementInterface
                     $indexPositions = $this->tagalysCategoryHelper->getProductPositionFromIndex($params['store_id'], $params['category_id']);
                     $response = array('status' => 'OK', 'positions' => $positions, 'index_positions' => $indexPositions);
                     break;
+                case 'trigger_category_sync':
+                    if (!array_key_exists('store_id', $params)) {
+                        $params['store_id'] = false;
+                    }
+                    $res = $this->tagalysCategoryHelper->triggerCategorySync();
+                    $response = ['status' => 'OK', 'updated' => $res];
+                    break;
             }
         } catch (\Exception $e) {
             $response = ['status' => 'error', 'message' => $e->getMessage(), 'trace' => $e->getTrace()];
