@@ -595,43 +595,34 @@ class Configuration extends \Magento\Framework\App\Helper\AbstractHelper
         );
         $attributes = $this->attributeCollectionFactory->create()->addVisibleFilter();
         foreach($attributes as $attribute) {
-            if (!in_array($attribute->getAttributeCode(), array('status', 'tax_class_id'))) {
-                $isWhitelisted = false;
-                if ((bool)$attribute->getIsUserDefined() == false && in_array($attribute->getAttributecode(), array('visibility', 'url_key'))) {
-                    $isWhitelisted = true;
-                }
-                $isForDisplay = ((bool)$attribute->getUsedInProductListing() && (bool)$attribute->getIsUserDefined());
-                if ($attribute->getIsFilterable() || $attribute->getIsSearchable() || $isForDisplay || $isWhitelisted) {
-                    if ($attribute->getFrontendInput() != 'multiselect') {
-                        if (!in_array($attribute->getAttributecode(), $tagalys_core_fields)) {
-                            $isPriceField = ($attribute->getFrontendInput() == "price" );
-                            if (array_key_exists($attribute->getFrontendInput(), $magento_tagalys_type_mapping)) {
-                                $type = $magento_tagalys_type_mapping[$attribute->getFrontendInput()];
-                            } else {
-                                $type = 'string';
-                            }
-                            $custom_fields[] = array(
-                                'name' => $attribute->getAttributecode(),
-                                'label' => $attribute->getStoreLabel($storeId),
-                                'type' => $type,
-                                'currency' => $isPriceField,
-                                'display' => ($isForDisplay || $isPriceField),
-                                'filters' => (bool)$attribute->getIsFilterable(),
-                                'search' => (bool)$attribute->getIsSearchable()
-                            );
-                        }
+            $isForDisplay = ((bool) $attribute->getUsedInProductListing() && (bool) $attribute->getIsUserDefined());
+            if ($attribute->getFrontendInput() != 'multiselect') {
+                if (!in_array($attribute->getAttributecode(), $tagalys_core_fields)) {
+                    $isPriceField = ($attribute->getFrontendInput() == "price" );
+                    if (array_key_exists($attribute->getFrontendInput(), $magento_tagalys_type_mapping)) {
+                        $type = $magento_tagalys_type_mapping[$attribute->getFrontendInput()];
+                    } else {
+                        $type = 'string';
                     }
-
-                    if ($attribute->usesSource() && !in_array($attribute->getFrontendInput(), array('boolean'))) {
-                        $tag_sets[] = array(
-                            'id' => $attribute->getAttributecode(),
-                            'label' => $attribute->getStoreLabel($storeId),
-                            'filters' => (bool)$attribute->getIsFilterable(),
-                            'search' => (bool)$attribute->getIsSearchable(),
-                            'display' => $isForDisplay
-                        );
-                    }
+                    $custom_fields[] = array(
+                        'name' => $attribute->getAttributecode(),
+                        'label' => $attribute->getStoreLabel($storeId),
+                        'type' => $type,
+                        'currency' => $isPriceField,
+                        'display' => ($isForDisplay || $isPriceField),
+                        'filters' => (bool)$attribute->getIsFilterable(),
+                        'search' => (bool)$attribute->getIsSearchable()
+                    );
                 }
+            }
+            if ($attribute->usesSource() && !in_array($attribute->getFrontendInput(), array('boolean'))) {
+                $tag_sets[] = array(
+                    'id' => $attribute->getAttributecode(),
+                    'label' => $attribute->getStoreLabel($storeId),
+                    'filters' => (bool)$attribute->getIsFilterable(),
+                    'search' => (bool)$attribute->getIsSearchable(),
+                    'display' => $isForDisplay
+                );
             }
         }
         return compact('tag_sets', 'custom_fields');
