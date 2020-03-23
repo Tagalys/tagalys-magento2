@@ -135,22 +135,12 @@ class Product extends \Magento\Framework\App\Helper\AbstractHelper
         }
         foreach ($attributes as $attribute) {
             if (!in_array($attribute->getAttributeCode(), $attributesToIgnore)) {
-                $isWhitelisted = false;
-                if ((bool)$attribute->getIsUserDefined() == false && in_array($attribute->getAttributeCode(), array('url_key'))) {
-                    $isWhitelisted = true;
-                }
-                $isForDisplay = ((bool)$attribute->getUsedInProductListing() && (bool)$attribute->getIsUserDefined());
-                if ($attribute->getIsFilterable() || $attribute->getIsSearchable() || $isForDisplay || $isWhitelisted) {
-
-                    if (!in_array($attribute->getAttributeCode(), array('status', 'tax_class_id')) && $attribute->getFrontendInput() != 'multiselect') {
-                        $attributeValue = $attribute->getFrontend()->getValue($product);
-                        if (!is_null($attributeValue)) {
-                            if ($attribute->getFrontendInput() == 'boolean') {
-                                $productFields[$attribute->getAttributeCode()] = ($attributeValue == 'Yes');
-                            } else {
-                                $productFields[$attribute->getAttributeCode()] = $attributeValue;
-                            }
-                        }
+                $attributeValue = $attribute->getFrontend()->getValue($product);
+                if (!is_null($attributeValue)) {
+                    if ($attribute->getFrontendInput() == 'boolean') {
+                        $productFields[$attribute->getAttributeCode()] = ($attributeValue == 'Yes');
+                    } else {
+                        $productFields[$attribute->getAttributeCode()] = $attributeValue;
                     }
                 }
             }
@@ -167,48 +157,43 @@ class Product extends \Magento\Framework\App\Helper\AbstractHelper
         // other attributes
         $attributes = $product->getTypeInstance()->getEditableAttributes($product);
         foreach ($attributes as $attribute) {
-            $isWhitelisted = false;
-            if ((bool)$attribute->getIsUserDefined() == false && in_array($attribute->getAttributecode(), array('visibility'))) {
-                $isWhitelisted = true;
-            }
-            $isForDisplay = ((bool)$attribute->getUsedInProductListing() && (bool)$attribute->getIsUserDefined());
-            if (!in_array($attribute->getAttributeCode(), array('status', 'tax_class_id')) && !in_array($attribute->getFrontendInput(), array('boolean')) && ($attribute->getIsFilterable() || $attribute->getIsSearchable() || $isForDisplay || $isWhitelisted)) {
-                $productAttribute = $product->getResource()->getAttribute($attribute->getAttributeCode());
-                if ($productAttribute->usesSource()) {
-                    // select, multi-select
-                    $fieldType = $productAttribute->getFrontendInput();
-                    $items = array();
-                    if ($fieldType == 'multiselect') {
-                        $value = $product->getData($attribute->getAttributeCode());
-                        $ids = explode(',', $value);
+            $productAttribute = $product->getResource()->getAttribute($attribute->getAttributeCode());
+            if ($productAttribute->usesSource()) {
+                // select, multi-select
+                $fieldType = $productAttribute->getFrontendInput();
+                $items = array();
+                if ($fieldType == 'multiselect') {
+                    $value = $product->getData($attribute->getAttributeCode());
+                    $ids = explode(',', $value);
+                    if (count($ids) > 0) {
                         foreach ($ids as $id) {
                             $label = $attribute->setStoreId($storeId)->getSource()->getOptionText($id);
                             if ($id != null && $label != false) {
                                 $items[] = array('id' => $id, 'label' => $label);
                             }
                         }
-                    } else {
-                        $value = $product->getData($attribute->getAttributeCode());
-                        $label = $productAttribute->setStoreId($storeId)->getFrontend()->getOption($value);
-                        if ($value != null && $label != false) {
-                            $thisItem = array('id' => $value, 'label' => $label);
-                            try {
-                                if ($this->swatchesHelper->isVisualSwatch($productAttribute)) {
-                                    $swatchConfig = $this->swatchesHelper->getSwatchesByOptionsId([$value]);
-                                    if (count($swatchConfig) > 0) {
-                                        $thisItem['swatch'] = $swatchConfig[$value]['value'];
-                                        if (strpos($thisItem['swatch'], '#') === false) {
-                                            $thisItem['swatch'] = $this->swatchesMediaHelper->getSwatchAttributeImage('swatch_image', $thisItem['swatch']);
-                                        }
+                    }
+                } else {
+                    $value = $product->getData($attribute->getAttributeCode());
+                    $label = $productAttribute->setStoreId($storeId)->getFrontend()->getOption($value);
+                    if ($value != null && $label != false) {
+                        $thisItem = array('id' => $value, 'label' => $label);
+                        try {
+                            if ($this->swatchesHelper->isVisualSwatch($productAttribute)) {
+                                $swatchConfig = $this->swatchesHelper->getSwatchesByOptionsId([$value]);
+                                if (count($swatchConfig) > 0) {
+                                    $thisItem['swatch'] = $swatchConfig[$value]['value'];
+                                    if (strpos($thisItem['swatch'], '#') === false) {
+                                        $thisItem['swatch'] = $this->swatchesMediaHelper->getSwatchAttributeImage('swatch_image', $thisItem['swatch']);
                                     }
                                 }
-                            } catch (\Exception $e) { }
-                            $items[] = $thisItem;
-                        }
+                            }
+                        } catch (\Exception $e) { }
+                        $items[] = $thisItem;
                     }
-                    if (count($items) > 0) {
-                        array_push($productTags, array("tag_set" => array("id" => $attribute->getAttributeCode(), "label" => $productAttribute->getStoreLabel($storeId), 'type' => $fieldType ),"items" => $items));
-                    }
+                }
+                if (count($items) > 0) {
+                    array_push($productTags, array("tag_set" => array("id" => $attribute->getAttributeCode(), "label" => $productAttribute->getStoreLabel($storeId), 'type' => $fieldType ),"items" => $items));
                 }
             }
         }
