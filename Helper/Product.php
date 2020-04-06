@@ -419,8 +419,13 @@ class Product extends \Magento\Framework\App\Helper\AbstractHelper
     }
 
     public function productDetails($product, $storeId, $forceRegenerateThumbnail = false) {
+        //TODO: set the context (store and currency) in the global level (before calling this function).
         $originalStoreId = $this->storeManager->getStore()->getId();
+        $originalCurrency = $this->storeManager->getStore()->getCurrentCurrencyCode();
         $this->storeManager->setCurrentStore($storeId);
+        $store = $this->storeManager->getStore();
+        $baseCurrency = $store->getBaseCurrencyCode();
+        $store->setCurrentCurrencyCode($baseCurrency);
         $stockItem = $this->stockRegistry->getStockItem($product->getId());
         $productForPrice = $product;
         $productDetails = array(
@@ -551,6 +556,7 @@ class Product extends \Magento\Framework\App\Helper\AbstractHelper
         $productDetails = $productDetailsObj->getProductDetails();
 
         $this->storeManager->setCurrentStore($originalStoreId);
+        $this->storeManager->getStore()->setCurrentCurrencyCode($originalCurrency);
 
         return $productDetails;
     }
