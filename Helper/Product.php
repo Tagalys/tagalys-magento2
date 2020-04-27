@@ -26,7 +26,9 @@ class Product extends \Magento\Framework\App\Helper\AbstractHelper
         \Magento\Catalog\Model\Product\Attribute\Repository $productAttributeRepository,
         \Magento\Framework\Event\Manager $eventManager,
         \Magento\Framework\Indexer\IndexerRegistry $indexerRegistry,
-        \Magento\CatalogInventory\Api\StockRegistryInterface $stockRegistry
+        \Magento\CatalogInventory\Api\StockRegistryInterface $stockRegistry,
+        \Magento\Framework\Pricing\PriceCurrencyInterface $priceCurrency,
+        \Magento\CatalogRule\Model\Rule $catalogRule
     )
     {
         $this->productFactory = $productFactory;
@@ -51,6 +53,8 @@ class Product extends \Magento\Framework\App\Helper\AbstractHelper
         $this->eventManager = $eventManager;
         $this->indexerRegistry = $indexerRegistry;
         $this->stockRegistry = $stockRegistry;
+        $this->priceCurrency = $priceCurrency;
+        $this->catalogRule = $catalogRule;
     }
 
     public function getPlaceholderImageUrl($imageAttributeCode, $allowPlaceholder) {
@@ -425,6 +429,9 @@ class Product extends \Magento\Framework\App\Helper\AbstractHelper
         $this->storeManager->setCurrentStore($storeId);
         $store = $this->storeManager->getStore();
         $baseCurrency = $store->getBaseCurrencyCode();
+        $allowedCurrencies = $store->getAvailableCurrencies(true);
+        $baseCurrencyNotAllowed = ($allowedCurrencies==null || !in_array($baseCurrency, $allowedCurrencies));
+        $useNewMethodToGetPriceValues = $this->tagalysConfiguration->getConfig('sync:use_get_final_price_for_sale_price', true);
         $store->setCurrentCurrencyCode($baseCurrency);
         $stockItem = $this->stockRegistry->getStockItem($product->getId());
         $productForPrice = $product;
@@ -472,13 +479,24 @@ class Product extends \Magento\Framework\App\Helper\AbstractHelper
 
         // prices and sale price from/to
         if ($product->getTypeId() == 'bundle') {
+            // already returning price in base currency. no conversion needed.
             $productDetails['price'] = $product->getPriceModel()->getTotalPrices($product, 'min', 1);
             $productDetails['sale_price'] = $product->getPriceModel()->getTotalPrices($product, 'min', 1);
         } else {
-            // https://magento.stackexchange.com/a/152692/80853
-            $productDetails['price'] = $productForPrice->getPriceInfo()->getPrice('regular_price')->getAmount()->getValue();
-            $productDetails['sale_price'] = $productForPrice->getPriceInfo()->getPrice('final_price')->getAmount()->getValue();
-            // ___
+            if($useNewMethodToGetPriceValues){
+                // returns values in base currency. Includes the catalog price rule and special price.
+                $productDetails['price'] = $productForPrice->getPrice();
+                $productDetails['sale_price'] = $productForPrice->getFinalPrice();
+            } else {
+                // https://magento.stackexchange.com/a/152692/80853
+                // returns values in current currency (set to base currency if base is in allowed currencies).
+                $productDetails['price'] = $productForPrice->getPriceInfo()->getPrice('regular_price')->getAmount()->getValue();
+                $productDetails['sale_price'] = $productForPrice->getPriceInfo()->getPrice('final_price')->getAmount()->getValue();
+                if($baseCurrencyNotAllowed){
+                    $productDetails['price'] = $this->getPriceInBaseCurrency($productDetails['price']);
+                    $productDetails['sale_price'] = $this->getPriceInBaseCurrency($productDetails['sale_price']);
+                }
+            }
             /** Changing productForPrices->product (check if works) */
             if ($productForPrice->getSpecialFromDate() != null) {
                 $specialPriceFromDatetime = new \DateTime($productForPrice->getSpecialFromDate(), new \DateTimeZone($this->timezoneInterface->getConfigTimezone()));
@@ -499,8 +517,11 @@ class Product extends \Magento\Framework\App\Helper\AbstractHelper
                     // future sale - record other sale price and from/to datetimes
                     $specialPrice = $productForPrice->getSpecialPrice();
                     if ($specialPrice != null && $specialPrice > 0) {
+                        if($baseCurrencyNotAllowed){
+                            $specialPrice = $this->getPriceInBaseCurrency($specialPrice);
+                        }
                         $specialPriceFromDatetime = new \DateTime($productForPrice->getSpecialFromDate(), new \DateTimeZone($this->timezoneInterface->getConfigTimezone()));
-                        array_push($productDetails['scheduled_updates'], array('at' => $specialPriceFromDatetime->format('Y-m-d H:i:sP'), 'updates' => array('sale_price' => $productForPrice->getSpecialPrice())));
+                        array_push($productDetails['scheduled_updates'], array('at' => $specialPriceFromDatetime->format('Y-m-d H:i:sP'), 'updates' => array('sale_price' => $specialPrice)));
                         if ($productForPrice->getSpecialToDate() != null) {
                             $specialPriceToDatetime = new \DateTime($productForPrice->getSpecialToDate(), new \DateTimeZone($this->timezoneInterface->getConfigTimezone()));
                             array_push($productDetails['scheduled_updates'], array('at' => str_replace('00:00:00', '23:59:59', $specialPriceToDatetime->format('Y-m-d H:i:sP')), 'updates' => array('sale_price' => $productDetails['price'])));
@@ -559,5 +580,15 @@ class Product extends \Magento\Framework\App\Helper\AbstractHelper
         $this->storeManager->getStore()->setCurrentCurrencyCode($originalCurrency);
 
         return $productDetails;
+    }
+
+    public function getPriceInBaseCurrency($amount, $store = null){
+        if(!isset($store)){
+            $store = $this->storeManager->getStore();
+        }
+        // cannot use $store->getCurrentCurrency()->convert() because magento does not support converting from currency X to base currency.
+        $rate = $store->getCurrentCurrencyRate();
+        $amount = $amount / $rate;
+        return $amount;
     }
 }
