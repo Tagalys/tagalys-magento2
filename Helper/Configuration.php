@@ -124,6 +124,7 @@ class Configuration extends \Magento\Framework\App\Helper\AbstractHelper
                 'sync:insert_primary_products_in_insert_unique' => 'true',
                 'success_order_states' => '["new", "payment_review", "processing", "complete", "closed"]',
                 'sync:record_price_rule_updates_for_each_product' => 'false',
+                'sync:use_get_final_price_for_sale_price' => 'false',
                 'module:listingpages:enabled' => '0'
             );
             if (array_key_exists($configPath, $defaultConfigValues)) {
