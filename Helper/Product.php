@@ -27,8 +27,7 @@ class Product extends \Magento\Framework\App\Helper\AbstractHelper
         \Magento\Framework\Event\Manager $eventManager,
         \Magento\Framework\Indexer\IndexerRegistry $indexerRegistry,
         \Magento\CatalogInventory\Api\StockRegistryInterface $stockRegistry,
-        \Magento\Framework\Pricing\PriceCurrencyInterface $priceCurrency,
-        \Magento\CatalogRule\Model\Rule $catalogRule
+        \Magento\Framework\Pricing\PriceCurrencyInterface $priceCurrency
     )
     {
         $this->productFactory = $productFactory;
@@ -54,7 +53,6 @@ class Product extends \Magento\Framework\App\Helper\AbstractHelper
         $this->indexerRegistry = $indexerRegistry;
         $this->stockRegistry = $stockRegistry;
         $this->priceCurrency = $priceCurrency;
-        $this->catalogRule = $catalogRule;
     }
 
     public function getPlaceholderImageUrl($imageAttributeCode, $allowPlaceholder) {
