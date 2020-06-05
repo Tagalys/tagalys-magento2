@@ -56,7 +56,7 @@ class CookieManager
         $metadata = $this->cookieMetadataFactory
           ->createPublicCookieMetadata()
           ->setDuration($duration)
-          ->setPath($this->sessionManager->getCookiePath())
+          ->setPath('/')
           ->setDomain($this->sessionManager->getCookieDomain());
 
         $this->cookieManager->setPublicCookie(
@@ -75,7 +75,7 @@ class CookieManager
             $cookieName,
             $this->cookieMetadataFactory
                 ->createCookieMetadata()
-                ->setPath($this->sessionManager->getCookiePath())
+                ->setPath('/')
                 ->setDomain($this->sessionManager->getCookieDomain())
         );
     }

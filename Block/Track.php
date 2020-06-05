@@ -30,7 +30,7 @@ class Track extends \Magento\Framework\View\Element\Template
     public function getEvent() {
         try {
             $event = $this->cookieManager->get('__ta_event');
-            $this->cookieManager->delete('__ta_event');
+            // $this->cookieManager->delete('__ta_event');
             if ($event == false) {
                 $event = $this->registry->registry('tagalys_analytics_event');
             }
