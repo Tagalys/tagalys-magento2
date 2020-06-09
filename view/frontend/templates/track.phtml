@@ -1,12 +1,27 @@
 <?php if ($this->isTagalysEnabled()): ?>
+    <?php
+        $analyticsEvent = $this->getEvent('__ta_event');
+    ?>
+    <script>
+        __tagalysEventJson = '<?php echo $analyticsEvent ? json_encode($analyticsEvent) : ''; ?>'
+    </script>
     <script>
         require(['jquery', 'jquery/ui', 'mage/cookies'], function(jQuery){
             try {
-                var eventJson =jQuery.cookie('__ta_event');
+                debugger
+                if(__tagalysEventJson) {
+                    var clearEventCookie = false;
+                    var eventJson = __tagalysEventJson;
+                } else {
+                    var eventJson = jQuery.cookie('__ta_event');
+                    var clearEventCookie = true;
+                }
                 if(eventJson) {
                     var track = true;
                     jQuery(document).on('tagalys:ready', function() {
-                        jQuery.fn.tagalys_analytics.deleteCookie('__ta_event')
+                        if(clearEventCookie) {
+                            jQuery.fn.tagalys_analytics.deleteCookie('__ta_event')
+                        }
                         var event = JSON.parse(eventJson);
                         var action = event[2];
                         if(action == 'buy') {
@@ -51,13 +66,13 @@
                 jQuery(document).on('tagalys:ready', function() {
                     var logged_in_user_id = jQuery.fn.tagalys_analytics.getCookie('__ta_logged_in');
                     if(logged_in_user_id != ""){
-                        jQuery.fn.tagalys_analytics.track_user(logged_in_user_id); 
+                        jQuery.fn.tagalys_analytics.track_user(logged_in_user_id);
                         jQuery.fn.tagalys_analytics.deleteCookie('__ta_logged_in');
                     }
                 });
             }
             catch(err) {
-                
+
             }
         });
     </script>
