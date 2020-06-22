@@ -382,34 +382,25 @@ class Category extends \Magento\Framework\App\Helper\AbstractHelper
             $this->storeManagerInterface->setCurrentStore($storeId);
             $category = null;
             $category = $this->categoryFactory->create()->load($categoryId);
-            $categoryActive = $category->getIsActive();
-            if ($categoryActive) {
-                $output = array(
-                    "id" => "__categories-$categoryId",
-                    "slug" => $category->getUrl(),
-                    "path" => $category->getUrlPath(),
-                    "enabled" => true,
-                    "name" => implode(' / ', array_slice(explode(' |>| ', $this->tagalysConfiguration->getCategoryName($category)), 1)),
-                    "filters" => array(
-                    array(
-                        "field" => "__categories",
-                        "value" => $categoryId
-                    ),
-                    array(
-                        "field" => "visibility",
-                        "tag_jsons" => array("{\"id\":\"2\",\"name\":\"Catalog\"}", "{\"id\":\"4\",\"name\":\"Catalog, Search\"}")
-                    )
-                ));
-                $this->storeManagerInterface->setCurrentStore($originalStoreId);
-                return $output;
-            } else {
-                /*
-                    The disabled categories can't be selected in the jstree.
-                    If some category is disabled after it was synced to tagalys, we mark it as failed.
-                */
-                $this->storeManagerInterface->setCurrentStore($originalStoreId);
-                return false;
-            }
+            $categoryActive = ($category->getIsActive() == '1');
+            $output = array(
+                "id" => "__categories-$categoryId",
+                "slug" => $category->getUrl(),
+                "path" => $category->getUrlPath(),
+                "enabled" => $categoryActive,
+                "name" => implode(' / ', array_slice(explode(' |>| ', $this->tagalysConfiguration->getCategoryName($category)), 1)),
+                "filters" => array(
+                array(
+                    "field" => "__categories",
+                    "value" => $categoryId
+                ),
+                array(
+                    "field" => "visibility",
+                    "tag_jsons" => array("{\"id\":\"2\",\"name\":\"Catalog\"}", "{\"id\":\"4\",\"name\":\"Catalog, Search\"}")
+                )
+            ));
+            $this->storeManagerInterface->setCurrentStore($originalStoreId);
+            return $output;
         } catch (\Exception $e) {
             return false;
         }

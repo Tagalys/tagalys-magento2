@@ -84,7 +84,7 @@ class Api extends \Magento\Framework\App\Helper\AbstractHelper
         );
         return $this->_apiCall($path, $params);
     }
-    public function storeApiCall($storeId, $path, $params) {
+    public function storeApiCall($storeId, $path, $params = []) {
         $storeUrl = $this->storeManager->getStore($storeId)->getBaseUrl(\Magento\Framework\UrlInterface::URL_TYPE_WEB, true);
         $storeDomain = parse_url($storeUrl)['host'];
         $params['identification'] = array(
