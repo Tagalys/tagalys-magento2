@@ -27,7 +27,9 @@ class Product extends \Magento\Framework\App\Helper\AbstractHelper
         \Magento\Framework\Event\Manager $eventManager,
         \Magento\Framework\Indexer\IndexerRegistry $indexerRegistry,
         \Magento\CatalogInventory\Api\StockRegistryInterface $stockRegistry,
-        \Magento\Framework\Pricing\PriceCurrencyInterface $priceCurrency
+        \Magento\Framework\Pricing\PriceCurrencyInterface $priceCurrency,
+        \Magento\InventorySalesApi\Api\GetProductSalableQtyInterface $getProductSalableQty,
+        \Magento\InventorySalesApi\Api\StockResolverInterface $stockResolver
     )
     {
         $this->productFactory = $productFactory;
@@ -53,6 +55,8 @@ class Product extends \Magento\Framework\App\Helper\AbstractHelper
         $this->indexerRegistry = $indexerRegistry;
         $this->stockRegistry = $stockRegistry;
         $this->priceCurrency = $priceCurrency;
+        $this->getProductSalableQty = $getProductSalableQty;
+        $this->stockResolver = $stockResolver;
     }
 
     public function getPlaceholderImageUrl($imageAttributeCode, $allowPlaceholder) {
@@ -381,7 +385,7 @@ class Product extends \Magento\Framework\App\Helper\AbstractHelper
                     $minSalePrice = $salePrice;
                     $productForPrice = $associatedProduct;
                 }
-                $totalInventory += (int)$stockItem->getQty();
+                $totalInventory += $this->getStockQuantity($associatedProduct);
                 foreach($configurableAttributes as $configurableAttribute) {
                     $id = $associatedProduct->getData($configurableAttribute);
                     if(!isset($hash[$id])) {
@@ -431,6 +435,7 @@ class Product extends \Magento\Framework\App\Helper\AbstractHelper
         $baseCurrencyNotAllowed = ($allowedCurrencies==null || !in_array($baseCurrency, $allowedCurrencies));
         $useNewMethodToGetPriceValues = $this->tagalysConfiguration->getConfig('sync:use_get_final_price_for_sale_price', true);
         $store->setCurrentCurrencyCode($baseCurrency);
+        // FIXME: stockRegistry deprecated
         $stockItem = $this->stockRegistry->getStockItem($product->getId());
         $productForPrice = $product;
         $productDetails = array(
@@ -448,6 +453,7 @@ class Product extends \Magento\Framework\App\Helper\AbstractHelper
 
         if ($productDetails['__magento_type'] == 'simple') {
             $inventory = (int)$stockItem->getQty();
+            $inventory = $this->getStockQuantity($product);
             $productDetails['__inventory_total'] = $inventory;
             $productDetails['__inventory_average'] = $inventory;
         }
@@ -588,5 +594,12 @@ class Product extends \Magento\Framework\App\Helper\AbstractHelper
         $rate = $store->getCurrentCurrencyRate();
         $amount = $amount / $rate;
         return $amount;
+    }
+
+    public function getStockQuantity($product) {
+        $websiteCode = $this->storeManager->getWebsite()->getCode();
+        $stockId = $this->stockResolver->execute(\Magento\InventorySalesApi\Api\Data\SalesChannelInterface::TYPE_WEBSITE, $websiteCode)->getStockId();
+        $stockQty = $this->getProductSalableQty->execute($product->getSku(), $stockId);
+        return (int)$stockQty;
     }
 }
