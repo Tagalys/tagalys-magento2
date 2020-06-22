@@ -127,14 +127,16 @@ class Product extends \Magento\Framework\App\Helper\AbstractHelper
     public function getProductFields($product) {
         $productFields = array();
         $attributes = $product->getTypeInstance()->getEditableAttributes($product);
-        $attributesToIgnore = array();
+        $attributesToIgnore = [];
         if ($product->getTypeId() === "configurable") {
             $attributesToIgnore = array_map(function ($el) {
                 return $el['attribute_code'];
             }, $product->getTypeInstance(true)->getConfigurableAttributesAsArray($product));
         }
+        $attributesToIgnore = array_merge($attributesToIgnore, ['status', 'tax_class_id']);
         foreach ($attributes as $attribute) {
-            if (!in_array($attribute->getAttributeCode(), $attributesToIgnore)) {
+            $attributeCode = $attribute->getAttributeCode();
+            if (!in_array($attributeCode, $attributesToIgnore)) {
                 $attributeValue = $attribute->getFrontend()->getValue($product);
                 if (!is_null($attributeValue)) {
                     if ($attribute->getFrontendInput() == 'boolean') {
