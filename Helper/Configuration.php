@@ -125,7 +125,8 @@ class Configuration extends \Magento\Framework\App\Helper\AbstractHelper
                 'success_order_states' => '["new", "payment_review", "processing", "complete", "closed"]',
                 'sync:record_price_rule_updates_for_each_product' => 'false',
                 'sync:use_get_final_price_for_sale_price' => 'false',
-                'module:listingpages:enabled' => '0'
+                'module:listingpages:enabled' => '0',
+                'analytics:main_configurable_attribute' => ''
             );
             if (array_key_exists($configPath, $defaultConfigValues)) {
                 $configValue = $defaultConfigValues[$configPath];
@@ -173,7 +174,7 @@ class Configuration extends \Magento\Framework\App\Helper\AbstractHelper
 
     public function getStoresForTagalys($includeDefault = false) {
         $storesForTagalys = $this->getConfig("stores", true);
-        
+
         if ($storesForTagalys != NULL) {
             if (!is_array($storesForTagalys)) {
                 $storesForTagalys = array($storesForTagalys);
@@ -327,9 +328,9 @@ class Configuration extends \Magento\Framework\App\Helper\AbstractHelper
         }
         if(!$node_exist){
             $node = array(
-                'id'=>$category_id_path[0], 
+                'id'=>$category_id_path[0],
                 'value'=>$category_object['value'],
-                'text'=>$category_label_path[0].($category_object['static_block_only'] ? ' (Static block only)' : ''), 
+                'text'=>$category_label_path[0].($category_object['static_block_only'] ? ' (Static block only)' : ''),
                 'state'=> array('selected'=> (array_key_exists('selected',$category_object) && $category_object['selected']==true) ? true : false, 'disabled' => $category_object['static_block_only']),
                 'children'=>array(),
                 'icon' => $this->getCategoryStatusIconAndText($category_object)
@@ -348,9 +349,9 @@ class Configuration extends \Magento\Framework\App\Helper\AbstractHelper
             if($children[$i]['id']==$category_id_path[0]){
             $child_exist = true;
             $children[$i]['children']=$this->constructTree(
-                array_slice($category_id_path, 1), 
-                array_slice($category_label_path, 1), 
-                $children[$i]['children'], 
+                array_slice($category_id_path, 1),
+                array_slice($category_label_path, 1),
+                $children[$i]['children'],
                 $category_object
             );
             break;
@@ -359,7 +360,7 @@ class Configuration extends \Magento\Framework\App\Helper\AbstractHelper
         if(!$child_exist){
             // Create the parent
             $children[]=array(
-                'id'=>$category_id_path[0], 
+                'id'=>$category_id_path[0],
                 'value'=> 'NOT_AVAILABLE',
                 'text' => $category_label_path[0].($category_object['static_block_only'] ? ' (Static block only)' : ''),
                 'state' => array('disabled' => true, 'opened' => true), // Only for ROOT (eg. defautl category) categories
@@ -710,5 +711,10 @@ class Configuration extends \Magento\Framework\App\Helper\AbstractHelper
     public function deleteIntegration() {
         $integration = $this->integrationFactory->create()->load('Tagalys', 'name');
         $integration->delete();
+    }
+
+    public function areChildSimpleProductsVisibleIndividually() {
+        $mainConfigurableAttribute = $this->getConfig('analytics:main_configurable_attribute');
+        return ($mainConfigurableAttribute != '');
     }
 }

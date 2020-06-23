@@ -2,33 +2,23 @@
     <?php
         $eventDetails = false;
         try {
-            $thisProduct = $this->getMainProduct();
-            if ($thisProduct != false) {
-                $eventDetails = array(
-                    'action' => 'view',
-                    'sku' => $thisProduct->getSku()
-                );
-            }
+            $eventDetails = $this->getEventDetails();
         } catch (\Exception $e) {
             // don't log this as it might happen too often
         }
     ?>
     <?php if ($eventDetails != false): ?>
         <script>
-            require(['jquery', 'jquery/ui'], function(jQuery){ 
+            require(['jquery', 'jquery/ui'], function(jQuery){
                 try {
                     jQuery(document).on('tagalys:ready', function() {
                         try {
                             jQuery.fn.tagalys_analytics.track_event('product_action', <?php echo json_encode($eventDetails) ?>);
                         }
-                        catch(err) {
-                            
-                        }
+                        catch(err) {}
                     });
                 }
-                catch(err) {
-                    
-                }
+                catch(err) {}
             });
         </script>
     <?php endif; ?>

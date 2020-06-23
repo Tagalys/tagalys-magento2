@@ -1,12 +1,12 @@
 <?php
- 
+
 namespace Tagalys\Sync\Controller\Product;
- 
+
 use Magento\Framework\App\Action\Context;
 use Magento\Framework\App\CsrfAwareActionInterface;
 use Magento\Framework\App\RequestInterface;
 use Magento\Framework\App\Request\InvalidRequestException;
- 
+
 class Details extends \Magento\Framework\App\Action\Action implements CsrfAwareActionInterface
 {
     protected $jsonResultFactory;
@@ -45,13 +45,14 @@ class Details extends \Magento\Framework\App\Action\Action implements CsrfAwareA
         $resultJson = $this->jsonResultFactory->create();
 
         $params = $this->getRequest()->getParams();
-        
+
         $data = json_decode($params['event_json'], true);
         $productsData = array();
         if ($data[1] == 'product_action') {
             if ($data[2] == 'add_to_cart' || $data[2] == 'buy') {
-                for($i = 0; $i < count($data[3]); $i++) {
-                    $productsData[] = $this->getProductDetails($data[3][$i]);
+                $productsQtyCouples = $data[3];
+                foreach($productsQtyCouples as $productsQtyCouple) {
+                    $productsData[] = $this->getProductDetails($productsQtyCouple);
                 }
             }
         }
@@ -61,18 +62,19 @@ class Details extends \Magento\Framework\App\Action\Action implements CsrfAwareA
         return $resultJson;
     }
 
-    public function getProductDetails($details) {
-        $mainProduct = $this->productFactory->create()->load($details[1]);
+    public function getProductDetails($productsQtyCouple) {
+        $qty = $productsQtyCouple[0];
+        $mainProduct = $this->getMainProduct($productsQtyCouple);
         $productDetails = array(
             'sku' => $mainProduct->getSku(),
-            'quantity' => $details[0]
+            'quantity' => $qty
         );
-        $noOfItems = count($details);
-        if ($noOfItems == 3) {
+        if ($mainProduct->getTypeId() == 'configurable') {
+            $simpleProductId = $productsQtyCouple[2];
             $configurableAttributes = array_map(function ($el) {
                 return $el['attribute_code'];
             }, $mainProduct->getTypeInstance(true)->getConfigurableAttributesAsArray($mainProduct));
-            $simpleProduct = $this->productFactory->create()->load($details[2]);
+            $simpleProduct = $this->productFactory->create()->load($simpleProductId);
             $simpleProductAttributes = $this->tagalysProduct->getDirectProductTags($simpleProduct, $this->storeManager->getStore()->getId());
             $configurableSimpleProductAttributes = array();
             for ($i = 0; $i < count($simpleProductAttributes); $i++) {
@@ -85,5 +87,15 @@ class Details extends \Magento\Framework\App\Action\Action implements CsrfAwareA
             }
         }
         return $productDetails;
+    }
+
+    public function getMainProduct($productsQtyCouple) {
+        if($this->tagalysConfiguration->areChildSimpleProductsVisibleIndividually()) {
+            $childProductId = $productsQtyCouple[2];
+            $childProduct = $this->productFactory->create()->load($childProductId);
+            return $this->tagalysProduct->getClosestVisibleProduct($childProduct);
+        }
+        $productId = $productsQtyCouple[1];
+        return $this->productFactory->create()->load($productId);
     }
 }

@@ -1,15 +1,17 @@
 <?php
 namespace Tagalys\Sync\Block;
- 
+
 class Productview extends \Magento\Framework\View\Element\Template
 {
     public function __construct(
         \Tagalys\Sync\Helper\Configuration $tagalysConfiguration,
+        \Tagalys\Sync\Helper\Product $tagalysProductHelper,
         \Magento\Framework\View\Element\Template\Context $context,
         \Magento\Framework\Registry $registry
     )
     {
         $this->tagalysConfiguration = $tagalysConfiguration;
+        $this->tagalysProductHelper = $tagalysProductHelper;
         $this->storeManager = $context->getStoreManager();
         $this->registry = $registry;
         parent::__construct($context);
@@ -24,9 +26,31 @@ class Productview extends \Magento\Framework\View\Element\Template
     }
 
     public function getMainProduct() {
+        // FIXME: registry is deprecated
         $mainProduct = $this->registry->registry('product');
         if (is_object($mainProduct)) {
-          return $mainProduct;
+            $tagalysProduct = $this->tagalysProductHelper->getClosestVisibleSibling($mainProduct);
+            return $tagalysProduct;
+        }
+        return false;
+    }
+
+    public function getEventDetails() {
+        $product = $this->registry->registry('product');
+        if (is_object($product)) {
+            $eventDetails = ['action' => 'view'];
+            if($this->tagalysConfiguration->areChildSimpleProductsVisibleIndividually()) {
+                $visibleChildren = $this->tagalysProductHelper->getVisibleChildren($product);
+                if(count($visibleChildren) > 0) {
+                    $eventDetails['skus'] = [];
+                    foreach($visibleChildren as $visibleChild) {
+                        $eventDetails['skus'][] = $visibleChild->getSku();
+                    }
+                    return $eventDetails;
+                }
+            }
+            $eventDetails['sku'] = $product->getSku();
+            return $eventDetails;
         }
         return false;
     }

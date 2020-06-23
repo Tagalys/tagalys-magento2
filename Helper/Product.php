@@ -29,7 +29,9 @@ class Product extends \Magento\Framework\App\Helper\AbstractHelper
         \Magento\CatalogInventory\Api\StockRegistryInterface $stockRegistry,
         \Magento\Framework\Pricing\PriceCurrencyInterface $priceCurrency,
         \Magento\InventorySalesApi\Api\GetProductSalableQtyInterface $getProductSalableQty,
-        \Magento\InventorySalesApi\Api\StockResolverInterface $stockResolver
+        \Magento\InventorySalesApi\Api\StockResolverInterface $stockResolver,
+        \Magento\Framework\App\ProductMetadataInterface $productMetadata,
+        \Magento\ConfigurableProduct\Model\Product\Type\Configurable $configurableProduct
     )
     {
         $this->productFactory = $productFactory;
@@ -57,6 +59,8 @@ class Product extends \Magento\Framework\App\Helper\AbstractHelper
         $this->priceCurrency = $priceCurrency;
         $this->getProductSalableQty = $getProductSalableQty;
         $this->stockResolver = $stockResolver;
+        $this->productMetadata = $productMetadata;
+        $this->configurableProduct = $configurableProduct;
     }
 
     public function getPlaceholderImageUrl($imageAttributeCode, $allowPlaceholder) {
@@ -265,7 +269,7 @@ class Product extends \Magento\Framework\App\Helper\AbstractHelper
             if ($category->getIsActive()) {
                 $path = $category->getPath();
                 $activeCategoryPaths[] = $path;
-                
+
                 // assign to parent categories
                 $relevantCategories = array_slice(explode('/', $path), 2); // ignore level 0 and 1
                 $idsToAssign = array_diff($relevantCategories, $categoryIds);
@@ -352,7 +356,7 @@ class Product extends \Magento\Framework\App\Helper\AbstractHelper
         $totalAssociatedProducts = 0;
         $productForPrice = $product;
         $minSalePrice = PHP_INT_MAX;
-        
+
         $configurableAttributes = array_map(function ($el) {
             return $el['attribute_code'];
         }, $product->getTypeInstance(true)->getConfigurableAttributesAsArray($product));
@@ -361,6 +365,7 @@ class Product extends \Magento\Framework\App\Helper\AbstractHelper
         foreach($associatedProducts as $p){
             $ids[]=$p->getId();
         }
+        // potential optimization: why are we querying the products again through a collection if linkManagement already returns product objects.
         $associatedProducts = $this->productFactory->create()->getCollection()
             ->setStoreId($storeId)
             ->addStoreFilter($storeId)
@@ -371,21 +376,19 @@ class Product extends \Magento\Framework\App\Helper\AbstractHelper
 
         $tagItems = array();
         $hash = array();
-        
         foreach($associatedProducts as $associatedProduct){
             $totalAssociatedProducts += 1;
-            $stockItem = $this->stockRegistry->getStockItem($associatedProduct->getId());
-            $isInStock = $stockItem->getIsInStock();
-            
+            $inventoryDetails = $this->getInventoryDetails($associatedProduct);
+
             // Getting tag sets
-            if ($isInStock) {
+            if ($inventoryDetails['in_stock']) {
                 $anyAssociatedProductInStock = true;
                 $salePrice = $associatedProduct->getPriceInfo()->getPrice('final_price')->getAmount()->getValue();
                 if($minSalePrice > $salePrice) {
                     $minSalePrice = $salePrice;
                     $productForPrice = $associatedProduct;
                 }
-                $totalInventory += $this->getStockQuantity($associatedProduct);
+                $totalInventory += $inventoryDetails['qty'];
                 foreach($configurableAttributes as $configurableAttribute) {
                     $id = $associatedProduct->getData($configurableAttribute);
                     if(!isset($hash[$id])) {
@@ -416,7 +419,7 @@ class Product extends \Magento\Framework\App\Helper\AbstractHelper
         }
 
         $productDetails['in_stock'] = $anyAssociatedProductInStock;
-        
+
         // Reformat tag sets
         foreach($tagItems as $configurableAttribute => $items){
             array_push($productDetails['__tags'], array("tag_set" => array("id" => $configurableAttribute, "label" => $product->getResource()->getAttribute($configurableAttribute)->getStoreLabel($storeId)), "items" => $items));
@@ -436,7 +439,7 @@ class Product extends \Magento\Framework\App\Helper\AbstractHelper
         $useNewMethodToGetPriceValues = $this->tagalysConfiguration->getConfig('sync:use_get_final_price_for_sale_price', true);
         $store->setCurrentCurrencyCode($baseCurrency);
         // FIXME: stockRegistry deprecated
-        $stockItem = $this->stockRegistry->getStockItem($product->getId());
+        $inventoryDetails = $this->getInventoryDetails($product);
         $productForPrice = $product;
         $productDetails = array(
             '__id' => $product->getId(),
@@ -446,14 +449,13 @@ class Product extends \Magento\Framework\App\Helper\AbstractHelper
             'sku' => $product->getSku(),
             'scheduled_updates' => array(),
             'introduced_at' => date(\DateTime::ATOM, strtotime($product->getCreatedAt())),
-            'in_stock' => $stockItem->getIsInStock(),
+            'in_stock' => $inventoryDetails['in_stock'],
             'image_url' => $this->getProductImageUrl($storeId, $this->tagalysConfiguration->getConfig('product_image_attribute'), true, $product, $forceRegenerateThumbnail),
             '__tags' => $this->getDirectProductTags($product, $storeId)
         );
 
         if ($productDetails['__magento_type'] == 'simple') {
-            $inventory = (int)$stockItem->getQty();
-            $inventory = $this->getStockQuantity($product);
+            $inventory = $inventoryDetails['qty'];
             $productDetails['__inventory_total'] = $inventory;
             $productDetails['__inventory_average'] = $inventory;
         }
@@ -596,10 +598,77 @@ class Product extends \Magento\Framework\App\Helper\AbstractHelper
         return $amount;
     }
 
-    public function getStockQuantity($product) {
-        $websiteCode = $this->storeManager->getWebsite()->getCode();
-        $stockId = $this->stockResolver->execute(\Magento\InventorySalesApi\Api\Data\SalesChannelInterface::TYPE_WEBSITE, $websiteCode)->getStockId();
-        $stockQty = $this->getProductSalableQty->execute($product->getSku(), $stockId);
-        return (int)$stockQty;
+    public function getInventoryDetails($product) {
+        if($product->getTypeId() == 'simple') {
+            $stockItem = $this->stockRegistry->getStockItem($product->getId());
+            $inStock = $stockItem->getIsInStock();
+            $magentoVersion = $this->productMetadata->getVersion();
+            if(version_compare($magentoVersion, '2.3.0', '>=')) {
+                $websiteCode = $this->storeManager->getWebsite()->getCode();
+                $stockId = $this->stockResolver->execute(\Magento\InventorySalesApi\Api\Data\SalesChannelInterface::TYPE_WEBSITE, $websiteCode)->getStockId();
+                $stockQty = $this->getProductSalableQty->execute($product->getSku(), $stockId);
+            } else {
+                $stockQty = $stockItem->getQty();
+            }
+        } else {
+            $inStock = false;
+            $stockQty = 0;
+        }
+        return [
+            'in_stock' => $inStock,
+            'qty' => (int)$stockQty
+        ];
     }
+
+    public function getClosestVisibleProduct($product) {
+        if($this->isProductVisible($product)) {
+            return $product;
+        }
+        $parentProduct = $this->getConfigurableParent($product);
+        if($parentProduct) {
+            $mainConfigurableAttribute = $this->tagalysConfiguration->getConfig('analytics:main_configurable_attribute');
+            if(!empty($mainConfigurableAttribute)) {
+                $siblings = $this->getVisibleChildren($parentProduct);
+                if(count($siblings) > 0) {
+                    foreach($siblings as $sibling) {
+                        if($sibling->getData($mainConfigurableAttribute) == $product->getData($mainConfigurableAttribute)) {
+                            return $sibling;
+                        }
+                    }
+                    return $siblings[0];
+                }
+            } else {
+                return $parentProduct;
+            }
+        }
+        return $product;
+    }
+
+    public function getVisibleChildren($parent) {
+        $visibleChildren = [];
+        if($parent->getTypeId() != 'simple') {
+            $children = $this->linkManagement->getChildren($parent->getSku());
+            foreach($children as $child) {
+                if($this->isProductVisible($child)) {
+                    $visibleChildren[] = $child;
+                }
+            }
+        }
+        return $visibleChildren;
+    }
+
+    public function getConfigurableParent($child) {
+        if($child->getTypeId() == 'simple') {
+            $parentIds = $this->configurableProduct->getParentIdsByChild($child->getId());
+            if(count($parentIds) > 0) {
+                return $this->productFactory->create()->load($parentIds[0]);
+            }
+        }
+        return false;
+    }
+
+    public function isProductVisible($product) {
+        return ($product->getVisibility() != 1);
+    }
+
 }
