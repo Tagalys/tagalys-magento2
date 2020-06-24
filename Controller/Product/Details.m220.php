@@ -85,7 +85,7 @@ class Details extends \Magento\Framework\App\Action\Action
             if($this->tagalysConfiguration->areChildSimpleProductsVisibleIndividually()) {
                 $childProductId = $productsQtyCouple[2];
                 $childProduct = $this->productFactory->create()->load($childProductId);
-                return $this->tagalysProduct->getClosestVisibleProduct($childProduct);
+                return $this->tagalysProduct->getAssociatedProductToTrack($childProduct);
             }
         }
         return $product;

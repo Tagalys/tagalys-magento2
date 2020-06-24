@@ -378,7 +378,7 @@ class Product extends \Magento\Framework\App\Helper\AbstractHelper
         $hash = array();
         foreach($associatedProducts as $associatedProduct){
             $totalAssociatedProducts += 1;
-            $inventoryDetails = $this->getInventoryDetails($associatedProduct);
+            $inventoryDetails = $this->getSimpleProductInventoryDetails($associatedProduct);
 
             // Getting tag sets
             if ($inventoryDetails['in_stock']) {
@@ -439,7 +439,7 @@ class Product extends \Magento\Framework\App\Helper\AbstractHelper
         $useNewMethodToGetPriceValues = $this->tagalysConfiguration->getConfig('sync:use_get_final_price_for_sale_price', true);
         $store->setCurrentCurrencyCode($baseCurrency);
         // FIXME: stockRegistry deprecated
-        $inventoryDetails = $this->getInventoryDetails($product);
+        $stockItem = $this->stockRegistry->getStockItem($product->getId());
         $productForPrice = $product;
         $productDetails = array(
             '__id' => $product->getId(),
@@ -449,12 +449,14 @@ class Product extends \Magento\Framework\App\Helper\AbstractHelper
             'sku' => $product->getSku(),
             'scheduled_updates' => array(),
             'introduced_at' => date(\DateTime::ATOM, strtotime($product->getCreatedAt())),
-            'in_stock' => $inventoryDetails['in_stock'],
+            // potential optimization: the below line doesn't need to run for configurable products
+            'in_stock' => $stockItem->getIsInStock(),
             'image_url' => $this->getProductImageUrl($storeId, $this->tagalysConfiguration->getConfig('product_image_attribute'), true, $product, $forceRegenerateThumbnail),
             '__tags' => $this->getDirectProductTags($product, $storeId)
         );
 
         if ($productDetails['__magento_type'] == 'simple') {
+            $inventoryDetails = $this->getSimpleProductInventoryDetails($product, $stockItem);
             $inventory = $inventoryDetails['qty'];
             $productDetails['__inventory_total'] = $inventory;
             $productDetails['__inventory_average'] = $inventory;
@@ -598,10 +600,11 @@ class Product extends \Magento\Framework\App\Helper\AbstractHelper
         return $amount;
     }
 
-    public function getInventoryDetails($product) {
+    public function getSimpleProductInventoryDetails($product, $stockItem = false) {
         if($product->getTypeId() == 'simple') {
-            $stockItem = $this->stockRegistry->getStockItem($product->getId());
-            $inStock = $stockItem->getIsInStock();
+            if($stockItem == false) {
+                $stockItem = $this->stockRegistry->getStockItem($product->getId());
+            }
             $magentoVersion = $this->productMetadata->getVersion();
             if(version_compare($magentoVersion, '2.3.0', '>=')) {
                 $websiteCode = $this->storeManager->getWebsite()->getCode();
@@ -610,17 +613,16 @@ class Product extends \Magento\Framework\App\Helper\AbstractHelper
             } else {
                 $stockQty = $stockItem->getQty();
             }
-        } else {
-            $inStock = false;
-            $stockQty = 0;
+            return [
+                'in_stock' => $stockItem->getIsInStock(),
+                'qty' => (int)$stockQty
+            ];
         }
-        return [
-            'in_stock' => $inStock,
-            'qty' => (int)$stockQty
-        ];
+        return false;
     }
 
-    public function getClosestVisibleProduct($product) {
+    // called while getting product details during "add to cart" or "buy", from Details.php
+    public function getAssociatedProductToTrack($product) {
         if($this->isProductVisible($product)) {
             return $product;
         }
@@ -628,6 +630,7 @@ class Product extends \Magento\Framework\App\Helper\AbstractHelper
         if($parentProduct) {
             $mainConfigurableAttribute = $this->tagalysConfiguration->getConfig('analytics:main_configurable_attribute');
             if(!empty($mainConfigurableAttribute)) {
+                // If associated simple products are visible individually, find which one is visible and return that
                 $siblings = $this->getVisibleChildren($parentProduct);
                 if(count($siblings) > 0) {
                     foreach($siblings as $sibling) {
@@ -637,19 +640,21 @@ class Product extends \Magento\Framework\App\Helper\AbstractHelper
                     }
                     return $siblings[0];
                 }
-            } else {
-                return $parentProduct;
             }
+            // only the configurable products are visible in the front-end, so return that
+            return $parentProduct;
         }
         return $product;
     }
 
     public function getVisibleChildren($parent) {
         $visibleChildren = [];
-        $children = $this->linkManagement->getChildren($parent->getSku());
-        foreach($children as $child) {
-            if($this->isProductVisible($child)) {
-                $visibleChildren[] = $child;
+        if($parent->getTypeId() == 'configurable') {
+            $children = $this->linkManagement->getChildren($parent->getSku());
+            foreach($children as $child) {
+                if($this->isProductVisible($child)) {
+                    $visibleChildren[] = $child;
+                }
             }
         }
         return $visibleChildren;
