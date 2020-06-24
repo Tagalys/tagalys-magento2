@@ -30,7 +30,7 @@ class Productview extends \Magento\Framework\View\Element\Template
         $product = $this->registry->registry('product');
         if (is_object($product)) {
             $eventDetails = ['action' => 'view'];
-            if($this->tagalysConfiguration->areChildSimpleProductsVisibleIndividually()) {
+            if($product->getTypeId() == 'configurable' && $this->tagalysConfiguration->areChildSimpleProductsVisibleIndividually()) {
                 $visibleChildren = $this->tagalysProductHelper->getVisibleChildren($product);
                 if(count($visibleChildren) > 0) {
                     $eventDetails['skus'] = [];

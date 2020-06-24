@@ -646,23 +646,19 @@ class Product extends \Magento\Framework\App\Helper\AbstractHelper
 
     public function getVisibleChildren($parent) {
         $visibleChildren = [];
-        if($parent->getTypeId() != 'simple') {
-            $children = $this->linkManagement->getChildren($parent->getSku());
-            foreach($children as $child) {
-                if($this->isProductVisible($child)) {
-                    $visibleChildren[] = $child;
-                }
+        $children = $this->linkManagement->getChildren($parent->getSku());
+        foreach($children as $child) {
+            if($this->isProductVisible($child)) {
+                $visibleChildren[] = $child;
             }
         }
         return $visibleChildren;
     }
 
     public function getConfigurableParent($child) {
-        if($child->getTypeId() == 'simple') {
-            $parentIds = $this->configurableProduct->getParentIdsByChild($child->getId());
-            if(count($parentIds) > 0) {
-                return $this->productFactory->create()->load($parentIds[0]);
-            }
+        $parentIds = $this->configurableProduct->getParentIdsByChild($child->getId());
+        if(count($parentIds) > 0) {
+            return $this->productFactory->create()->load($parentIds[0]);
         }
         return false;
     }

@@ -58,7 +58,7 @@ class Details extends \Magento\Framework\App\Action\Action
             'sku' => $mainProduct->getSku(),
             'quantity' => $qty
         );
-        if ($mainProduct->getTypeId() == 'configurable') {
+        if ($mainProduct->getTypeId() == 'configurable' && count($productsQtyCouple) == 3) {
             $simpleProductId = $productsQtyCouple[2];
             $configurableAttributes = array_map(function ($el) {
                 return $el['attribute_code'];
@@ -79,12 +79,15 @@ class Details extends \Magento\Framework\App\Action\Action
     }
 
     public function getMainProduct($productsQtyCouple) {
-        if($this->tagalysConfiguration->areChildSimpleProductsVisibleIndividually()) {
-            $childProductId = $productsQtyCouple[2];
-            $childProduct = $this->productFactory->create()->load($childProductId);
-            return $this->tagalysProduct->getClosestVisibleProduct($childProduct);
-        }
         $productId = $productsQtyCouple[1];
-        return $this->productFactory->create()->load($productId);
+        $product = $this->productFactory->create()->load($productId);
+        if ($product->getTypeId() == 'configurable' && count($productsQtyCouple) == 3) {
+            if($this->tagalysConfiguration->areChildSimpleProductsVisibleIndividually()) {
+                $childProductId = $productsQtyCouple[2];
+                $childProduct = $this->productFactory->create()->load($childProductId);
+                return $this->tagalysProduct->getClosestVisibleProduct($childProduct);
+            }
+        }
+        return $product;
     }
 }
