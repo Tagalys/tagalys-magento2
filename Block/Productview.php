@@ -25,17 +25,8 @@ class Productview extends \Magento\Framework\View\Element\Template
         return $this->storeManager->getStore()->getId();
     }
 
-    public function getMainProduct() {
-        // FIXME: registry is deprecated
-        $mainProduct = $this->registry->registry('product');
-        if (is_object($mainProduct)) {
-            $tagalysProduct = $this->tagalysProductHelper->getClosestVisibleSibling($mainProduct);
-            return $tagalysProduct;
-        }
-        return false;
-    }
-
     public function getEventDetails() {
+        // FIXME: registry is deprecated
         $product = $this->registry->registry('product');
         if (is_object($product)) {
             $eventDetails = ['action' => 'view'];

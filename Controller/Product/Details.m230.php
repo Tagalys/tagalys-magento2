@@ -24,6 +24,7 @@ class Details extends \Magento\Framework\App\Action\Action implements CsrfAwareA
     public function __construct(
         Context $context,
         \Magento\Framework\Controller\Result\JsonFactory $jsonResultFactory,
+        \Tagalys\Sync\Helper\Configuration $tagalysConfiguration,
         \Tagalys\Sync\Helper\Product $tagalysProduct,
         \Magento\Framework\View\Page\Config $pageConfig,
         \Magento\Catalog\Model\ProductFactory $productFactory,
@@ -31,6 +32,7 @@ class Details extends \Magento\Framework\App\Action\Action implements CsrfAwareA
     )
     {
         $this->jsonResultFactory = $jsonResultFactory;
+        $this->tagalysConfiguration = $tagalysConfiguration;
         $this->tagalysProduct = $tagalysProduct;
         $this->pageConfig = $pageConfig;
         $this->productFactory = $productFactory;
