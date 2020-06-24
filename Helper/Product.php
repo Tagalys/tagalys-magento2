@@ -29,6 +29,7 @@ class Product extends \Magento\Framework\App\Helper\AbstractHelper
         \Magento\CatalogInventory\Api\StockRegistryInterface $stockRegistry,
         \Magento\Framework\Pricing\PriceCurrencyInterface $priceCurrency,
         \Magento\InventorySalesApi\Api\GetProductSalableQtyInterface $getProductSalableQty,
+        \Magento\InventorySalesApi\Api\IsProductSalableInterface $isProductSalableInterface,
         \Magento\InventorySalesApi\Api\StockResolverInterface $stockResolver,
         \Magento\Framework\App\ProductMetadataInterface $productMetadata,
         \Magento\ConfigurableProduct\Model\Product\Type\Configurable $configurableProduct
@@ -58,6 +59,7 @@ class Product extends \Magento\Framework\App\Helper\AbstractHelper
         $this->stockRegistry = $stockRegistry;
         $this->priceCurrency = $priceCurrency;
         $this->getProductSalableQty = $getProductSalableQty;
+        $this->isProductSalableInterface = $isProductSalableInterface;
         $this->stockResolver = $stockResolver;
         $this->productMetadata = $productMetadata;
         $this->configurableProduct = $configurableProduct;
@@ -457,9 +459,9 @@ class Product extends \Magento\Framework\App\Helper\AbstractHelper
 
         if ($productDetails['__magento_type'] == 'simple') {
             $inventoryDetails = $this->getSimpleProductInventoryDetails($product, $stockItem);
-            $inventory = $inventoryDetails['qty'];
-            $productDetails['__inventory_total'] = $inventory;
-            $productDetails['__inventory_average'] = $inventory;
+            $productDetails['in_stock'] = $inventoryDetails['in_stock'];
+            $productDetails['__inventory_total'] = $inventoryDetails['qty'];
+            $productDetails['__inventory_average'] = $inventoryDetails['qty'];
         }
 
         if ($productDetails['__magento_type'] == 'configurable') {
@@ -602,19 +604,21 @@ class Product extends \Magento\Framework\App\Helper\AbstractHelper
 
     public function getSimpleProductInventoryDetails($product, $stockItem = false) {
         if($product->getTypeId() == 'simple') {
-            if($stockItem == false) {
-                $stockItem = $this->stockRegistry->getStockItem($product->getId());
-            }
             $magentoVersion = $this->productMetadata->getVersion();
             if(version_compare($magentoVersion, '2.3.0', '>=')) {
                 $websiteCode = $this->storeManager->getWebsite()->getCode();
                 $stockId = $this->stockResolver->execute(\Magento\InventorySalesApi\Api\Data\SalesChannelInterface::TYPE_WEBSITE, $websiteCode)->getStockId();
                 $stockQty = $this->getProductSalableQty->execute($product->getSku(), $stockId);
+                $inStock = $this->isProductSalableInterface->execute($product->getSku(), $stockId);
             } else {
+                if($stockItem == false) {
+                    $stockItem = $this->stockRegistry->getStockItem($product->getId());
+                }
                 $stockQty = $stockItem->getQty();
+                $inStock = $stockItem->getIsInStock();
             }
             return [
-                'in_stock' => $stockItem->getIsInStock(),
+                'in_stock' => $inStock,
                 'qty' => (int)$stockQty
             ];
         }
