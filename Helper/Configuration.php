@@ -126,7 +126,8 @@ class Configuration extends \Magento\Framework\App\Helper\AbstractHelper
                 'sync:record_price_rule_updates_for_each_product' => 'false',
                 'sync:use_get_final_price_for_sale_price' => 'false',
                 'module:listingpages:enabled' => '0',
-                'analytics:main_configurable_attribute' => ''
+                'analytics:main_configurable_attribute' => '',
+                'sync:multi_source_inventory_used' => 'false'
             );
             if (array_key_exists($configPath, $defaultConfigValues)) {
                 $configValue = $defaultConfigValues[$configPath];

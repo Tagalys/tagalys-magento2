@@ -605,7 +605,9 @@ class Product extends \Magento\Framework\App\Helper\AbstractHelper
     public function getSimpleProductInventoryDetails($product, $stockItem = false) {
         if($product->getTypeId() == 'simple') {
             $magentoVersion = $this->productMetadata->getVersion();
-            if(version_compare($magentoVersion, '2.3.0', '>=')) {
+            $msiUsed = $this->tagalysConfiguration->getConfig('sync:multi_source_inventory_used', true);
+            if(version_compare($magentoVersion, '2.3.0', '>=') && $msiUsed) {
+                // only do this if MSI is used, coz the else part will work for non MSI stores and is faster too.
                 $websiteCode = $this->storeManager->getWebsite()->getCode();
                 $stockId = $this->stockResolver->execute(\Magento\InventorySalesApi\Api\Data\SalesChannelInterface::TYPE_WEBSITE, $websiteCode)->getStockId();
                 $stockQty = $this->getProductSalableQty->execute($product->getSku(), $stockId);
