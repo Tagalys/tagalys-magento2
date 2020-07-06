@@ -130,15 +130,14 @@ class Category extends \Magento\Framework\App\Helper\AbstractHelper
         }
     }
 
-    public function markStoreCategoryIdsToDisableExcept($storeId, $categoryIds){
+    public function markStoreCategoryIdsToDisableExcept($storeId, $newSelectedCategories){
         $collection = $this->tagalysCategoryFactory->create()->getCollection()->addFieldToFilter('store_id', $storeId);
         foreach ($collection as $collectionItem) {
             $categoryId = $collectionItem->getCategoryId();
-            if (!in_array((int) $categoryId, $categoryIds)) {
-                if ($this->isTagalysCreated($categoryId)) {
-                    continue;
+            if (!in_array((int) $categoryId, $newSelectedCategories)) {
+                if (!$this->isTagalysCreated($categoryId)) {
+                    $collectionItem->setStatus('pending_disable')->save();
                 }
-                $collectionItem->setStatus('pending_disable')->save();
             }
         }
     }
@@ -443,7 +442,11 @@ class Category extends \Magento\Framework\App\Helper\AbstractHelper
             foreach ($categoriesToDisable as $i => $categoryToDisable) {
                 $storeId = $categoryToDisable->getStoreId();
                 $categoryId = $categoryToDisable->getCategoryId();
-                array_push($detailsToSync, array('perform' => 'disable', 'store_id' => $storeId, 'payload' => array('id_at_platform' => $categoryId)));
+                if($this->isTagalysCreated($categoryId)){
+                    $categoryToDisable->setStatus('powered_by_tagalys')->save();
+                } else {
+                    array_push($detailsToSync, array('perform' => 'disable', 'store_id' => $storeId, 'payload' => array('id_at_platform' => $categoryId)));
+                }
             }
             // delete
             $categoriesToDelete = $this->tagalysCategoryFactory->create()->getCollection()
@@ -452,7 +455,11 @@ class Category extends \Magento\Framework\App\Helper\AbstractHelper
             foreach ($categoriesToDelete as $i => $categoryToDelete) {
                 $storeId = $categoryToDelete->getStoreId();
                 $categoryId = $categoryToDelete->getCategoryId();
-                array_push($detailsToSync, array('perform' => 'delete', 'store_id' => $storeId, 'payload' => array('id' => "__categories-{$categoryId}")));
+                if($this->isTagalysCreated($categoryId)){
+                    $categoryToDelete->setStatus('powered_by_tagalys')->save();
+                } else {
+                    array_push($detailsToSync, array('perform' => 'delete', 'store_id' => $storeId, 'payload' => array('id' => "__categories-{$categoryId}")));
+                }
             }
 
             if (count($detailsToSync) > 0) {
@@ -960,15 +967,15 @@ class Category extends \Magento\Framework\App\Helper\AbstractHelper
                 return false;
             }
         }
+        // one of the parent categories
         $parentCategories = $this->getAllTagalysParentCategories();
         if(in_array($category->getId(), $parentCategories)){
             return true;
         }
-        if($category->getId()){
-            $parentId = $category->getParentId();
-            if(in_array($parentId, $parentCategories)){
-                return true;
-            }
+        // Tagalys created smart categories
+        $parentId = $category->getParentId();
+        if(in_array($parentId, $parentCategories)){
+            return true;
         }
         return false;
     }
@@ -1123,6 +1130,9 @@ class Category extends \Magento\Framework\App\Helper\AbstractHelper
     }
 
     public function powerCategoryForAllStores($category){
+        if($this->isTagalysCreated($category)) {
+            return true;
+        }
         $tagalysStores = $this->tagalysConfiguration->getStoresForTagalys();
         foreach ($tagalysStores as $storeId) {
             if($this->tagalysConfiguration->isPrimaryStore($storeId)){
@@ -1160,6 +1170,9 @@ class Category extends \Magento\Framework\App\Helper\AbstractHelper
     }
 
     public function markCategoryForSyncIfRequired($storeId, $categoryId) {
+        if($this->isTagalysCreated($categoryId)) {
+            return true;
+        }
         $firstItem = $this->tagalysCategoryFactory->create()->getCollection()
             ->addFieldToFilter('category_id', $categoryId)
             ->addFieldToFilter('store_id', $storeId)
