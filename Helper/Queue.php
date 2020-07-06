@@ -37,13 +37,13 @@ class Queue extends \Magento\Framework\App\Helper\AbstractHelper
             if($logInsert){
                 $this->tagalysLogger->info("insertUnique: ProductIds: ". json_encode($productIds));
             }
-            $insertPrimary = $this->tagalysConfiguration->getConfig('sync:insert_primary_products_in_insert_unique', true);
             $perPage = 100;
             $offset = 0;
             $queueTable = $this->resourceConnection->getTableName('tagalys_queue');
             $productIds = array_filter($productIds); // remove null values - this will cause a crash when used in the replace command below
             $productsToInsert = array_slice($productIds, $offset, $perPage);
             while(count($productsToInsert) > 0){
+                $insertPrimary = $this->tagalysConfiguration->getConfig('sync:insert_primary_products_in_insert_unique', true);
                 if($insertPrimary){
                     $this->insertPrimaryProducts($productsToInsert);
                 } else {

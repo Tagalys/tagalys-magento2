@@ -16,11 +16,18 @@ class UpdateCategory implements \Magento\Framework\Event\ObserverInterface
         $this->_registry = $_registry;
         $this->tagalysCategoryFactory = $tagalysCategoryFactory;
         $this->tagalysConfiguration = $tagalysConfiguration;
+
+        $writer = new \Zend\Log\Writer\Stream(BP . '/var/log/tagalys_observer.log');
+        $this->logger = new \Zend\Log\Logger();
+        $this->logger->addWriter($writer);
     }
+
     public function execute(\Magento\Framework\Event\Observer $observer)
     {
         try {
             $category = $observer->getEvent()->getCategory();
+            $this->logger->info("Running category save observer for category: {$category->getId()}");
+
             $tagalysCreated = $this->tagalysCategory->isTagalysCreated($category);
             $tagalysContext = $this->_registry->registry("tagalys_context");
             if($tagalysCreated || $tagalysContext){
@@ -46,7 +53,9 @@ class UpdateCategory implements \Magento\Framework\Event\ObserverInterface
                 $this->tagalysCategory->pushDownProductsIfRequired($insertedProductIds, array($category->getId()), 'category');
                 $this->tagalysCategory->categoryUpdateAfter($category);
             }
-        } catch (\Exception $e) { }
+        } catch (\Exception $e) {
+            $this->logger->err("category save observer error: {$e->getMessage()}");
+        }
     }
 
     private function updateTagalysCategoryStatus($category){
