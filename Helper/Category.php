@@ -48,7 +48,7 @@ class Category extends \Magento\Framework\App\Helper\AbstractHelper
         $this->urlRewriteFactory = $urlRewriteFactory;
         $this->urlRewriteCollection = $urlRewriteCollection;
         $this->tagalysQueue = $tagalysQueue;
-        
+
         $writer = new \Zend\Log\Writer\Stream(BP . '/var/log/tagalys_categories.log');
         $this->logger = new \Zend\Log\Logger();
         $this->logger->addWriter($writer);
@@ -84,7 +84,7 @@ class Category extends \Magento\Framework\App\Helper\AbstractHelper
                 $insertId = $model->save()->getId();
             }
         } catch (\Exception $e) {
-        
+
         }
     }
     public function updateWithData($storeId, $categoryId, $updateData)
@@ -532,7 +532,7 @@ class Category extends \Magento\Framework\App\Helper\AbstractHelper
         $this->logger->info("assignProductToCategoryViaDb: {$categoryId}");
         $conn = $this->resourceConnection->getConnection();
         $table = $this->resourceConnection->getTableName('catalog_category_product');
-        
+
         $sortDirection = $this->tagalysConfiguration->getConfig('listing_pages:position_sort_direction');
         $positionToAssign = ($sortDirection == 'desc' ? 1 : 9999);
         $assignData = array('category_id'=>(int)$categoryId, 'product_id'=>(int)($product->getId()), 'position' => $positionToAssign);
@@ -684,7 +684,7 @@ class Category extends \Magento\Framework\App\Helper\AbstractHelper
         }
         return $reversedPositions;
     }
-    
+
     public function createTagalysParentCategory($storeId, $categoryDetails) {
         $rootCategoryId = $this->storeManagerInterface->getStore($storeId)->getRootCategoryId();
         $categoryDetails['is_active'] = false;
@@ -955,7 +955,7 @@ class Category extends \Magento\Framework\App\Helper\AbstractHelper
 
     public function isTagalysCreated($category) {
         if(!is_object($category)){
-            $category = $this->categoryCollection->addAttributeToSelect('parent_id')->addAttributeToFilter('entity_id', $category)->setPage(1,1)->getFirstItem();
+            $category = $this->categoryCollectionFactory->create()->addAttributeToSelect('parent_id')->addAttributeToFilter('entity_id', $category)->setPage(1,1)->getFirstItem();
             if(!$category->getId()){
                 return false;
             }
@@ -970,8 +970,9 @@ class Category extends \Magento\Framework\App\Helper\AbstractHelper
                 return true;
             }
         }
+        return false;
     }
-    
+
     public function getTagalysCreatedCategories() {
         $tagalysCreated = $this->getAllTagalysParentCategories();
         $tagalysLegacyCategories = $this->tagalysConfiguration->getConfig('legacy_mpage_categories', true);
