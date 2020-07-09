@@ -8,7 +8,6 @@ class Category extends \Magento\Framework\App\Helper\AbstractHelper
         \Tagalys\Sync\Helper\Configuration $tagalysConfiguration,
         \Tagalys\Sync\Helper\Api $tagalysApi,
         \Tagalys\Sync\Helper\Queue $tagalysQueue,
-        \Magento\Catalog\Model\ResourceModel\Category\Collection $categoryCollection,
         \Magento\Catalog\Model\ResourceModel\Category\CollectionFactory $categoryCollectionFactory,
         \Tagalys\Sync\Model\CategoryFactory $tagalysCategoryFactory,
         \Magento\Catalog\Model\CategoryFactory $categoryFactory,
@@ -31,7 +30,6 @@ class Category extends \Magento\Framework\App\Helper\AbstractHelper
         $this->random = $random;
         $this->_registry = $registry;
         $this->tagalysApi = $tagalysApi;
-        $this->categoryCollection = $categoryCollection;
         $this->categoryCollectionFactory = $categoryCollectionFactory;
         $this->tagalysCategoryFactory = $tagalysCategoryFactory;
         $this->productFactory = $productFactory;
@@ -1195,9 +1193,14 @@ class Category extends \Magento\Framework\App\Helper\AbstractHelper
         if($storeId){
             $collection->addFieldToFilter('store_id', $storeId);
         }
+        $updated = [];
         foreach ($collection as $tagalysCategory) {
-            $tagalysCategory->setStatus('pending_sync')->save();
+            $categoryId = $tagalysCategory->getCategoryId();
+            if(!$this->isTagalysCreated($categoryId)){
+                $updated[] = $categoryId;
+                $tagalysCategory->setStatus('pending_sync')->save();
+            }
         }
-        return $collection->count();
+        return $updated;
     }
 }

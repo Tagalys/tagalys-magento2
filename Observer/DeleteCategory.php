@@ -7,12 +7,14 @@ class DeleteCategory implements \Magento\Framework\Event\ObserverInterface {
     \Tagalys\Sync\Helper\Queue $queueHelper,
     \Tagalys\Sync\Helper\Category $tagalysCategory,
     \Magento\Framework\Registry $_registry,
-    \Tagalys\Sync\Model\CategoryFactory $tagalysCategoryFactory
+    \Tagalys\Sync\Model\CategoryFactory $tagalysCategoryFactory,
+    \Magento\Catalog\Model\ResourceModel\Category\CollectionFactory $categoryCollectionFactory
   ) {
     $this->queueHelper = $queueHelper;
     $this->tagalysCategory = $tagalysCategory;
     $this->_registry = $_registry;
     $this->tagalysCategoryFactory = $tagalysCategoryFactory;
+    $this->categoryCollectionFactory = $categoryCollectionFactory;
   }
   public function execute(\Magento\Framework\Event\Observer $observer) {
     try {
@@ -31,11 +33,17 @@ class DeleteCategory implements \Magento\Framework\Event\ObserverInterface {
       $this->queueHelper->insertUnique($modifiedProductIds);
     } catch (\Exception $e) { }
   }
-  
+
   private function markCategoryForDeletion($category) {
-    $tagalysCategories = $this->tagalysCategoryFactory->create()->getCollection()->addFieldToFilter('category_id', $category->getId());
+    $subCategories = array_map(function($subCategory) {
+        return $subCategory['entity_id'];
+    }, $category->getChildrenCategories()->toArray(['entity_id']));
+    $tagalysCategories = $this->tagalysCategoryFactory->create()->getCollection();
     foreach ($tagalysCategories as $tagalysCategory) {
-      $tagalysCategory->setMarkedForDeletion('1')->save();
+        $tagalysCategoryId = $tagalysCategory->getCategoryId();
+        if($tagalysCategoryId == $category->getId() || in_array($tagalysCategoryId, $subCategories)) {
+            $tagalysCategory->setMarkedForDeletion('1')->save();
+        }
     }
   }
 }
