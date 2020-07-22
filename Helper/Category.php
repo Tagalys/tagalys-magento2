@@ -373,6 +373,15 @@ class Category extends \Magento\Framework\App\Helper\AbstractHelper
             // echo('syncAll: ' . json_encode(compact('remainingForSync', 'remainingForDelete')));
         }
     }
+    public function getCategoryUrl($category) {
+        $categoryUrl = $category->getUrl();
+        $unSecureBaseUrl = $this->storeManagerInterface->getStore()->getBaseUrl(\Magento\Framework\UrlInterface::URL_TYPE_WEB, false);
+        if (strpos($categoryUrl, $unSecureBaseUrl) === 0) {
+            $secureBaseUrl = $this->storeManagerInterface->getStore()->getBaseUrl(\Magento\Framework\UrlInterface::URL_TYPE_WEB, true);
+            $categoryUrl = substr_replace($categoryUrl, $secureBaseUrl, 0, strlen($unSecureBaseUrl));
+        }
+        return $categoryUrl;
+    }
     public function getStoreCategoryDetails($storeId, $categoryId) {
         try {
             $originalStoreId = $this->storeManagerInterface->getStore()->getId();
@@ -382,7 +391,7 @@ class Category extends \Magento\Framework\App\Helper\AbstractHelper
             $categoryActive = ($category->getIsActive() == '1');
             $output = array(
                 "id" => "__categories-$categoryId",
-                "slug" => $category->getUrl(),
+                "slug" => $this->getCategoryUrl($category),
                 "path" => $category->getUrlPath(),
                 "enabled" => $categoryActive,
                 "name" => implode(' / ', array_slice(explode(' |>| ', $this->tagalysConfiguration->getCategoryName($category)), 1)),
