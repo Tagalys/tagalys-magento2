@@ -236,7 +236,7 @@ class TagalysApi implements TagalysManagementInterface
                     if (!array_key_exists('store_id', $params)) {
                         $params['store_id'] = false;
                     }
-                    $res = $this->tagalysCategoryHelper->triggerCategorySync();
+                    $res = $this->tagalysCategoryHelper->triggerCategorySync($params['store_id']);
                     $response = ['status' => 'OK', 'updated' => $res];
                     break;
             }

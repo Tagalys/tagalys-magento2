@@ -156,8 +156,8 @@ class Edit extends \Magento\Backend\App\Action
                     $redirectToTab = 'search';
                     break;
                 case 'Save Listing Pages Settings':
+                    $this->tagalysConfiguration->setConfig('module:listingpages:enabled', $params['enable_listingpages']);
                     if ($params['enable_listingpages'] != '0' && $params['understand_and_agree'] == 'I agree') {
-                        $this->tagalysConfiguration->setConfig('module:listingpages:enabled', $params['enable_listingpages']);
                         $this->messageManager->addNoticeMessage("Settings have been saved. Selected categories will be visible in your Tagalys Dashboard within 10 minutes and product positions on these categories will be updated within 15 minutes unless specificed below.");
                         if (!array_key_exists('category_pages_rendering_method', $params)){
                             $params['category_pages_rendering_method'] = 'platform';

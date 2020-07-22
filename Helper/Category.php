@@ -1191,7 +1191,9 @@ class Category extends \Magento\Framework\App\Helper\AbstractHelper
             $collection->addFieldToFilter('store_id', $storeId);
         }
         foreach ($collection as $tagalysCategory) {
-            $tagalysCategory->setStatus('pending_sync')->save();
+            if (!$this->isTagalysCreated($tagalysCategory->getCategoryId())) {
+                $tagalysCategory->setStatus('pending_sync')->save();
+            }
         }
         return $collection->count();
     }
