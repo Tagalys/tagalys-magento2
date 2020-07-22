@@ -287,8 +287,13 @@ class Product extends \Magento\Framework\App\Helper\AbstractHelper
             array_push($this->productsToReindex, $product->getId());
         }
         $activeCategoriesTree = array();
+        $rootCategoryId = $this->storeManager->getStore()->getRootCategoryId();
         foreach($activeCategoryPaths as $activeCategoryPath) {
             $pathIds = explode('/', $activeCategoryPath);
+            if(!in_array($rootCategoryId, $pathIds)) {
+                // skip the categories which are not under the root category of this store
+                continue;
+            }
             // skip the first two levels which are 'Root Catalog' and the Store's root
             $pathIds = array_splice($pathIds, 2);
             if (count($pathIds) > 0) {
