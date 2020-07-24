@@ -16,8 +16,8 @@ class Login implements \Magento\Framework\Event\ObserverInterface
             $customerId = $observer->getCustomer()->getId();
             // don't use magento's cookie helper as it sets httponly header to true
             setcookie('__ta_logged_in', $customerId, time()+60*60*24*3, '/', $_SERVER['HTTP_HOST']);
-        } catch (\Exception $e) {
-            
+        } catch (\Throwable $e) {
+
         }
     }
 }

@@ -21,6 +21,6 @@ class ShipmentSave implements \Magento\Framework\Event\ObserverInterface
                 $updatedProductIds[] = $item->getProduct()->getId();
             }
             $this->queueHelper->insertUnique($updatedProductIds);
-        } catch (\Exception $e) { }
+        } catch (\Throwable $e) { }
     }
 }

@@ -47,6 +47,6 @@ class PostAction implements \Magento\Framework\Event\ObserverInterface
             if (in_array($controllerActionName, $catalogPriceRuleEvents)) {
                 $this->tagalysConfiguration->setConfig('sync:catalog_price_rule_changed', true, true);
             }
-        } catch (\Exception $e) { }
+        } catch (\Throwable $e) { }
     }
 }

@@ -46,7 +46,7 @@ class UpdateCategory implements \Magento\Framework\Event\ObserverInterface
                 $this->tagalysCategory->pushDownProductsIfRequired($insertedProductIds, array($category->getId()), 'category');
                 $this->tagalysCategory->categoryUpdateAfter($category);
             }
-        } catch (\Exception $e) { }
+        } catch (\Throwable $e) { }
     }
 
     private function updateTagalysCategoryStatus($category){

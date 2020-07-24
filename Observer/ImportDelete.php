@@ -15,6 +15,6 @@ class ImportDelete implements \Magento\Framework\Event\ObserverInterface
         try {
             $idsToDelete = $observer->getEvent()->getData('ids_to_delete');
             $this->queueHelper->insertUnique($idsToDelete);
-        } catch (\Exception $e) { }
+        } catch (\Throwable $e) { }
     }
 }

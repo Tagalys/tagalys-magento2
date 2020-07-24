@@ -29,9 +29,9 @@ class DeleteCategory implements \Magento\Framework\Event\ObserverInterface {
         array_push($modifiedProductIds, $productId);
       }
       $this->queueHelper->insertUnique($modifiedProductIds);
-    } catch (\Exception $e) { }
+    } catch (\Throwable $e) { }
   }
-  
+
   private function markCategoryForDeletion($category) {
     $tagalysCategories = $this->tagalysCategoryFactory->create()->getCollection()->addFieldToFilter('category_id', $category->getId());
     foreach ($tagalysCategories as $tagalysCategory) {

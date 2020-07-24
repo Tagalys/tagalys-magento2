@@ -16,7 +16,7 @@ class RecordUpdatedProducts implements \Magento\Framework\Event\ObserverInterfac
         $productsObj = $observer->getData('tgls_data');
         $updatedProductIds = $productsObj->getProductIds();
         $this->queueHelper->insertUnique($updatedProductIds);
-    } catch (\Exception $e) { }
+    } catch (\Throwable $e) { }
     return $this;
   }
 }

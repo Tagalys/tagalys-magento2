@@ -23,10 +23,10 @@ class UpdateProduct implements \Magento\Framework\Event\ObserverInterface
                 $categoryIds = null;
                 try{
                     $categoryIds = $product->getCategoryIds();
-                } catch(\Exception $ignored) {}
+                } catch(\Throwable $ignored) {}
                 $this->tagalysCategory->pushDownProductsIfRequired(array($product->getId()), $categoryIds, 'product');
             }
-        } catch (\Exception $e) { }
+        } catch (\Throwable $e) { }
     }
 
 }

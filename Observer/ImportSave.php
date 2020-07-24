@@ -28,6 +28,6 @@ class ImportSave implements \Magento\Framework\Event\ObserverInterface
             $this->queueHelper->insertUnique($productIds);
 
             $this->tagalysCategory->pushDownProductsIfRequired($productIds, null, 'product');
-        } catch (\Exception $e) { }
+        } catch (\Throwable $e) { }
     }
 }

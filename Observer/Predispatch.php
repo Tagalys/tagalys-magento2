@@ -20,8 +20,8 @@ class Predispatch implements \Magento\Framework\Event\ObserverInterface
             } else {
                 setcookie("__ta_user_id", "", time()-3600, '/', $_SERVER['HTTP_HOST']);
             }
-        } catch (\Exception $e) {
-            
+        } catch (\Throwable $e) {
+
         }
     }
 }

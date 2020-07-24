@@ -42,8 +42,8 @@ class ProductActionBuy implements \Magento\Framework\Event\ObserverInterface
                 }
             }
             $this->registry->register('tagalys_analytics_event', json_encode($analyticsCookieData));
-        } catch (\Exception $e) {
-            
+        } catch (\Throwable $e) {
+
         }
     }
 }

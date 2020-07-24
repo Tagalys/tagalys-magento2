@@ -23,8 +23,8 @@ class ProductActionAddToCart implements \Magento\Framework\Event\ObserverInterfa
                 $analyticsCookieData[3][0][] = $simpleProduct->getId();
             }
             $this->cookieManager->set('__ta_event', json_encode($analyticsCookieData));
-        } catch (\Exception $e) {
-            
+        } catch (\Throwable $e) {
+
         }
     }
 }
