@@ -594,9 +594,9 @@ class Sync extends \Magento\Framework\App\Helper\AbstractHelper
         $syncStatus['stores'] = array();
         foreach ($this->tagalysConfiguration->getStoresForTagalys() as $key => $storeId) {
             $thisStore = array();
-            
+
             $thisStore['name'] = $this->storeManager->getStore($storeId)->getName();
-            
+
             $storeSetupComplete = $this->tagalysConfiguration->getConfig("store:$storeId:setup_complete");
             $thisStore['setup_complete'] = ($storeSetupComplete == '1');
 
@@ -753,12 +753,16 @@ class Sync extends \Magento\Framework\App\Helper\AbstractHelper
             if (in_array($order->getState(), $successStates)) {
                 $items = $order->getAllVisibleItems();
                 foreach($items as $item){
+                    $product = $item->getProduct();
+                    if(is_null($product)){
+                        continue;
+                    }
                     $data[] = [
                         'order_id' => $order->getId(),
                         'order_status' => $order->getStatus(),
                         'order_state' => $order->getState(),
                         'item_sku' => $item->getSku(),
-                        'product_sku' => $item->getProduct()->getSku(),
+                        'product_sku' => $product->getSku(),
                         'qty' => $item->getQtyOrdered(),
                         'user_id' => $order->getCustomerId(),
                         'timestamp' => $order->getCreatedAt(),
@@ -770,7 +774,7 @@ class Sync extends \Magento\Framework\App\Helper\AbstractHelper
     }
 
     public function reindexProductsForUpdate($productIds){
-        /* 
+        /*
             In certain cases (flat_products enabled maybe?), when a new product is created the product update for that product ID will come as 'product delete'
             If that happens, enable sync:reindex_products_before_updates
         */
