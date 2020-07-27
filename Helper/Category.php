@@ -48,7 +48,7 @@ class Category extends \Magento\Framework\App\Helper\AbstractHelper
         $this->urlRewriteFactory = $urlRewriteFactory;
         $this->urlRewriteCollection = $urlRewriteCollection;
         $this->tagalysQueue = $tagalysQueue;
-        
+
         $writer = new \Zend\Log\Writer\Stream(BP . '/var/log/tagalys_categories.log');
         $this->logger = new \Zend\Log\Logger();
         $this->logger->addWriter($writer);
@@ -84,7 +84,7 @@ class Category extends \Magento\Framework\App\Helper\AbstractHelper
                 $insertId = $model->save()->getId();
             }
         } catch (\Exception $e) {
-        
+
         }
     }
     public function updateWithData($storeId, $categoryId, $updateData)
@@ -538,14 +538,18 @@ class Category extends \Magento\Framework\App\Helper\AbstractHelper
         $this->categoryLinkRepositoryInterface->save($categoryProductLink);
     }
     public function assignProductToCategoryViaDb($categoryId, $product){
-        $this->logger->info("assignProductToCategoryViaDb: {$categoryId}");
-        $conn = $this->resourceConnection->getConnection();
-        $table = $this->resourceConnection->getTableName('catalog_category_product');
-        
-        $sortDirection = $this->tagalysConfiguration->getConfig('listing_pages:position_sort_direction');
-        $positionToAssign = ($sortDirection == 'desc' ? 1 : 9999);
-        $assignData = array('category_id'=>(int)$categoryId, 'product_id'=>(int)($product->getId()), 'position' => $positionToAssign);
-        $conn->insert($table, $assignData);
+        try {
+            $this->logger->info("assignProductToCategoryViaDb: {$categoryId}");
+            $conn = $this->resourceConnection->getConnection();
+            $table = $this->resourceConnection->getTableName('catalog_category_product');
+
+            $sortDirection = $this->tagalysConfiguration->getConfig('listing_pages:position_sort_direction');
+            $positionToAssign = ($sortDirection == 'desc' ? 1 : 9999);
+            $assignData = array('category_id'=>(int)$categoryId, 'product_id'=>(int)($product->getId()), 'position' => $positionToAssign);
+            $conn->insert($table, $assignData);
+        } catch (\Throwable $e) {
+            $this->logger->err("assignProductToCategoryViaDb failed for: {$categoryId} message: {$e->getMessage()}");
+        }
     }
 
     public function uiPoweredByTagalys($storeId, $categoryId) {
@@ -693,7 +697,7 @@ class Category extends \Magento\Framework\App\Helper\AbstractHelper
         }
         return $reversedPositions;
     }
-    
+
     public function createTagalysParentCategory($storeId, $categoryDetails) {
         $rootCategoryId = $this->storeManagerInterface->getStore($storeId)->getRootCategoryId();
         $categoryDetails['is_active'] = false;
@@ -980,7 +984,7 @@ class Category extends \Magento\Framework\App\Helper\AbstractHelper
             }
         }
     }
-    
+
     public function getTagalysCreatedCategories() {
         $tagalysCreated = $this->getAllTagalysParentCategories();
         $tagalysLegacyCategories = $this->tagalysConfiguration->getConfig('legacy_mpage_categories', true);
