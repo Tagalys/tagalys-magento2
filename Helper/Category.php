@@ -968,21 +968,22 @@ class Category extends \Magento\Framework\App\Helper\AbstractHelper
 
     public function isTagalysCreated($category) {
         if(!is_object($category)){
-            $category = $this->categoryCollection->addAttributeToSelect('parent_id')->addAttributeToFilter('entity_id', $category)->setPage(1,1)->getFirstItem();
+            $category = $this->categoryCollectionFactory->create()->addAttributeToSelect('parent_id')->addAttributeToFilter('entity_id', $category)->setPage(1,1)->getFirstItem();
             if(!$category->getId()){
                 return false;
             }
         }
+        // one of the parent categories
         $parentCategories = $this->getAllTagalysParentCategories();
         if(in_array($category->getId(), $parentCategories)){
             return true;
         }
-        if($category->getId()){
-            $parentId = $category->getParentId();
-            if(in_array($parentId, $parentCategories)){
-                return true;
-            }
+        // child of a Tagalys parent category
+        $parentId = $category->getParentId();
+        if(in_array($parentId, $parentCategories)){
+            return true;
         }
+        return false;
     }
 
     public function getTagalysCreatedCategories() {
