@@ -802,8 +802,8 @@ class Category extends \Magento\Framework\App\Helper\AbstractHelper
             $updateSmartCategoryProductsViaDb = $this->tagalysConfiguration->getConfig('listing_pages:update_smart_category_products_via_db', true);
             if($updateSmartCategoryProductsViaDb){
                 $productsToRemove = $this->getProductsToRemove($storeId, $categoryId, $productPositions);
-                $this->_paginateSqlRemove($categoryId, $productsToRemove);
                 $this->paginateSqlInsert($categoryId, $productPositions);
+                $this->_paginateSqlRemove($categoryId, $productsToRemove);
             } else {
                 $this->categoryFactory->create()->setStoreId($storeId)->load($categoryId)->setPostedProducts($productPositions)->save();
             }

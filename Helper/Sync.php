@@ -113,19 +113,19 @@ class Sync extends \Magento\Framework\App\Helper\AbstractHelper
             $periodic_full_sync = $this->tagalysConfiguration->getConfig("periodic_full_sync");
             $resync_required = $this->tagalysConfiguration->getConfig("store:$storeId:resync_required");
             if ($periodic_full_sync == '1' || $resync_required == '1' || $force) {
-                $this->queueHelper->truncate();
                 $syncTypes = array('updates', 'feed');
                 foreach ($syncTypes as $syncType) {
-                  $syncTypeStatus = $this->tagalysConfiguration->getConfig("store:$storeId:" . $syncType . "_status", true);
-                  $syncTypeStatus['status'] = 'finished';
-                  $this->tagalysConfiguration->setConfig("store:$storeId:" . $syncType . "_status", $syncTypeStatus, true);
+                    $syncTypeStatus = $this->tagalysConfiguration->getConfig("store:$storeId:" . $syncType . "_status", true);
+                    $syncTypeStatus['status'] = 'finished';
+                    $this->tagalysConfiguration->setConfig("store:$storeId:" . $syncType . "_status", $syncTypeStatus, true);
                 }
-                $this->deleteSyncFiles();
                 $this->tagalysConfiguration->setConfig("config_sync_required", '1');
                 $this->triggerFeedForStore($storeId, false, false, true);
                 $this->tagalysConfiguration->setConfig("store:$storeId:resync_required", '0');
             }
         }
+        $this->queueHelper->truncate();
+        $this->deleteSyncFiles();
         $this->tagalysCategory->maintenanceSync();
     }
 
