@@ -50,6 +50,8 @@ class Configuration extends \Magento\Framework\App\Helper\AbstractHelper
         $this->eventManager = $eventManager;
     }
 
+    public $tagalysCoreFields = array("__id", "name", "sku", "link", "sale_price", "image_url", "introduced_at", "in_stock");
+
     public function isTagalysEnabledForStore($storeId, $module = false) {
         $storesForTagalys = $this->getStoresForTagalys();
         if (in_array($storeId, $storesForTagalys)) {
@@ -127,7 +129,8 @@ class Configuration extends \Magento\Framework\App\Helper\AbstractHelper
                 'sync:use_get_final_price_for_sale_price' => 'false',
                 'module:listingpages:enabled' => '0',
                 'analytics:main_configurable_attribute' => '',
-                'sync:multi_source_inventory_used' => 'false'
+                'sync:multi_source_inventory_used' => 'false',
+                'sync:whitelisted_product_attributes' => '[]'
             );
             if (array_key_exists($configPath, $defaultConfigValues)) {
                 $configValue = $defaultConfigValues[$configPath];
@@ -522,7 +525,6 @@ class Configuration extends \Magento\Framework\App\Helper\AbstractHelper
 
 
     public function getTagSetsAndCustomFields($storeId) {
-        $tagalys_core_fields = array("__id", "name", "sku", "link", "sale_price", "image_url", "introduced_at", "in_stock");
         $tag_sets = array();
         $tag_sets[] = array("id" =>"__categories", "label" => "Categories", "filters" => true, "search" => true);
         $custom_fields = array();
@@ -594,47 +596,79 @@ class Configuration extends \Magento\Framework\App\Helper\AbstractHelper
             'price' => 'float'
         );
         $attributes = $this->attributeCollectionFactory->create()->addVisibleFilter();
+        $whitelistedAttributes = $this->getConfig('sync:whitelisted_product_attributes', true);
         foreach($attributes as $attribute) {
-            if (!in_array($attribute->getAttributeCode(), array('status', 'tax_class_id'))) {
-                $isWhitelisted = false;
-                if ((bool)$attribute->getIsUserDefined() == false && in_array($attribute->getAttributecode(), array('visibility', 'url_key'))) {
-                    $isWhitelisted = true;
+            if ($this->shouldSyncAttribute($attribute, $whitelistedAttributes)) {
+                if ($this->isAttributeCustomField($attribute)) {
+                    $isForDisplay = ((bool)$attribute->getUsedInProductListing() && (bool)$attribute->getIsUserDefined());
+                    $isPriceField = ($attribute->getFrontendInput() == "price" );
+                    if (array_key_exists($attribute->getFrontendInput(), $magento_tagalys_type_mapping)) {
+                        $type = $magento_tagalys_type_mapping[$attribute->getFrontendInput()];
+                    } else {
+                        $type = 'string';
+                    }
+                    $custom_fields[] = array(
+                        'name' => $attribute->getAttributeCode(),
+                        'label' => $attribute->getStoreLabel($storeId),
+                        'type' => $type,
+                        'currency' => $isPriceField,
+                        'display' => ($isForDisplay || $isPriceField),
+                        'filters' => (bool)$attribute->getIsFilterable(),
+                        'search' => (bool)$attribute->getIsSearchable()
+                    );
                 }
-                $isForDisplay = ((bool)$attribute->getUsedInProductListing() && (bool)$attribute->getIsUserDefined());
-                if ($attribute->getIsFilterable() || $attribute->getIsSearchable() || $isForDisplay || $isWhitelisted) {
-                    if ($attribute->getFrontendInput() != 'multiselect') {
-                        if (!in_array($attribute->getAttributecode(), $tagalys_core_fields)) {
-                            $isPriceField = ($attribute->getFrontendInput() == "price" );
-                            if (array_key_exists($attribute->getFrontendInput(), $magento_tagalys_type_mapping)) {
-                                $type = $magento_tagalys_type_mapping[$attribute->getFrontendInput()];
-                            } else {
-                                $type = 'string';
-                            }
-                            $custom_fields[] = array(
-                                'name' => $attribute->getAttributecode(),
-                                'label' => $attribute->getStoreLabel($storeId),
-                                'type' => $type,
-                                'currency' => $isPriceField,
-                                'display' => ($isForDisplay || $isPriceField),
-                                'filters' => (bool)$attribute->getIsFilterable(),
-                                'search' => (bool)$attribute->getIsSearchable()
-                            );
-                        }
-                    }
-
-                    if ($attribute->usesSource() && !in_array($attribute->getFrontendInput(), array('boolean'))) {
-                        $tag_sets[] = array(
-                            'id' => $attribute->getAttributecode(),
-                            'label' => $attribute->getStoreLabel($storeId),
-                            'filters' => (bool)$attribute->getIsFilterable(),
-                            'search' => (bool)$attribute->getIsSearchable(),
-                            'display' => $isForDisplay
-                        );
-                    }
+                if ($this->isAttributeTagSet($attribute)) {
+                    $tag_sets[] = array(
+                        'id' => $attribute->getAttributeCode(),
+                        'label' => $attribute->getStoreLabel($storeId),
+                        'filters' => (bool)$attribute->getIsFilterable(),
+                        'search' => (bool)$attribute->getIsSearchable(),
+                        'display' => $isForDisplay
+                    );
                 }
             }
         }
         return compact('tag_sets', 'custom_fields');
+    }
+
+    public function shouldSyncAttribute($attribute, $whitelistedAttributes = false, $blacklistedAttributes = []){
+        $attributeCode = $attribute->getAttributeCode();
+        $blacklistedAttributes = array_merge($blacklistedAttributes,['status', 'tax_class_id']);
+        if (in_array($attributeCode, $blacklistedAttributes)){
+            return false;
+        }
+        if ($attribute->getIsFilterable() || $attribute->getIsSearchable()) {
+            return true;
+        }
+        $isUserDefined = (bool)$attribute->getIsUserDefined();
+        $isForDisplay = ($isUserDefined && (bool)$attribute->getUsedInProductListing());
+        if ($isForDisplay) {
+            return true;
+        }
+        $isNecessarySystemAttribute = (!$isUserDefined && in_array($attributeCode, ['visibility', 'url_key']));
+        if ($isNecessarySystemAttribute) {
+            return true;
+        }
+        if(!$whitelistedAttributes) {
+            $whitelistedAttributes = $this->getConfig('sync:whitelisted_product_attributes', true);
+        }
+        return in_array($attributeCode, $whitelistedAttributes);
+    }
+
+    public function isAttributeCustomField($attribute){
+        return $this->isAttributeField($attribute) && !$this->isAttributeCoreField($attribute);
+    }
+
+    public function isAttributeField($attribute){
+        return $attribute->getFrontendInput() != 'multiselect';
+    }
+
+    public function isAttributeCoreField($attribute){
+        return in_array($attribute->getAttributeCode(), $this->tagalysCoreFields);
+    }
+
+    public function isAttributeTagSet($attribute){
+        return ($attribute->usesSource() && $attribute->getFrontendInput() != 'boolean');
     }
 
     public function isProductSortingReverse(){
@@ -717,5 +751,29 @@ class Configuration extends \Magento\Framework\App\Helper\AbstractHelper
     public function areChildSimpleProductsVisibleIndividually() {
         $mainConfigurableAttribute = $this->getConfig('analytics:main_configurable_attribute');
         return ($mainConfigurableAttribute != '');
+    }
+
+    public function getAllVisibleAttributesForAPI(){
+        $attributeData = [];
+        $attributes = $this->attributeCollectionFactory->create()->addVisibleFilter();
+        $whitelistedAttributes = $this->getConfig('sync:whitelisted_product_attributes', true);
+        foreach ($attributes as $attribute) {
+            $attributeCode = $attribute->getAttributeCode();
+            $isUserDefined = (bool)$attribute->getIsUserDefined();
+            $usedInListingPage = (bool)$attribute->getUsedInProductListing();
+            $isForDisplay = ($isUserDefined && $usedInListingPage);
+            $isNecessarySystemAttribute = (!$isUserDefined && in_array($attributeCode, ['visibility', 'url_key']));
+            $attributeData[] = [
+                'attribute_code' => $attributeCode,
+                'is_user_defined' => $isUserDefined,
+                'is_filterable' => (bool) $attribute->getIsFilterable(),
+                'is_searchable' => (bool) $attribute->getIsSearchable(),
+                'is_for_display' => $isForDisplay,
+                'is_necessary_system_attribute' => $isNecessarySystemAttribute,
+                'is_white_listed' => in_array($attributeCode, $whitelistedAttributes),
+                'should_sync_attribute' => $this->shouldSyncAttribute($attribute, $whitelistedAttributes)
+            ];
+        }
+        return $attributeData;
     }
 }

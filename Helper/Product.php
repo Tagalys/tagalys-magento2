@@ -133,23 +133,17 @@ class Product extends \Magento\Framework\App\Helper\AbstractHelper
                 return $el['attribute_code'];
             }, $product->getTypeInstance(true)->getConfigurableAttributesAsArray($product));
         }
+        $whitelistedAttributes = $this->tagalysConfiguration->getConfig('sync:whitelisted_product_attributes', true);
         foreach ($attributes as $attribute) {
-            if (!in_array($attribute->getAttributeCode(), $attributesToIgnore)) {
-                $isWhitelisted = false;
-                if ((bool)$attribute->getIsUserDefined() == false && in_array($attribute->getAttributeCode(), array('url_key'))) {
-                    $isWhitelisted = true;
-                }
-                $isForDisplay = ((bool)$attribute->getUsedInProductListing() && (bool)$attribute->getIsUserDefined());
-                if ($attribute->getIsFilterable() || $attribute->getIsSearchable() || $isForDisplay || $isWhitelisted) {
-
-                    if (!in_array($attribute->getAttributeCode(), array('status', 'tax_class_id')) && $attribute->getFrontendInput() != 'multiselect') {
-                        $attributeValue = $attribute->getFrontend()->getValue($product);
-                        if (!is_null($attributeValue)) {
-                            if ($attribute->getFrontendInput() == 'boolean') {
-                                $productFields[$attribute->getAttributeCode()] = ($attributeValue == 'Yes');
-                            } else {
-                                $productFields[$attribute->getAttributeCode()] = $attributeValue;
-                            }
+            if($this->tagalysConfiguration->isAttributeField($attribute)) {
+                $shouldSyncAttribute = $this->tagalysConfiguration->shouldSyncAttribute($attribute, $whitelistedAttributes, $attributesToIgnore);
+                if($shouldSyncAttribute) {
+                    $attributeValue = $attribute->getFrontend()->getValue($product);
+                    if (!is_null($attributeValue)) {
+                        if ($attribute->getFrontendInput() == 'boolean') {
+                            $productFields[$attribute->getAttributeCode()] = ($attributeValue == 'Yes');
+                        } else {
+                            $productFields[$attribute->getAttributeCode()] = $attributeValue;
                         }
                     }
                 }
@@ -166,15 +160,12 @@ class Product extends \Magento\Framework\App\Helper\AbstractHelper
 
         // other attributes
         $attributes = $product->getTypeInstance()->getEditableAttributes($product);
+        $whitelistedAttributes = $this->tagalysConfiguration->getConfig('sync:whitelisted_product_attributes', true);
         foreach ($attributes as $attribute) {
-            $isWhitelisted = false;
-            if ((bool)$attribute->getIsUserDefined() == false && in_array($attribute->getAttributecode(), array('visibility'))) {
-                $isWhitelisted = true;
-            }
-            $isForDisplay = ((bool)$attribute->getUsedInProductListing() && (bool)$attribute->getIsUserDefined());
-            if (!in_array($attribute->getAttributeCode(), array('status', 'tax_class_id')) && !in_array($attribute->getFrontendInput(), array('boolean')) && ($attribute->getIsFilterable() || $attribute->getIsSearchable() || $isForDisplay || $isWhitelisted)) {
-                $productAttribute = $product->getResource()->getAttribute($attribute->getAttributeCode());
-                if ($productAttribute->usesSource()) {
+            if($this->tagalysConfiguration->isAttributeTagSet($attribute)) {
+                $shouldSyncAttribute = $this->tagalysConfiguration->shouldSyncAttribute($attribute, $whitelistedAttributes);
+                if ($shouldSyncAttribute) {
+                    $productAttribute = $product->getResource()->getAttribute($attribute->getAttributeCode());
                     // select, multi-select
                     $fieldType = $productAttribute->getFrontendInput();
                     $items = array();
