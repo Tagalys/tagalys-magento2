@@ -131,13 +131,12 @@ class Category extends \Magento\Framework\App\Helper\AbstractHelper
     }
 
     public function markStoreCategoryIdsToDisableExcept($storeId, $categoryIds){
-        $collection = $this->tagalysCategoryFactory->create()->getCollection()->addFieldToFilter('store_id', $storeId);
+        $collection = $this->tagalysCategoryFactory->create()
+            ->getCollection()
+            ->addFieldToFilter('store_id', $storeId)
+            ->addFieldToFilter('category_id', ['nin' => $categoryIds]);
         foreach ($collection as $collectionItem) {
-            $categoryId = $collectionItem->getCategoryId();
-            if (!in_array((int) $categoryId, $categoryIds)) {
-                if ($this->isTagalysCreated($categoryId)) {
-                    continue;
-                }
+            if (!$this->isTagalysCreated($collectionItem->getCategoryId())) {
                 $collectionItem->setStatus('pending_disable')->save();
             }
         }
@@ -1177,15 +1176,20 @@ class Category extends \Magento\Framework\App\Helper\AbstractHelper
             ->addFieldToFilter('category_id', $categoryId)
             ->addFieldToFilter('store_id', $storeId)
             ->getFirstItem();
-        if ($id = $firstItem->getId()) {
-            $firstItem = $this->tagalysCategoryFactory->create()->load($id);
+        if ($firstItem->getId()) {
             $firstItem->setMarkedForDeletion(0);
             if ($firstItem->getStatus() == 'pending_disable') {
                 $firstItem->setStatus('pending_sync');
             }
         } else {
             $firstItem = $this->tagalysCategoryFactory->create();
-            $firstItem->setData(['store_id' => $storeId, 'category_id' => $categoryId, 'positions_sync_required' => 0, 'marked_for_deletion' => 0, 'status' => 'pending_sync']);
+            $firstItem->setData([
+                'store_id' => $storeId,
+                'category_id' => $categoryId,
+                'positions_sync_required' => 0,
+                'marked_for_deletion' => 0,
+                'status' => 'pending_sync'
+            ]);
         }
         $firstItem->save();
     }

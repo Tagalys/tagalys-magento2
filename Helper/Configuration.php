@@ -3,6 +3,11 @@ namespace Tagalys\Sync\Helper;
 
 class Configuration extends \Magento\Framework\App\Helper\AbstractHelper
 {
+
+    public $tagalysCoreFields = array("__id", "name", "sku", "link", "sale_price", "image_url", "introduced_at", "in_stock");
+
+    public $cachedCategoryNames = [];
+
     public function __construct(
         \Magento\Framework\Stdlib\DateTime\DateTime $datetime,
         \Magento\Framework\Stdlib\DateTime\TimezoneInterface $timezoneInterface,
@@ -49,8 +54,6 @@ class Configuration extends \Magento\Framework\App\Helper\AbstractHelper
         $this->oauthService = $oauthService;
         $this->eventManager = $eventManager;
     }
-
-    public $tagalysCoreFields = array("__id", "name", "sku", "link", "sale_price", "image_url", "introduced_at", "in_stock");
 
     public function isTagalysEnabledForStore($storeId, $module = false) {
         $storesForTagalys = $this->getStoresForTagalys();
@@ -191,21 +194,7 @@ class Configuration extends \Magento\Framework\App\Helper\AbstractHelper
         return array();
     }
 
-    public function getCategoriesForTagalys($storeId) {
-        $tagalysCategories = $this->tagalysCategoryFactory->create()->getCollection()
-            ->addFieldToFilter('store_id', $storeId)
-            ->addFieldToFilter('status',['nin' => ['pending_disable']])
-            ->addFieldToFilter('marked_for_deletion', '0')
-            ->addFieldToSelect('category_id');
-        $categoriesForTagalys = array();
-        foreach($tagalysCategories as $tagalysCategory){
-            $category = $this->categoryModel->load($tagalysCategory->get('category_id')['category_id']);
-            $categoriesForTagalys[] = $category->getPath();
-        }
-        return $categoriesForTagalys;
-    }
-
-    public function getAllCategories($storeId) {
+    public function getAllCategories($storeId, $includeTagalysCreated = false) {
         $output = [];
         $originalStoreId = $this->storeManager->getStore()->getId();
         $this->storeManager->setCurrentStore($storeId);
@@ -215,11 +204,20 @@ class Configuration extends \Magento\Framework\App\Helper\AbstractHelper
             ->addFieldToFilter('is_active', 1)
             ->addAttributeToFilter('path', array('like' => "1/{$rootCategoryId}/%"))
             ->addAttributeToSelect('*');
+        if (!$includeTagalysCreated) {
+            $tagalysParentId = Configuration::getInstanceOf('Tagalys\Sync\Helper\Category')->getTagalysParentCategory($storeId);
+            $categories->addAttributeToFilter('path', array('nlike' => "1/{$rootCategoryId}/{$tagalysParentId}/%"));
+        }
         foreach ($categories as $category) {
             $pathIds = explode('/', $category->getPath());
             if (count($pathIds) > 2) {
                 $label = $this->getCategoryName($category);
-                $output[] = array('value' => implode('/', $pathIds), 'label' => $label, 'static_block_only' => ($category->getDisplayMode()=='PAGE'));
+                $output[] = array(
+                    'id' => $category->getId(),
+                    'value' => implode('/', $pathIds),
+                    'label' => $label,
+                    'static_block_only' => ($category->getDisplayMode()=='PAGE')
+                );
             }
         }
         $this->storeManager->setCurrentStore($originalStoreId);
@@ -227,27 +225,30 @@ class Configuration extends \Magento\Framework\App\Helper\AbstractHelper
     }
 
     public function getCategoryName($category) {
-        $unorderedPathNames = array();
         $pathNames = array();
-        $pathIds = explode('/', $category->getPath());
-        if (count($pathIds) > 2) {
-            $path = $this->categoryCollection->create()->addAttributeToSelect('*')->addFieldToFilter('entity_id', array('in' => $pathIds));
-            foreach($path as $i => $path_category) {
-              if ($i != 1) { // skip root category
-                $unorderedPathNames[$path_category->getId()] = $path_category->getName();
-              }
+        $pathIds = array_filter(explode('/', $category->getPath()), function($pathId) {
+            return $pathId !== '1';
+        });
+        if (count($pathIds) > 1) { // skip the "Root Category"
+            $newPathIds = array_filter($pathIds, function($pathId) {
+                return !array_key_exists($pathId, $this->cachedCategoryNames);
+            });
+            if (!empty($newPathIds)) {
+                $pathCategories = $this->categoryCollection->create()->addAttributeToSelect('*')->addFieldToFilter('entity_id', array('in' => $newPathIds));
+                foreach($pathCategories as $pathCategory) {
+                    $this->cachedCategoryNames[$pathCategory->getId()] = $pathCategory->getName();
+                }
             }
             foreach($pathIds as $id){
-                if($id != 1){
-                    try {
-                        if (array_key_exists($id, $unorderedPathNames)){
-                            $pathNames[] = $unorderedPathNames[$id];
-                        } else {
-                            $pathNames[] = '(NA)';
-                        }
-                    } catch (\Exception $th) {
-                        $pathNames[] = '(N/A)';
+                try {
+                    // CLARIFY: Is try catch needed?
+                    if (array_key_exists($id, $this->cachedCategoryNames)){
+                        $pathNames[] = $this->cachedCategoryNames[$id];
+                    } else {
+                        $pathNames[] = '(NA)';
                     }
+                } catch (\Exception $th) {
+                    $pathNames[] = '(N/A)';
                 }
             }
         }
@@ -273,37 +274,55 @@ class Configuration extends \Magento\Framework\App\Helper\AbstractHelper
         return json_encode($tree);
     }
 
-    public function getCategoryTreeData($storeId){
-        $flat_category_list = $this->getAllCategories($storeId);
-        $selected_categories = $this->getCategoriesForTagalys($storeId);
+    public function getCategorySelectionDisplayData($storeId) {
+        $allCategoriesDetails = $this->getAllCategories($storeId);
+        $selectedCategoryDetails = $this->getSelectedCategoryDetails($storeId, $allCategoriesDetails);
+        $selectedCategoryPaths = array_map(function($selectedCategory) {
+            return $selectedCategory['path'];
+        }, $selectedCategoryDetails);
+        return [
+            'all_category_details' => $allCategoriesDetails,
+            'selected_paths' => $selectedCategoryPaths,
+            'tree_data' => $this->getCategoryTreeData($selectedCategoryDetails, $allCategoriesDetails)
+        ];
+    }
+
+    public function getSelectedCategoryDetails($storeId, $allCategoryDetails) {
+        $tagalysCategories = $this->tagalysCategoryFactory->create()->getCollection()
+            ->addFieldToFilter('store_id', $storeId)
+            ->addFieldToFilter('status',['nin' => ['pending_disable']])
+            ->addFieldToFilter('marked_for_deletion', '0')
+            ->addFieldToSelect('*');
+        $selectedCategoryDetails = [];
+        foreach ($tagalysCategories as $tagalysCategory) {
+            $id = $tagalysCategory->getCategoryId();
+            $details = Configuration::findByKey('id', $id, $allCategoryDetails);
+            if ($details) {
+                $selectedCategoryDetails[] = [
+                    'id' => $id,
+                    'status' => $tagalysCategory->getStatus(),
+                    'positions_synced_at' => $tagalysCategory->getPositionSyncedAt(),
+                    'path' => $details['value']
+                ];
+            }
+        }
+        return $selectedCategoryDetails;
+    }
+
+    public function getCategoryTreeData($selectedCategoryDetails, $flat_category_list){
         $tree = array();
-        $objectManager = \Magento\Framework\App\ObjectManager::getInstance();
-        $tagalysCategoryHelper = $objectManager->create('Tagalys\Sync\Helper\Category');
-        $tagalysCreatedCategories = $tagalysCategoryHelper->getTagalysCreatedCategories();
         foreach ($flat_category_list as $category){
+            foreach($selectedCategoryDetails as $selectedCategory){
+                if ($selectedCategory['id'] == $category['id']) {
+                    $category['selected'] = true;
+                    $category['status'] = $selectedCategory['status'];
+                    $category['positions_synced_at'] = $selectedCategory['positions_synced_at'];
+                }
+            }
             $category_id_path = explode('/',$category['value']);
             $category_label_path = explode(' |>| ',$category['label']);
             if($category_id_path[0] == 1){
                 array_splice($category_id_path, 0, 1);
-            }
-            if(in_array(end($category_id_path), $tagalysCreatedCategories)){
-                continue;
-            } else {
-                foreach($selected_categories as $selected_category_path){
-                    if ($selected_category_path == $category['value']) {
-                        $category['selected'] = true;
-                        $tmp = explode('/', $selected_category_path);
-                        $selected_category = end($tmp);
-                        $category_sync_status = $this->tagalysCategoryFactory->create()
-                            ->getCollection()
-                            ->addFieldToFilter('store_id', $storeId)
-                            ->addFieldToFilter('category_id', $selected_category)
-                            ->addFieldToSelect(array('status', 'positions_synced_at'))
-                            ->getFirstItem();
-                        $category['status'] = $category_sync_status['status'];
-                        $category['positions_synced_at'] = $category_sync_status['positions_synced_at'];
-                    }
-                }
             }
             $tree = $this->constructTree($category_id_path, $category_label_path, $tree, $category);
         }
@@ -775,5 +794,19 @@ class Configuration extends \Magento\Framework\App\Helper\AbstractHelper
             ];
         }
         return $attributeData;
+    }
+
+    public static function getInstanceOf($class) {
+        $objectManager = \Magento\Framework\App\ObjectManager::getInstance();
+        return $objectManager->create($class);
+    }
+
+    public static function findByKey($key, $value, $list) {
+        foreach($list as $item) {
+            if (array_key_exists($key, $item) && $item[$key] == $value) {
+                return $item;
+            }
+        }
+        return false;
     }
 }

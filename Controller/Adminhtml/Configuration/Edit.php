@@ -8,7 +8,7 @@ class Edit extends \Magento\Backend\App\Action
     {
      return $this->_authorization->isAllowed('Tagalys_Sync::tagalys_configuration');
     }
-    
+
     /**
     * @var \Magento\Framework\View\Result\PageFactory
     */
@@ -189,6 +189,7 @@ class Edit extends \Magento\Backend\App\Action
                                 /* don't do anything here as powering all categories for all stores could take some time.
                                     the sync cron will do it's job anyway. */
                             } else {
+                                // CLARIFY: should we remove this check?
                                 if (count($params['categories_for_tagalys_store_'. $storeId]) > 0) {
                                     foreach($params['categories_for_tagalys_store_' . $storeId] as $categoryPath) {
                                         $path = explode('/', $categoryPath);

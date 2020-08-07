@@ -52,7 +52,7 @@ class Tabs extends \Magento\Backend\Block\Widget\Tabs
         $setupStatus = $this->tagalysConfiguration->getConfig('setup_status');
         $setupComplete = ($setupStatus == 'completed');
         $stepNumber = 1;
-        
+
         $this->addTab(
             'api_credentials',
             [

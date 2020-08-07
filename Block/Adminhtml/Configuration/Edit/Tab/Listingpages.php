@@ -163,7 +163,6 @@ class Listingpages extends Generic
             ));
             $storeOptions = array();
             foreach ($this->tagalysConfiguration->getStoresForTagalys() as $key => $storeId) {
-                $objectManager =  \Magento\Framework\App\ObjectManager::getInstance();    
                 $store = $this->storeManagerInterface->getStore($storeId);
                 $group = $store->getGroup();
                 $website = $group->getWebsite();
@@ -272,19 +271,20 @@ class Listingpages extends Generic
                 'placeholder' => 'buy (default)',
                 'disabled' => $smartPageEnabled
             ));
+            $categorySelectionDisplayData = $this->tagalysConfiguration->getCategorySelectionDisplayData($storeId);
             $storeListingPagesFieldset->addField("categories_for_tagalys_store_$storeId", 'multiselect', array(
                 'name' => "categories_for_tagalys_store_$storeId",
                 'onclick' => "return false;",
                 'onchange' => "return false;",
                 'class' => 'categories-for-tagalys-store',
-                'value'  => $this->tagalysConfiguration->getCategoriesForTagalys($storeId),
-                'values' => $this->tagalysConfiguration->getAllCategories($storeId),
+                'value'  => $categorySelectionDisplayData['selected_paths'],
+                'values' => $categorySelectionDisplayData['all_category_details'],
                 'style' => "width:100%; height: 400px; display: none;",
                 'disabled' => false,
                 'readonly' => false,
                 'tabindex' => 1
             ));
-            $category_tree_data = htmlspecialchars($this->tagalysConfiguration->getCategoryTreeData($storeId), ENT_QUOTES, 'UTF-8');
+            $category_tree_data = htmlspecialchars($categorySelectionDisplayData['tree_data'], ENT_QUOTES, 'UTF-8');
             $storeListingPagesFieldset->addField("jtree_wrap_store_$storeId", 'note', array(
                 'label' => '',
                 'text'=>"<input id='categories-jtree-store-{$storeId}-q' /><button style='margin-left: 10px' id='select-all-category-store-{$storeId}' class='tagalys-btn'>Select all</button><button style='margin-left: 10px' id='deselect-all-category-store-{$storeId}' class='tagalys-btn'>Deselect all</button><div id='categories-jtree-store-{$storeId}' data-tree='{$category_tree_data}' ></div>"
@@ -304,7 +304,7 @@ class Listingpages extends Generic
             'value' => 'Save Listing Pages Settings',
             'class'=> "tagalys-button-submit submit"
         ));
-        
+
         $this->setForm($form);
         // $this->propertyLocker->lock($form);
         return parent::_prepareForm();
