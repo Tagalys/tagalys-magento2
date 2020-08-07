@@ -425,8 +425,11 @@ class Product extends \Magento\Framework\App\Helper\AbstractHelper
         return array('details' => $productDetails, 'product_for_price'=>$productForPrice);
     }
 
+    //NOTE: set the context (store and currency) in the global level (before calling this function).
     public function productDetails($product, $storeId, $forceRegenerateThumbnail = false) {
-        //TODO: set the context (store and currency) in the global level (before calling this function).
+        if (!is_object($product)) {
+            $product = $this->productFactory->create()->setStoreId($storeId)->load($product);
+        }
         $originalStoreId = $this->storeManager->getStore()->getId();
         $originalCurrency = $this->storeManager->getStore()->getCurrentCurrencyCode();
         $this->storeManager->setCurrentStore($storeId);
