@@ -199,16 +199,7 @@ class Configuration extends \Magento\Framework\App\Helper\AbstractHelper
         $output = [];
         $originalStoreId = $this->storeManager->getStore()->getId();
         $this->storeManager->setCurrentStore($storeId);
-        $rootCategoryId = $this->storeManager->getStore($storeId)->getRootCategoryId();
-        $categories = $this->categoryCollection->create()
-            ->setStoreId($storeId)
-            ->addFieldToFilter('is_active', 1)
-            ->addAttributeToFilter('path', array('like' => "1/{$rootCategoryId}/%"))
-            ->addAttributeToSelect('*');
-        if (!$includeTagalysCreated) {
-            $tagalysParentId = Configuration::getInstanceOf('Tagalys\Sync\Helper\Category')->getTagalysParentCategory($storeId);
-            $categories->addAttributeToFilter('path', array('nlike' => "1/{$rootCategoryId}/{$tagalysParentId}/%"));
-        }
+        $categories = $this->getCategoryCollection($storeId, $includeTagalysCreated);
         foreach ($categories as $category) {
             $pathIds = explode('/', $category->getPath());
             if (count($pathIds) > 2) {
@@ -298,7 +289,7 @@ class Configuration extends \Magento\Framework\App\Helper\AbstractHelper
             $id = $tagalysCategory->getCategoryId();
             $details = Configuration::findByKey('id', $id, $allCategoryDetails);
             if ($details) {
-                $selectedCategoryDetails[] = [
+                $selectedCategoryDetails[$id] = [
                     'id' => $id,
                     'status' => $tagalysCategory->getStatus(),
                     'positions_synced_at' => $tagalysCategory->getPositionSyncedAt(),
@@ -312,12 +303,11 @@ class Configuration extends \Magento\Framework\App\Helper\AbstractHelper
     public function getCategoryTreeData($selectedCategoryDetails, $flat_category_list){
         $tree = array();
         foreach ($flat_category_list as $category){
-            foreach($selectedCategoryDetails as $selectedCategory){
-                if ($selectedCategory['id'] == $category['id']) {
-                    $category['selected'] = true;
-                    $category['status'] = $selectedCategory['status'];
-                    $category['positions_synced_at'] = $selectedCategory['positions_synced_at'];
-                }
+            if (array_key_exists($category['id'], $selectedCategoryDetails)) {
+                $selectedCategory = $selectedCategoryDetails[$category['id']];
+                $category['selected'] = true;
+                $category['status'] = $selectedCategory['status'];
+                $category['positions_synced_at'] = $selectedCategory['positions_synced_at'];
             }
             $category_id_path = explode('/',$category['value']);
             $category_label_path = explode(' |>| ',$category['label']);
@@ -817,5 +807,86 @@ class Configuration extends \Magento\Framework\App\Helper\AbstractHelper
             return in_array($storeId, $storesForSearch);
         }
         return false;
+    }
+
+    public function getAllStoreWithWebsites(){
+        $stores = [];
+        foreach ($this->storeManager->getWebsites() as $website) {
+            foreach ($website->getGroups() as $group) {
+                foreach ($group->getStores() as $store) {
+                    $stores[$store->getId()] = [
+                        'store' => $store,
+                        'group' => $group,
+                        'website' => $website
+                    ];
+                }
+            }
+        }
+        return $stores;
+    }
+
+    public function getAllStoresForAPI() {
+        $storesData = [];
+        $storesForTagalys = $this->getStoresForTagalys();
+        $storesForSearch = $this->getConfig('stores_for_search', true);
+        $storesWithWebsites = $this->getAllStoreWithWebsites();
+        foreach ($storesWithWebsites as $storeId => $storeWithWebsite) {
+            $website = $storeWithWebsite['website'];
+            $group = $storeWithWebsite['group'];
+            $store = $storeWithWebsite['store'];
+            $poweredByTagalys = in_array($storeId, $storesForTagalys);
+            $storesData[] = [
+                'id' => $storeId,
+                'name' => $store->getName(),
+                'group_code' => $group->getCode(),
+                'group_name' => $group->getName(),
+                'website_code' => $website->getCode(),
+                'website_name' => $website->getName(),
+                'root_category_id' => $store->getRootCategoryId(),
+                'powered_by_tagalys' => $poweredByTagalys,
+                'search_enabled' => ($poweredByTagalys && in_array($storeId, $storesForSearch)),
+            ];
+        }
+        return $storesData;
+    }
+
+    public function getCategoryCollection($storeId, $includeTagalysCreated = true) {
+        $rootCategoryId = $this->storeManager->getStore($storeId)->getRootCategoryId();
+        $categories = $this->categoryCollection->create()
+            ->setStoreId($storeId)
+            ->addFieldToFilter('is_active', 1)
+            ->addAttributeToFilter('path', array('like' => "1/{$rootCategoryId}/%"))
+            ->addAttributeToSelect('*');
+        if (!$includeTagalysCreated) {
+            $tagalysParentId = Configuration::getInstanceOf('Tagalys\Sync\Helper\Category')->getTagalysParentCategory($storeId);
+            $categories->addAttributeToFilter('path', array('nlike' => "1/{$rootCategoryId}/{$tagalysParentId}/%"));
+        }
+        return $categories;
+    }
+
+    public function getAllCategoriesForAPI($storeId, $includeTagalysCreated, $processAncestry) {
+        $response = [];
+        $allCategoriesDetails = $this->getAllCategories($storeId, $includeTagalysCreated);
+        $tagalysPoweredCategories = $this->getSelectedCategoryDetails($storeId, $allCategoriesDetails);
+        $categories = $this->getCategoryCollection($storeId, $includeTagalysCreated);
+        foreach ($categories as $category) {
+            $id = $category->getId();
+            $categoryDetails = array(
+                'id' => $id,
+                'name' => $category->getName(),
+                'slug' => $category->getUrlKey(),
+                'path' => $category->getPath(),
+                'label' => $processAncestry ? $this->getCategoryName($category) : false,
+                'static_block_only' => ($category->getDisplayMode()=='PAGE')
+            );
+            if (array_key_exists($id, $tagalysPoweredCategories)) {
+                $categoryDetails['powered_by_tagalys'] = true;
+                $categoryDetails['tagalys_data'] = $tagalysPoweredCategories[$id];
+            } else {
+                $categoryDetails['powered_by_tagalys'] = false;
+            }
+            $response[$id] = $categoryDetails;
+        }
+        return $response;
     }
 }

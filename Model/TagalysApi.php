@@ -250,6 +250,24 @@ class TagalysApi implements TagalysManagementInterface
                         'attributes' => $this->tagalysConfiguration->getAllVisibleAttributesForAPI()
                     ];
                     break;
+                case 'get_all_stores':
+                    $response = [
+                        'status' => 'OK',
+                        'stores' => $this->tagalysConfiguration->getAllStoresForAPI()
+                    ];
+                    break;
+                case 'get_all_categories':
+                    if(!array_key_exists('include_tagalys_created', $params)) {
+                        $params['include_tagalys_created'] = false;
+                    }
+                    if(!array_key_exists('process_ancestry', $params)) {
+                        $params['process_ancestry'] = false;
+                    }
+                    $response = [
+                        'status' => 'OK',
+                        'stores' => $this->tagalysConfiguration->getAllCategoriesForAPI($params['store_id'], $params['include_tagalys_created'], $params['process_ancestry'])
+                    ];
+                    break;
             }
         } catch (\Exception $e) {
             $response = ['status' => 'error', 'message' => $e->getMessage(), 'trace' => $e->getTrace()];
