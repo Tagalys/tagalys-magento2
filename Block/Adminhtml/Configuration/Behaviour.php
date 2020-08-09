@@ -9,10 +9,12 @@ class Behaviour extends Template
         \Magento\Backend\Block\Widget\Context $context,
         \Magento\Backend\Model\UrlInterface $urlInterface,
         \Magento\Framework\Url $fronUrlHelper,
+        \Magento\Framework\Module\Manager $moduleManager,
         array $data = []
     ) {
         $this->urlInterface = $urlInterface;
         $this->fronUrlHelper = $fronUrlHelper;
+        $this->moduleManager = $moduleManager;
         parent::__construct($context, $data);
     }
 

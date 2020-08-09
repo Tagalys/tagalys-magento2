@@ -151,6 +151,9 @@
                 tgls_jq.each(tgls_jq('#stores_for_tagalys').val(), function(i, store_id) {
                     tagalysRenderJsTree('category', store_id);
                 });
+                <?php if ($this->moduleManager->isEnabled('Tagalys_Frontend')): ?>
+                    tagalysRenderJsTree('stores-for-search');
+                <?php endif; ?>
             }
         });
     });
@@ -363,6 +366,10 @@
             } else if (tree_type == 'store') {
                 multiselect = 'stores_for_tagalys';
                 target_div = 'stores-jtree';
+                tgls_jq('#' + target_div + '-q').css('display', 'none');
+            } else if (tree_type == 'stores-for-search') {
+                multiselect = 'stores_for_search';
+                target_div = 'stores-for-search-jtree';
                 tgls_jq('#' + target_div + '-q').css('display', 'none');
             } else {
                 return;

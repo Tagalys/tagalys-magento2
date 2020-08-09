@@ -133,7 +133,8 @@ class Configuration extends \Magento\Framework\App\Helper\AbstractHelper
                 'module:listingpages:enabled' => '0',
                 'analytics:main_configurable_attribute' => '',
                 'sync:multi_source_inventory_used' => 'false',
-                'sync:whitelisted_product_attributes' => '[]'
+                'sync:whitelisted_product_attributes' => '[]',
+                'stores_for_search' => '[]'
             );
             if (array_key_exists($configPath, $defaultConfigValues)) {
                 $configValue = $defaultConfigValues[$configPath];
@@ -255,13 +256,12 @@ class Configuration extends \Magento\Framework\App\Helper\AbstractHelper
         return implode(' |>| ', $pathNames);
     }
 
-    public function getStoreTreeData(){
+    public function getStoreTreeData($selectedStores){
         $stores = $this->getAllWebsiteStores();
-        $stores_for_tagalys = $this->getStoresForTagalys();
         $tree = array();
         foreach($stores as $store){
             $selected = false;
-            foreach($stores_for_tagalys as $selected_store){
+            foreach($selectedStores as $selected_store){
                 if($store['value']==$selected_store){
                     $selected = true;
                     $tree[]=array('id'=>$store['value'], 'value'=>$store['value'], 'text'=>$store['label'], 'state'=>array('selected'=>true));
@@ -806,6 +806,15 @@ class Configuration extends \Magento\Framework\App\Helper\AbstractHelper
             if (array_key_exists($key, $item) && $item[$key] == $value) {
                 return $item;
             }
+        }
+        return false;
+    }
+
+    public function isTSearchEnabled($storeId) {
+        $moduleEnabled = $this->isTagalysEnabledForStore($storeId, 'search');
+        if($moduleEnabled){
+            $storesForSearch = $this->getConfig('stores_for_search', true);
+            return in_array($storeId, $storesForSearch);
         }
         return false;
     }

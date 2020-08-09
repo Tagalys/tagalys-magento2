@@ -92,7 +92,25 @@ class Search extends Generic
             'style' => 'width:100%',
             'value' => $this->tagalysConfiguration->getConfig("module:search:enabled")
         ));
-        
+
+        $storesForSearch = $this->tagalysConfiguration->getConfig('stores_for_search', true);
+        $searchFieldset->addField('stores_for_search', 'multiselect', array(
+            'name'      => 'stores_for_search',
+            'onclick' => "return false;",
+            'onchange' => "return false;",
+            'value'  => $storesForSearch,
+            'values' => $this->tagalysConfiguration->getAllWebsiteStores(),
+            'style' => "width:100%; height: 125px; display: none;",
+            'disabled' => false,
+            'readonly' => false,
+            'tabindex' => 1
+        ));
+        $store_tree_data = htmlspecialchars($this->tagalysConfiguration->getStoreTreeData($storesForSearch), ENT_QUOTES, 'UTF-8');
+        $searchFieldset->addField('stores_for_search_jtree_wrap', 'note', array(
+            'label' => __('Choose stores for which you want to enable Tagalys features'),
+            'text'=>"<input id='stores-for-search-jtree-q'/><div id='stores-for-search-jtree' data-tree='{$store_tree_data}' ></div>"
+        ));
+
         $searchFieldset->addField('search_box_selector', 'text', array(
             'name'      => 'search_box_selector',
             'label'     => __('Search box selector'),
