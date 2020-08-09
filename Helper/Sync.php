@@ -113,6 +113,8 @@ class Sync extends \Magento\Framework\App\Helper\AbstractHelper
             $periodic_full_sync = $this->tagalysConfiguration->getConfig("periodic_full_sync");
             $resync_required = $this->tagalysConfiguration->getConfig("store:$storeId:resync_required");
             if ($periodic_full_sync == '1' || $resync_required == '1' || $force) {
+                $this->queueHelper->truncate();
+                $this->deleteSyncFiles();
                 $syncTypes = array('updates', 'feed');
                 foreach ($syncTypes as $syncType) {
                     $syncTypeStatus = $this->tagalysConfiguration->getConfig("store:$storeId:" . $syncType . "_status", true);
@@ -124,8 +126,6 @@ class Sync extends \Magento\Framework\App\Helper\AbstractHelper
                 $this->tagalysConfiguration->setConfig("store:$storeId:resync_required", '0');
             }
         }
-        $this->queueHelper->truncate();
-        $this->deleteSyncFiles();
         $this->tagalysCategory->maintenanceSync();
     }
 
