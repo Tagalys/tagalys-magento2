@@ -318,6 +318,26 @@ class Edit extends \Magento\Backend\App\Action
                     $productUpdateDetectionMethods = $this->tagalysConfiguration->setConfig('product_update_detection_methods', array('events'), true);
                     $redirectToTab = 'support';
                     break;
+                case 'Refresh Access Token':
+                    try {
+                        $this->tagalysConfiguration->deleteIntegration();
+                        $res = $this->tagalysConfiguration->syncClientConfiguration();
+                        if ($res) {
+                            if ($res['result'] === true) {
+                                $this->tagalysApi->log('warn', 'Refresh Access Token');
+                                $this->messageManager->addNoticeMessage("Successfully refreshed access tokens");
+                            } else {
+                                $message = $res['message'];
+                                $this->messageManager->addErrorMessage("Unable to save new token. Response: $message");
+                            }
+                        } else {
+                            $this->messageManager->addErrorMessage("Unable to save new token");
+                        }
+                    } catch (\Throwable $e) {
+                        $this->messageManager->addErrorMessage("Refreshing token failed. Message: {$e->getMessage()}");
+                    }
+                    $redirectToTab = 'support';
+                    break;
             }
             return $this->_redirect('tagalys/configuration/edit/active_tab/'.$redirectToTab);
         }

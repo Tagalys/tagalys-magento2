@@ -125,6 +125,15 @@ class Support extends Generic
                 'tabindex' => 1
             ));
 
+            $tagalysSyncConfigFieldset->addField('submit_refresh_tokens', 'submit', array(
+                'label' => '',
+                'name' => 'tagalys_submit_action',
+                'value' => 'Refresh Access Token',
+                'onclick' => 'if (this.classList.contains(\'clicked\')) { return false; } else {  this.className += \' clicked\'; var that = this; setTimeout(function(){ that.value=\'Please wait…\'; that.disabled=true; }, 50); return true; }',
+                'class'=> "tagalys-button-submit",
+                'tabindex' => 1
+            ));
+
             $tagalysProductsSyncFieldset = $form->addFieldset('tagalys_full_resync_fieldset', array('legend' => __('Products Sync')));
 
             $productUpdateDetectionMethods = $this->tagalysConfiguration->getConfig('product_update_detection_methods', true);
