@@ -8,6 +8,11 @@ class Configuration extends \Magento\Framework\App\Helper\AbstractHelper
 
     public $cachedCategoryNames = [];
 
+    /**
+     * @param \Magento\Framework\App\ProductMetadataInterface
+     */
+    private $productMetadataInterface;
+
     public function __construct(
         \Magento\Framework\Stdlib\DateTime\DateTime $datetime,
         \Magento\Framework\Stdlib\DateTime\TimezoneInterface $timezoneInterface,
@@ -29,7 +34,8 @@ class Configuration extends \Magento\Framework\App\Helper\AbstractHelper
         \Magento\Integration\Model\Oauth\Token $oauthToken,
         \Magento\Integration\Model\AuthorizationService $authorizationService,
         \Magento\Integration\Model\OauthService $oauthService,
-        \Magento\Framework\Event\Manager $eventManager
+        \Magento\Framework\Event\Manager $eventManager,
+        \Magento\Framework\App\ProductMetadataInterface $productMetadataInterface
     )
     {
         $this->datetime = $datetime;
@@ -53,6 +59,7 @@ class Configuration extends \Magento\Framework\App\Helper\AbstractHelper
         $this->authorizationService = $authorizationService;
         $this->oauthService = $oauthService;
         $this->eventManager = $eventManager;
+        $this->productMetadataInterface = $productMetadataInterface;
     }
 
     public function isTagalysEnabledForStore($storeId, $module = false) {
@@ -134,7 +141,8 @@ class Configuration extends \Magento\Framework\App\Helper\AbstractHelper
                 'analytics:main_configurable_attribute' => '',
                 'sync:multi_source_inventory_used' => 'false',
                 'sync:whitelisted_product_attributes' => '[]',
-                'stores_for_search' => '[]'
+                'stores_for_search' => '[]',
+                'sync:read_boolean_attributes_via_db' => 'false'
             );
             if (array_key_exists($configPath, $defaultConfigValues)) {
                 $configValue = $defaultConfigValues[$configPath];
@@ -887,5 +895,15 @@ class Configuration extends \Magento\Framework\App\Helper\AbstractHelper
             $response[$id] = $categoryDetails;
         }
         return $response;
+    }
+
+    public function getResourceColumnToJoin(){
+        $edition = $this->productMetadataInterface->getEdition();
+        if ($edition == "Community") {
+            $columnToJoin = 'entity_id';
+        } else {
+            $columnToJoin = 'row_id';
+        }
+        return $columnToJoin;
     }
 }

@@ -4,6 +4,16 @@ namespace Tagalys\Sync\Helper;
 class Product extends \Magento\Framework\App\Helper\AbstractHelper
 {
     private $productsToReindex = array();
+    /**
+     * @param \Magento\Framework\App\ResourceConnection
+     */
+    private $resourceConnection;
+
+    /**
+     * @param \Tagalys\Sync\Helper\Configuration
+     */
+    private $tagalysConfiguration;
+
     public function __construct(
         \Magento\Catalog\Model\ProductFactory $productFactory,
         \Magento\ConfigurableProduct\Api\LinkManagementInterface $linkManagement,
@@ -32,7 +42,8 @@ class Product extends \Magento\Framework\App\Helper\AbstractHelper
         \Magento\InventorySalesApi\Api\IsProductSalableInterface $isProductSalableInterface,
         \Magento\InventorySalesApi\Api\StockResolverInterface $stockResolver,
         \Magento\Framework\App\ProductMetadataInterface $productMetadata,
-        \Magento\ConfigurableProduct\Model\Product\Type\Configurable $configurableProduct
+        \Magento\ConfigurableProduct\Model\Product\Type\Configurable $configurableProduct,
+        \Magento\Framework\App\ResourceConnection $resourceConnection
     )
     {
         $this->productFactory = $productFactory;
@@ -63,6 +74,7 @@ class Product extends \Magento\Framework\App\Helper\AbstractHelper
         $this->stockResolver = $stockResolver;
         $this->productMetadata = $productMetadata;
         $this->configurableProduct = $configurableProduct;
+        $this->resourceConnection = $resourceConnection;
     }
 
     public function getPlaceholderImageUrl($imageAttributeCode, $allowPlaceholder) {
@@ -133,23 +145,40 @@ class Product extends \Magento\Framework\App\Helper\AbstractHelper
                 return $el['attribute_code'];
             }, $product->getTypeInstance(true)->getConfigurableAttributesAsArray($product));
         }
+        $storeId = $this->storeManager->getStore()->getId();
+        $readBooleanValuesViaDb = $this->tagalysConfiguration->getConfig('sync:read_boolean_attributes_via_db', true);
+        // $readBooleanValuesViaDb = true; // ALERT: Dont commit
         $whitelistedAttributes = $this->tagalysConfiguration->getConfig('sync:whitelisted_product_attributes', true);
         foreach ($attributes as $attribute) {
             if($this->tagalysConfiguration->isAttributeField($attribute)) {
                 $shouldSyncAttribute = $this->tagalysConfiguration->shouldSyncAttribute($attribute, $whitelistedAttributes, $attributesToIgnore);
                 if($shouldSyncAttribute) {
-                    $attributeValue = $attribute->getFrontend()->getValue($product);
-                    if (!is_null($attributeValue)) {
-                        if ($attribute->getFrontendInput() == 'boolean') {
-                            $productFields[$attribute->getAttributeCode()] = ($attributeValue == 'Yes');
-                        } else {
-                            $productFields[$attribute->getAttributeCode()] = $attributeValue;
+                    $isBoolean = $attribute->getFrontendInput() == 'boolean';
+                    if ($isBoolean && $readBooleanValuesViaDb) {
+                        $productFields[$attribute->getAttributeCode()] = $this->getBooleanAttributeValueViaDb($storeId, $product->getId(), $attribute->getAttributeId());
+                    } else {
+                        $attributeValue = $attribute->getFrontend()->getValue($product);
+                        if (!is_null($attributeValue)) {
+                            if ($isBoolean) {
+                                $productFields[$attribute->getAttributeCode()] = ($attributeValue === 'Yes');
+                            } else {
+                                $productFields[$attribute->getAttributeCode()] = $attributeValue;
+                            }
                         }
                     }
                 }
             }
         }
         return $productFields;
+    }
+
+    public function getBooleanAttributeValueViaDb($storeId, $productId, $attributeId) {
+        $cpe = $this->resourceConnection->getTableName('catalog_product_entity');
+        $cpei = $this->resourceConnection->getTableName('catalog_product_entity_int');
+        $columnToJoin = $this->tagalysConfiguration->getResourceColumnToJoin();
+        $sql = "SELECT * FROM $cpei AS cpei INNER JOIN $cpe AS cpe ON cpe.{$columnToJoin} = cpei.{$columnToJoin} WHERE cpe.entity_id = $productId AND cpei.attribute_id = $attributeId AND cpei.store_id IN (0, $storeId) ORDER BY cpei.store_id DESC";
+        $rows = $this->runSqlSelect($sql);
+        return (count($rows) > 0 && $rows[0]['value'] === '1');
     }
 
     public function getDirectProductTags($product, $storeId) {
@@ -674,6 +703,16 @@ class Product extends \Magento\Framework\App\Helper\AbstractHelper
 
     public function isProductVisible($product) {
         return ($product->getVisibility() != 1);
+    }
+
+    private function runSql($sql){
+        $conn = $this->resourceConnection->getConnection();
+        return $conn->query($sql);
+    }
+
+    private function runSqlSelect($sql){
+        $conn = $this->resourceConnection->getConnection();
+        return $conn->fetchAll($sql);
     }
 
 }
