@@ -63,29 +63,23 @@ class Category extends \Magento\Framework\App\Helper\AbstractHelper
 
     public function createOrUpdateWithData($storeId, $categoryId, $data, $updateData = null)
     {
-        if ($updateData == null) {
-            $updateData = $data;
-        }
-        $firstItem = $this->tagalysCategoryFactory->create()->getCollection()
+        $record = $this->tagalysCategoryFactory->create()->getCollection()
             ->addFieldToFilter('category_id', $categoryId)
             ->addFieldToFilter('store_id', $storeId)
             ->getFirstItem();
-
         try {
-            if ($id = $firstItem->getId()) {
-                $data['category_id'] = $categoryId;
-                $data['store_id'] = $storeId;
-                $model = $this->tagalysCategoryFactory->create()->load($id)->addData($updateData);
-                $model->setId($id)->save();
+            if ($record->getId()) {
+                if (!empty($updateData)) {
+                    $data = $updateData;
+                }
             } else {
-                $data['category_id'] = $categoryId;
-                $data['store_id'] = $storeId;
-                $model = $this->tagalysCategoryFactory->create()->setData($data);
-                $insertId = $model->save()->getId();
+                $record = $this->tagalysCategoryFactory->create();
             }
-        } catch (\Exception $e) {
-
-        }
+            $data['category_id'] = $categoryId;
+            $data['store_id'] = $storeId;
+            $record->addData($data)->save();
+            return $record->getId();
+        } catch (\Exception $e) {}
     }
     public function updateWithData($storeId, $categoryId, $updateData)
     {
@@ -1205,5 +1199,12 @@ class Category extends \Magento\Framework\App\Helper\AbstractHelper
             }
         }
         return $collection->count();
+    }
+
+    public function createOrUpdateWithRows($rows) {
+        foreach($rows as $row) {
+            $updateData = array_key_exists('update_data', $row) ? $row['update_data'] : false;
+            $this->createOrUpdateWithData($row['store_id'], $row['category_id'], $row['data'], $updateData);
+        }
     }
 }

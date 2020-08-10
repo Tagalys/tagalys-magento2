@@ -608,8 +608,8 @@ class Configuration extends \Magento\Framework\App\Helper\AbstractHelper
         $whitelistedAttributes = $this->getConfig('sync:whitelisted_product_attributes', true);
         foreach($attributes as $attribute) {
             if ($this->shouldSyncAttribute($attribute, $whitelistedAttributes)) {
+                $isForDisplay = ((bool)$attribute->getUsedInProductListing() && (bool)$attribute->getIsUserDefined());
                 if ($this->isAttributeCustomField($attribute)) {
-                    $isForDisplay = ((bool)$attribute->getUsedInProductListing() && (bool)$attribute->getIsUserDefined());
                     $isPriceField = ($attribute->getFrontendInput() == "price" );
                     if (array_key_exists($attribute->getFrontendInput(), $magento_tagalys_type_mapping)) {
                         $type = $magento_tagalys_type_mapping[$attribute->getFrontendInput()];

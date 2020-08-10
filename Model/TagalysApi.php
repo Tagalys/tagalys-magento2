@@ -80,7 +80,8 @@ class TagalysApi implements TagalysManagementInterface
                     if (array_key_exists('product_id', $params)) {
                         $params['product_ids'] = [$params['product_id']];
                     }
-                    foreach ($this->tagalysConfiguration->getStoresForTagalys() as $storeId) {
+                    $stores = array_key_exists('stores', $params) ? $params['stores'] : $this->tagalysConfiguration->getStoresForTagalys();
+                    foreach ($stores as $storeId) {
                         foreach($params['product_ids'] as $pid) {
                             $productDetailsForStore = (array) $this->tagalysProduct->productDetails($pid, $storeId);
                             $productDetails['store-' . $storeId] = $productDetailsForStore;
@@ -221,7 +222,17 @@ class TagalysApi implements TagalysManagementInterface
                     $response = array('status' => 'OK', 'message' => $res);
                     break;
                 case 'update_tagalys_category_table':
-                    $this->tagalysCategoryHelper->createOrUpdateWithData($params['store_id'], $params['category_id'], $params['data']);
+                    $rows = [];
+                    if (array_key_exists('rows', $params)) {
+                        $rows = $params['rows'];
+                    } else {
+                        $rows[] = [
+                            'store_id' => $params['store_id'],
+                            'category_id' => $params['category_id'],
+                            'data' => $params['data'],
+                        ];
+                    }
+                    $this->tagalysCategoryHelper->createOrUpdateWithRows($rows);
                     $response = array('status' => 'OK', 'updated' => true);
                     break;
                 case 'get_tagalys_queue':
