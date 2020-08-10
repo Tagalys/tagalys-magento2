@@ -177,7 +177,7 @@ class Product extends \Magento\Framework\App\Helper\AbstractHelper
         $columnToJoin = $this->tagalysConfiguration->getResourceColumnToJoin();
         $sql = "SELECT * FROM $cpei AS cpei INNER JOIN $cpe AS cpe ON cpe.{$columnToJoin} = cpei.{$columnToJoin} WHERE cpe.entity_id = $productId AND cpei.attribute_id = $attributeId AND cpei.store_id IN (0, $storeId) ORDER BY cpei.store_id DESC";
         $rows = $this->runSqlSelect($sql);
-        return (count($rows) > 0 && $rows[0]['value'] === '1');
+        return (count($rows) > 0 && $rows[0]['value'] == '1');
     }
 
     public function getDirectProductTags($product, $storeId) {

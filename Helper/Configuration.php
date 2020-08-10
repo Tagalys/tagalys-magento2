@@ -130,7 +130,7 @@ class Configuration extends \Magento\Framework\App\Helper\AbstractHelper
                 'listing_pages:update_position_via_db' => 'false',
                 'listing_pages:update_smart_category_products_via_db' => 'true',
                 'listing_pages:update_position_async' => 'true',
-                'listing_pages:push_down_in_set_posted_products' => 'false',
+                'listing_pages:consider_multi_store_during_position_updates' => 'true',
                 'sync:reindex_products_before_updates' => 'false',
                 'sync:log_product_ids_during_insert_to_queue' => 'false',
                 'sync:insert_primary_products_in_insert_unique' => 'true',

@@ -626,14 +626,14 @@ class Category extends \Magento\Framework\App\Helper\AbstractHelper
             $positions = $this->reverseProductPositionsHash($positions);
         }
         $updateViaDb = $this->tagalysConfiguration->getConfig('listing_pages:update_position_via_db', true);
-        $pushDownInSetPostedProducts = $this->tagalysConfiguration->getConfig('listing_pages:push_down_in_set_posted_products', true);
-        if($updateViaDb || !$pushDownInSetPostedProducts){
-            $this->pushDownProductsViaDb($storeId, $categoryId, $positions);
+        $considerMultiStore = $this->tagalysConfiguration->getConfig('listing_pages:consider_multi_store_during_position_updates', true);
+        if($updateViaDb || $considerMultiStore){
+            $this->pushDownProductsViaDb($storeId, $categoryId, $positions, $considerMultiStore);
         }
         if ($updateViaDb){
             $this->_updatePositionsViaDb($categoryId, $positions);
         } else {
-            $this->_updatePositions($storeId, $categoryId, $positions, $pushDownInSetPostedProducts);
+            $this->_updatePositions($storeId, $categoryId, $positions, !$considerMultiStore);
         }
         $this->_setPositionSortOrder($storeId, $categoryId);
         $this->updateWithData($storeId, $categoryId, ['positions_sync_required' => 0, 'positions_synced_at' => date("Y-m-d H:i:s"), 'status' => 'powered_by_tagalys']);
@@ -671,14 +671,18 @@ class Category extends \Magento\Framework\App\Helper\AbstractHelper
         return true;
     }
 
-    public function pushDownProductsViaDb($storeId, $categoryId, $positions) {
+    public function pushDownProductsViaDb($storeId, $categoryId, $positions, $considerMultiStore) {
         $desc = $this->tagalysConfiguration->isProductSortingReverse();
         $indexTable = $this->getIndexTableName($storeId);
         $ccp = $this->resourceConnection->getTableName('catalog_category_product');
         $total = count($positions);
         $positionCondition = $desc ? "position >= 100" : "position <= $total";
         $pushDownPosition = $desc ? 99 : $total + 1;
-        $sql = "UPDATE $ccp SET position = $pushDownPosition WHERE category_id = $categoryId AND $positionCondition AND product_id IN (SELECT DISTINCT product_id FROM $indexTable WHERE category_id = $categoryId AND $positionCondition AND store_id = $storeId AND visibility IN (2, 4));";
+        if ($considerMultiStore) {
+            $sql = "UPDATE $ccp SET position = $pushDownPosition WHERE category_id = $categoryId AND $positionCondition AND product_id IN (SELECT DISTINCT product_id FROM $indexTable WHERE category_id = $categoryId AND $positionCondition AND store_id = $storeId AND visibility IN (2, 4));";
+        } else {
+            $sql = "UPDATE $ccp SET position = $pushDownPosition WHERE category_id = $categoryId AND $positionCondition;";
+        }
         $this->runSql($sql);
     }
 
@@ -794,8 +798,9 @@ class Category extends \Magento\Framework\App\Helper\AbstractHelper
             }
             $productPositions = $this->filterDeletedProducts($productPositions);
             $updateSmartCategoryProductsViaDb = $this->tagalysConfiguration->getConfig('listing_pages:update_smart_category_products_via_db', true);
+            $considerMultiStore = $this->tagalysConfiguration->getConfig('listing_pages:consider_multi_store_during_position_updates', true);
             if($updateSmartCategoryProductsViaDb){
-                $productsToRemove = $this->getProductsToRemove($storeId, $categoryId, $productPositions);
+                $productsToRemove = $this->getProductsToRemove($storeId, $categoryId, $productPositions, $considerMultiStore);
                 $this->paginateSqlInsert($categoryId, $productPositions);
                 $this->_paginateSqlRemove($categoryId, $productsToRemove);
             } else {
@@ -817,12 +822,17 @@ class Category extends \Magento\Framework\App\Helper\AbstractHelper
         return $productsHash;
     }
 
-    private function getProductsToRemove($storeId, $categoryId, $newProducts){
+    private function getProductsToRemove($storeId, $categoryId, $newProducts, $considerMultiStore){
         $productsToRemove = [];
+        $ccp = $this->resourceConnection->getTableName('catalog_category_product');
         $indexTable = $this->getIndexTableName($storeId);
-        // $sql = "SELECT DISTINCT cpe.entity_id as product_id FROM $cpe as cpe INNER JOIN $cpei as cpei ON cpe.entity_id = cpei.entity_id WHERE cpe.updated_at > '$lastUpdateAt' AND cpei.attribute_id = $attrId AND cpei.value IN (2,3,4) AND cpei.store_id IN ($stores)";
-        // use this type of query here. dont rely on index table
-        $sql = "SELECT product_id FROM $indexTable WHERE category_id = $categoryId AND store_id = $storeId AND visibility IN (2, 4); ";
+        if($considerMultiStore) {
+            // $sql = "SELECT DISTINCT cpe.entity_id as product_id FROM $cpe as cpe INNER JOIN $cpei as cpei ON cpe.entity_id = cpei.entity_id WHERE cpe.updated_at > '$lastUpdateAt' AND cpei.attribute_id = $attrId AND cpei.value IN (2,3,4) AND cpei.store_id IN ($stores)";
+            // Todo: use this type of query here. dont rely on index table
+            $sql = "SELECT product_id FROM $indexTable WHERE category_id = $categoryId AND store_id = $storeId AND visibility IN (2, 4); ";
+        } else {
+            $sql = "SELECT product_id FROM $ccp WHERE category_id = $categoryId;";
+        }
         $result = $this->runSqlSelect($sql);
         foreach ($result as $row) {
             if(!array_key_exists($row['product_id'], $newProducts)){
