@@ -147,7 +147,6 @@ class Product extends \Magento\Framework\App\Helper\AbstractHelper
         }
         $storeId = $this->storeManager->getStore()->getId();
         $readBooleanValuesViaDb = $this->tagalysConfiguration->getConfig('sync:read_boolean_attributes_via_db', true);
-        // $readBooleanValuesViaDb = true; // ALERT: Dont commit
         $whitelistedAttributes = $this->tagalysConfiguration->getConfig('sync:whitelisted_product_attributes', true);
         foreach ($attributes as $attribute) {
             if($this->tagalysConfiguration->isAttributeField($attribute)) {
@@ -160,7 +159,7 @@ class Product extends \Magento\Framework\App\Helper\AbstractHelper
                         $attributeValue = $attribute->getFrontend()->getValue($product);
                         if (!is_null($attributeValue)) {
                             if ($isBoolean) {
-                                $productFields[$attribute->getAttributeCode()] = ($attributeValue === 'Yes');
+                                $productFields[$attribute->getAttributeCode()] = ($attributeValue == 'Yes');
                             } else {
                                 $productFields[$attribute->getAttributeCode()] = $attributeValue;
                             }

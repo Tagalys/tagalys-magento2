@@ -82,9 +82,10 @@ class TagalysApi implements TagalysManagementInterface
                     }
                     $stores = array_key_exists('stores', $params) ? $params['stores'] : $this->tagalysConfiguration->getStoresForTagalys();
                     foreach ($stores as $storeId) {
+                        $productDetails['store-' . $storeId] = [];
                         foreach($params['product_ids'] as $pid) {
                             $productDetailsForStore = (array) $this->tagalysProduct->productDetails($pid, $storeId);
-                            $productDetails['store-' . $storeId] = $productDetailsForStore;
+                            $productDetails['store-' . $storeId][$pid] = $productDetailsForStore;
                         }
                     }
                     $response = $productDetails;

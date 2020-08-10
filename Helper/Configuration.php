@@ -781,6 +781,7 @@ class Configuration extends \Magento\Framework\App\Helper\AbstractHelper
             $isNecessarySystemAttribute = (!$isUserDefined && in_array($attributeCode, ['visibility', 'url_key']));
             $attributeData[] = [
                 'attribute_code' => $attributeCode,
+                'attribute_label' => $attribute->getStoreLabel(0),
                 'is_user_defined' => $isUserDefined,
                 'is_filterable' => (bool) $attribute->getIsFilterable(),
                 'is_searchable' => (bool) $attribute->getIsSearchable(),
