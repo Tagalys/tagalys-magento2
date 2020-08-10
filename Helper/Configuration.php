@@ -247,8 +247,7 @@ class Configuration extends \Magento\Framework\App\Helper\AbstractHelper
         return implode(' |>| ', $pathNames);
     }
 
-    public function getStoreTreeData($selectedStores){
-        $stores = $this->getAllWebsiteStores();
+    public function getStoreTreeData($selectedStores, $stores){
         $tree = array();
         foreach($stores as $store){
             $selected = false;

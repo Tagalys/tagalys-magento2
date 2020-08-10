@@ -94,18 +94,23 @@ class Search extends Generic
         ));
 
         $storesForSearch = $this->tagalysConfiguration->getConfig('stores_for_search', true);
+        $allWebsiteStores = $this->tagalysConfiguration->getAllWebsiteStores();
+        $storesForTagalys = $this->tagalysConfiguration->getStoresForTagalys();
+        $storesAvailableForSearch = array_filter($allWebsiteStores, function($storeData) use($storesForTagalys) {
+            return in_array($storeData['value'], $storesForTagalys);
+        });
         $searchFieldset->addField('stores_for_search', 'multiselect', array(
             'name'      => 'stores_for_search',
             'onclick' => "return false;",
             'onchange' => "return false;",
             'value'  => $storesForSearch,
-            'values' => $this->tagalysConfiguration->getAllWebsiteStores(),
+            'values' => $storesAvailableForSearch,
             'style' => "width:100%; height: 125px; display: none;",
             'disabled' => false,
             'readonly' => false,
             'tabindex' => 1
         ));
-        $store_tree_data = htmlspecialchars($this->tagalysConfiguration->getStoreTreeData($storesForSearch), ENT_QUOTES, 'UTF-8');
+        $store_tree_data = htmlspecialchars($this->tagalysConfiguration->getStoreTreeData($storesForSearch, $storesAvailableForSearch), ENT_QUOTES, 'UTF-8');
         $searchFieldset->addField('stores_for_search_jtree_wrap', 'note', array(
             'label' => __('Choose stores for which you want to enable Tagalys features'),
             'text'=>"<input id='stores-for-search-jtree-q'/><div id='stores-for-search-jtree' data-tree='{$store_tree_data}' ></div>"

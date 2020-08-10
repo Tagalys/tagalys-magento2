@@ -962,9 +962,9 @@ class Category extends \Magento\Framework\App\Helper\AbstractHelper
     public function isTagalysCreated($category) {
         if(!is_object($category)){
             $category = $this->categoryCollectionFactory->create()->addAttributeToSelect('parent_id')->addAttributeToFilter('entity_id', $category)->setPage(1,1)->getFirstItem();
-            if(!$category->getId()){
-                return false;
-            }
+        }
+        if(empty($category->getId())){
+            return false;
         }
         // one of the parent categories
         $parentCategories = $this->getAllTagalysParentCategories();
