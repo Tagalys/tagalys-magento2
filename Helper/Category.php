@@ -822,24 +822,66 @@ class Category extends \Magento\Framework\App\Helper\AbstractHelper
         return $productsHash;
     }
 
-    private function getProductsToRemove($storeId, $categoryId, $newProducts, $considerMultiStore){
+    public function getProductsToRemove($storeId, $categoryId, $newProducts, $considerMultiStore){
+        $categoryProducts = $this->getCurrentProducts($storeId, $categoryId, $considerMultiStore);
         $productsToRemove = [];
-        $ccp = $this->resourceConnection->getTableName('catalog_category_product');
-        $indexTable = $this->getIndexTableName($storeId);
-        if($considerMultiStore) {
-            // $sql = "SELECT DISTINCT cpe.entity_id as product_id FROM $cpe as cpe INNER JOIN $cpei as cpei ON cpe.entity_id = cpei.entity_id WHERE cpe.updated_at > '$lastUpdateAt' AND cpei.attribute_id = $attrId AND cpei.value IN (2,3,4) AND cpei.store_id IN ($stores)";
-            // Todo: use this type of query here. dont rely on index table
-            $sql = "SELECT product_id FROM $indexTable WHERE category_id = $categoryId AND store_id = $storeId AND visibility IN (2, 4); ";
-        } else {
-            $sql = "SELECT product_id FROM $ccp WHERE category_id = $categoryId;";
-        }
-        $result = $this->runSqlSelect($sql);
-        foreach ($result as $row) {
-            if(!array_key_exists($row['product_id'], $newProducts)){
-                $productsToRemove[] = $row['product_id'];
+        foreach ($categoryProducts as $pid) {
+            if(!array_key_exists($pid, $newProducts)){
+                $productsToRemove[] = $pid;
             }
         }
         return $productsToRemove;
+    }
+
+    public function getProductVisibilityAttrId(){
+        $ea = $this->resourceConnection->getTableName('eav_attribute');
+        $eet = $this->resourceConnection->getTableName('eav_entity_type');
+        $sql = "SELECT ea.attribute_id FROM $ea as ea INNER JOIN $eet as eet ON ea.entity_type_id = eet.entity_type_id WHERE eet.entity_table = 'catalog_product_entity' AND ea.attribute_code = 'visibility'";
+        $rows = $this->runSqlSelect($sql);
+        return $rows[0]['attribute_id'];
+    }
+
+    public function getCurrentProducts($storeId, $categoryId, $considerMultiStore){
+        $productsInCategory = [];
+        $ccp = $this->resourceConnection->getTableName('catalog_category_product');
+        $useNewSqlForRemove = $this->tagalysConfiguration->getConfig('listing_pages:use_new_sql_for_product_remove', true);
+        if($considerMultiStore) {
+            if($useNewSqlForRemove) {
+                $attributeId = $this->getProductVisibilityAttrId();
+                $cpe = $this->resourceConnection->getTableName('catalog_product_entity');
+                $cpei = $this->resourceConnection->getTableName('catalog_product_entity_int');
+                $columnToJoin = $this->tagalysConfiguration->getResourceColumnToJoin();
+                $sql = "SELECT cpe.entity_id as product_id, cpei.store_id, cpei.value as visibility FROM $cpe as cpe INNER JOIN $cpei as cpei ON cpe.{$columnToJoin} = cpei.{$columnToJoin} WHERE cpei.attribute_id = $attributeId AND cpei.store_id IN (0, $storeId) AND cpe.entity_id IN (SELECT product_id FROM $ccp WHERE category_id = $categoryId) ORDER BY cpei.store_id DESC";
+                $rows = $this->runSqlSelect($sql);
+                $productsWithVisibility = $this->getUniqueRows('product_id', $rows);
+                // Todo: try using partial joins or grouping to filter the values in SQL itself
+                $productsInCategory = array_values(array_filter($productsWithVisibility, function($row) {
+                    return in_array($row['visibility'], ['2', '4']);
+                }));
+            } else {
+                $indexTable = $this->getIndexTableName($storeId);
+                $sql = "SELECT product_id, visibility FROM $indexTable WHERE category_id = $categoryId AND store_id = $storeId AND visibility IN (2, 4); ";
+                $productsInCategory = $this->runSqlSelect($sql);
+            }
+        } else {
+            $sql = "SELECT product_id FROM $ccp WHERE category_id = $categoryId;";
+            $productsInCategory = $this->runSqlSelect($sql);
+        }
+        return array_map(function($row) {
+            return $row['product_id'];
+        }, $productsInCategory);
+    }
+
+    public function getUniqueRows($key, $rows) {
+        $uniqueRows = [];
+        $found = [];
+        foreach ($rows as $row) {
+            if (!array_key_exists($row[$key], $found)) {
+                $found[$row[$key]] = true;
+                $uniqueRows[] = $row;
+            }
+        }
+        return $uniqueRows;
     }
 
     private function paginateSqlInsert($categoryId, $productPositions) {
