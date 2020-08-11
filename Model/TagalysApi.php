@@ -7,6 +7,11 @@ use Tagalys\Sync\Api\TagalysManagementInterface;
 class TagalysApi implements TagalysManagementInterface
 {
 
+    /**
+     * @param \Tagalys\Sync\Helper\Product
+     */
+    private $tagalysProduct;
+
     public function __construct(
         \Tagalys\Sync\Helper\Configuration $tagalysConfiguration,
         \Tagalys\Sync\Helper\Api $tagalysApi,
@@ -278,6 +283,12 @@ class TagalysApi implements TagalysManagementInterface
                     $response = [
                         'status' => 'OK',
                         'stores' => $this->tagalysConfiguration->getAllCategoriesForAPI($params['store_id'], $params['include_tagalys_created'], $params['process_ancestry'])
+                    ];
+                    break;
+                case 'get_bool_attr_value':
+                    $response = [
+                        'status' => 'OK',
+                        'values' => $this->tagalysProduct->getBooleanAttrValueForAPI($params['store_id'], $params['product_id'])
                     ];
                     break;
             }

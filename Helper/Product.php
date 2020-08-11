@@ -626,7 +626,6 @@ class Product extends \Magento\Framework\App\Helper\AbstractHelper
         if($product->getTypeId() == 'simple') {
             $magentoVersion = $this->productMetadata->getVersion();
             $msiUsed = $this->tagalysConfiguration->getConfig('sync:multi_source_inventory_used', true);
-            $msiUsed = true;
             if(version_compare($magentoVersion, '2.3.0', '>=') && $msiUsed) {
                 // only do this if MSI is used, coz the else part will work for non MSI stores and is faster too.
                 $websiteCode = $this->storeManager->getWebsite()->getCode();
@@ -711,6 +710,25 @@ class Product extends \Magento\Framework\App\Helper\AbstractHelper
     private function runSqlSelect($sql){
         $conn = $this->resourceConnection->getConnection();
         return $conn->fetchAll($sql);
+    }
+
+    public function getBooleanAttrValueForAPI($storeId, $productId){
+        $product = $this->productFactory->create()->load($storeId, $productId);
+        return $this->tagalysConfiguration->processInStoreContext($storeId, function() use($storeId, $product) {
+            $attributes = $product->getTypeInstance()->getEditableAttributes($product);
+            $attributeValue = [];
+            foreach ($attributes as $attribute) {
+                $shouldSyncAttribute = $this->tagalysConfiguration->shouldSyncAttribute($attribute);
+                if ($shouldSyncAttribute && $attribute->getFrontendInput() == 'boolean') {
+                    $attributeValue[$attribute->getAttributeCode()] = [
+                        $attribute->getFrontend()->getValue($product),
+                        $product->getAttributeText($attribute->getAttributeCode()),
+                        $this->getBooleanAttributeValueViaDb($storeId, $product->getId(), $attribute->getAttributeId())
+                    ];
+                }
+            }
+            return $attributeValue;
+        });
     }
 
 }

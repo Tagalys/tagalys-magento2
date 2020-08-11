@@ -907,4 +907,12 @@ class Configuration extends \Magento\Framework\App\Helper\AbstractHelper
         }
         return $columnToJoin;
     }
+
+    public function processInStoreContext($storeId, $callback) {
+        $originalStoreId = $this->storeManager->getStore()->getId();
+        $this->storeManager->setCurrentStore($storeId);
+        $res = $callback();
+        $this->storeManager->setCurrentStore($originalStoreId);
+        return $res;
+    }
 }
