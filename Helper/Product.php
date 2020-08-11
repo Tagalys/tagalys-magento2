@@ -38,9 +38,6 @@ class Product extends \Magento\Framework\App\Helper\AbstractHelper
         \Magento\Framework\Indexer\IndexerRegistry $indexerRegistry,
         \Magento\CatalogInventory\Api\StockRegistryInterface $stockRegistry,
         \Magento\Framework\Pricing\PriceCurrencyInterface $priceCurrency,
-        \Magento\InventorySalesApi\Api\GetProductSalableQtyInterface $getProductSalableQty,
-        \Magento\InventorySalesApi\Api\IsProductSalableInterface $isProductSalableInterface,
-        \Magento\InventorySalesApi\Api\StockResolverInterface $stockResolver,
         \Magento\Framework\App\ProductMetadataInterface $productMetadata,
         \Magento\ConfigurableProduct\Model\Product\Type\Configurable $configurableProduct,
         \Magento\Framework\App\ResourceConnection $resourceConnection
@@ -69,9 +66,6 @@ class Product extends \Magento\Framework\App\Helper\AbstractHelper
         $this->indexerRegistry = $indexerRegistry;
         $this->stockRegistry = $stockRegistry;
         $this->priceCurrency = $priceCurrency;
-        $this->getProductSalableQty = $getProductSalableQty;
-        $this->isProductSalableInterface = $isProductSalableInterface;
-        $this->stockResolver = $stockResolver;
         $this->productMetadata = $productMetadata;
         $this->configurableProduct = $configurableProduct;
         $this->resourceConnection = $resourceConnection;
@@ -632,12 +626,17 @@ class Product extends \Magento\Framework\App\Helper\AbstractHelper
         if($product->getTypeId() == 'simple') {
             $magentoVersion = $this->productMetadata->getVersion();
             $msiUsed = $this->tagalysConfiguration->getConfig('sync:multi_source_inventory_used', true);
+            $msiUsed = true;
             if(version_compare($magentoVersion, '2.3.0', '>=') && $msiUsed) {
                 // only do this if MSI is used, coz the else part will work for non MSI stores and is faster too.
                 $websiteCode = $this->storeManager->getWebsite()->getCode();
-                $stockId = $this->stockResolver->execute(\Magento\InventorySalesApi\Api\Data\SalesChannelInterface::TYPE_WEBSITE, $websiteCode)->getStockId();
-                $stockQty = $this->getProductSalableQty->execute($product->getSku(), $stockId);
-                $inStock = $this->isProductSalableInterface->execute($product->getSku(), $stockId);
+                $stockResolver = Configuration::getInstanceOf("\Magento\InventorySalesApi\Api\StockResolverInterface");
+                $isProductSalableInterface = Configuration::getInstanceOf("\Magento\InventorySalesApi\Api\IsProductSalableInterface");
+                $getProductSalableQty = Configuration::getInstanceOf("\Magento\InventorySalesApi\Api\GetProductSalableQtyInterface");
+                $stockId = $stockResolver->execute(\Magento\InventorySalesApi\Api\Data\SalesChannelInterface::TYPE_WEBSITE, $websiteCode)->getStockId();
+
+                $stockQty = $getProductSalableQty->execute($product->getSku(), $stockId);
+                $inStock = $isProductSalableInterface->execute($product->getSku(), $stockId);
             } else {
                 if($stockItem == false) {
                     $stockItem = $this->stockRegistry->getStockItem($product->getId());
