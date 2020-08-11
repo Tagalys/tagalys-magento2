@@ -636,7 +636,7 @@ class Product extends \Magento\Framework\App\Helper\AbstractHelper
     }
 
     public function getSimpleProductInventoryDetails($product, $stockItem = false) {
-        if($product->getTypeId() == 'simple') {
+        if($product->getTypeId() == 'simple' || $product->getTypeId() == 'virtual') {
             $magentoVersion = $this->productMetadata->getVersion();
             $msiUsed = $this->tagalysConfiguration->getConfig('sync:multi_source_inventory_used', true);
             if(version_compare($magentoVersion, '2.3.0', '>=') && $msiUsed) {

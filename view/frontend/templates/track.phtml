@@ -1,9 +1,9 @@
 <?php if ($this->isTagalysEnabled()): ?>
     <?php
-        $analyticsEvent = $this->getEvent('__ta_event');
+        $analyticsBuyEvent = $this->getEvent('__ta_event');
     ?>
     <script>
-        __tagalysEventJson = '<?php echo $analyticsEvent ? json_encode($analyticsEvent) : ''; ?>'
+        __tagalysEventJson = '<?php echo $analyticsBuyEvent ? json_encode($analyticsBuyEvent) : ''; ?>'
     </script>
     <script>
         require(['jquery', 'jquery/ui', 'mage/cookies'], function(jQuery){
