@@ -126,6 +126,8 @@ class Configuration extends \Magento\Framework\App\Helper\AbstractHelper
                 'use_optimized_product_updated_at' => 'true',
                 'listing_pages:clear_cache_after_reindex' => 'false',
                 'listing_pages:reindex_category_product_after_updates' => 'false',
+                'listing_pages:reindex_smart_category_product_after_updates' => 'true',
+                'listing_pages:clear_smart_category_cache_after_reindex' => 'true',
                 'listing_pages:reindex_category_flat_after_updates' => 'false',
                 'listing_pages:update_position_via_db' => 'false',
                 'listing_pages:update_smart_category_products_via_db' => 'true',
@@ -914,5 +916,29 @@ class Configuration extends \Magento\Framework\App\Helper\AbstractHelper
         $res = $callback();
         $this->storeManager->setCurrentStore($originalStoreId);
         return $res;
+    }
+
+    public function isReindexAllowed($categoryType = Category::PLATFORM_CREATED) {
+        switch($categoryType) {
+            case Category::PLATFORM_CREATED:
+                return $this->getConfig('listing_pages:reindex_category_product_after_updates', true);
+            break;
+            case Category::TAGALYS_CREATED:
+                return $this->getConfig('listing_pages:reindex_smart_category_product_after_updates', true);
+            break;
+        }
+        return false;
+    }
+
+    public function isCacheClearAllowed($categoryType = Category::PLATFORM_CREATED) {
+        switch($categoryType) {
+            case Category::PLATFORM_CREATED:
+                return $this->getConfig('listing_pages:clear_cache_after_reindex', true);
+            break;
+            case Category::TAGALYS_CREATED:
+                return $this->getConfig('listing_pages:clear_smart_category_cache_after_reindex', true);
+            break;
+        }
+        return false;
     }
 }

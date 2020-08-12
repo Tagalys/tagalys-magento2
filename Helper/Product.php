@@ -715,18 +715,13 @@ class Product extends \Magento\Framework\App\Helper\AbstractHelper
         return ($product->getVisibility() != 1);
     }
 
-    private function runSql($sql){
-        $conn = $this->resourceConnection->getConnection();
-        return $conn->query($sql);
-    }
-
     private function runSqlSelect($sql){
         $conn = $this->resourceConnection->getConnection();
         return $conn->fetchAll($sql);
     }
 
     public function getBooleanAttrValueForAPI($storeId, $productId){
-        $product = $this->productFactory->create()->load($storeId, $productId);
+        $product = $this->productFactory->create()->load($productId);
         return $this->tagalysConfiguration->processInStoreContext($storeId, function() use($storeId, $product) {
             $attributes = $product->getTypeInstance()->getEditableAttributes($product);
             $attributeValue = [];

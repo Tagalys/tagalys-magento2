@@ -12,6 +12,11 @@ class TagalysApi implements TagalysManagementInterface
      */
     private $tagalysProduct;
 
+    /**
+     * @param \Tagalys\Sync\Helper\Category
+     */
+    private $tagalysCategoryHelper;
+
     public function __construct(
         \Tagalys\Sync\Helper\Configuration $tagalysConfiguration,
         \Tagalys\Sync\Helper\Api $tagalysApi,
@@ -282,7 +287,7 @@ class TagalysApi implements TagalysManagementInterface
                     }
                     $response = [
                         'status' => 'OK',
-                        'stores' => $this->tagalysConfiguration->getAllCategoriesForAPI($params['store_id'], $params['include_tagalys_created'], $params['process_ancestry'])
+                        'categories' => $this->tagalysConfiguration->getAllCategoriesForAPI($params['store_id'], $params['include_tagalys_created'], $params['process_ancestry'])
                     ];
                     break;
                 case 'get_bool_attr_value':

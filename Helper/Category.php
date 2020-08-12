@@ -3,7 +3,14 @@ namespace Tagalys\Sync\Helper;
 
 class Category extends \Magento\Framework\App\Helper\AbstractHelper
 {
-    private $updatedCategories = array();
+    /**
+     * @param \Tagalys\Sync\Helper\Configuration
+     */
+    private $tagalysConfiguration;
+
+    const PLATFORM_CREATED = 'platform_created';
+    const TAGALYS_CREATED = 'tagalys_created';
+
     public function __construct(
         \Tagalys\Sync\Helper\Configuration $tagalysConfiguration,
         \Tagalys\Sync\Helper\Api $tagalysApi,
@@ -42,6 +49,7 @@ class Category extends \Magento\Framework\App\Helper\AbstractHelper
         $this->categoryProductLinkInterfaceFactory = $categoryProductLinkInterfaceFactory;
         $this->categoryLinkRepositoryInterface = $categoryLinkRepositoryInterface;
         $this->cacheInterface = $cacheInterface;
+        // Todo: use event manager interface instead?
         $this->eventManager = $eventManager;
         $this->productMetadataInterface = $productMetadataInterface;
         $this->indexerFactory = $indexerFactory;
@@ -588,8 +596,7 @@ class Category extends \Magento\Framework\App\Helper\AbstractHelper
                                 $this->reindexUpdatedProducts($productIds);
                                 break;
                             case 'category':
-                                array_push($this->updatedCategories, $tagalysCategories);
-                                $this->reindexUpdatedCategories();
+                                $this->reindexCategoryProducts($tagalysCategories);
                                 break;
                         }
                     }
@@ -637,7 +644,7 @@ class Category extends \Magento\Framework\App\Helper\AbstractHelper
         }
         $this->_setPositionSortOrder($storeId, $categoryId);
         $this->updateWithData($storeId, $categoryId, ['positions_sync_required' => 0, 'positions_synced_at' => date("Y-m-d H:i:s"), 'status' => 'powered_by_tagalys']);
-        $this->reindexUpdatedCategories($categoryId);
+        $this->reindexCategoryProducts($categoryId);
         return true;
     }
 
@@ -808,7 +815,7 @@ class Category extends \Magento\Framework\App\Helper\AbstractHelper
             }
             $this->_setPositionSortOrder($storeId, $categoryId);
             $this->updateWithData($storeId, $categoryId, ['positions_sync_required' => 0, 'positions_synced_at' => date("Y-m-d H:i:s"), 'status' => 'powered_by_tagalys']);
-            $this->reindexUpdatedCategories($categoryId);
+            $this->reindexCategoryProducts($categoryId, self::TAGALYS_CREATED);
             return true;
         }
         throw new \Exception("Error: this category wasn't created by Tagalys");
@@ -957,7 +964,6 @@ class Category extends \Magento\Framework\App\Helper\AbstractHelper
             $offset += $perPage;
             $productsToDelete = array_slice($products, $offset, $perPage);
         }
-        $this->updatedCategories[] = $categoryId;
     }
 
     private function runSql($sql) {
@@ -969,23 +975,24 @@ class Category extends \Magento\Framework\App\Helper\AbstractHelper
         $conn = $this->resourceConnection->getConnection();
         return $conn->fetchAll($sql);
     }
-    public function reindexUpdatedCategories($categoryId=null){
-        $reindex = $this->tagalysConfiguration->getConfig('listing_pages:reindex_category_product_after_updates', true);
-        if($reindex){
-            if (isset($categoryId)){
-                array_push($this->updatedCategories, $categoryId);
+
+    public function reindexCategoryProducts($categoryIds, $categoryType = self::PLATFORM_CREATED, $force = false){
+        if ($force || $this->tagalysConfiguration->isReindexAllowed($categoryType)) {
+            if (!is_array($categoryIds)) {
+                $categoryIds = [$categoryIds];
             }
-            $this->updatedCategories = array_unique($this->updatedCategories);
-            $this->logger->info("reindexUpdatedCategories: categoryIds: ".json_encode($this->updatedCategories));
-            $indexer = $this->indexerFactory->create()->load('catalog_category_product');
-            $indexer->reindexList($this->updatedCategories);
-            $clearCache = $this->tagalysConfiguration->getConfig('listing_pages:clear_cache_after_reindex', true);
-            if ($clearCache) {
-                // move this check inside the cache clear function
-                $this->clearCacheForCategories($this->updatedCategories);
+
+            $categoryIds = array_unique($categoryIds);
+            $this->indexerFactory->create()->load('catalog_category_product')->reindexList($categoryIds);
+
+            $this->logger->info("reindexCategoryProducts: categoryIds: ".json_encode($categoryIds));
+
+            if ($this->tagalysConfiguration->isCacheClearAllowed($categoryType)) {
+                $this->clearCacheForCategories($categoryIds);
             }
+            return true;
         }
-        $this->updatedCategories = [];
+        return false;
     }
 
     public function clearCacheForCategories($categoryIds) {
@@ -1000,14 +1007,13 @@ class Category extends \Magento\Framework\App\Helper\AbstractHelper
     }
 
     public function reindexUpdatedProducts($productIds) {
-        $indexer = $this->indexerFactory->create()->load('catalog_product_category');
-        $reindex = $this->tagalysConfiguration->getConfig('listing_pages:reindex_category_product_after_updates', true);
-        if ($reindex) {
+        if ($this->tagalysConfiguration->isReindexAllowed()) {
             if (!is_array($productIds)) {
                 $productIds = [$productIds];
             }
-            $this->logger->info("reindexUpdatedProducts: productIds: " . json_encode($productIds));
+            $indexer = $this->indexerFactory->create()->load('catalog_product_category');
             $indexer->reindexList($productIds);
+            $this->logger->info("reindexUpdatedProducts: productIds: " . json_encode($productIds));
         }
     }
 
