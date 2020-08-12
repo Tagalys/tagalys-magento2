@@ -136,6 +136,16 @@ class Search extends Generic
             'tabindex' => 1
         ));
 
+        $searchFieldset->addField('search_override_layout_name', 'text', array(
+            'name'      => 'search_override_layout_name',
+            'label'     => __('Search result page layout'),
+            'placeholder' => '(use default)',
+            'value'  => $this->tagalysConfiguration->getConfig("search:override_layout_name"),
+            'required'  => false,
+            'style'   => "width:100%",
+            'after_element_html' => '<small>Mention the name of the template tagalys should use for rendering the search results page. Leave empty to use the default template.</small>',
+            'tabindex' => 1
+        ));
 
         $searchFieldset->addField('submit', 'submit', array(
             'name' => 'tagalys_submit_action',

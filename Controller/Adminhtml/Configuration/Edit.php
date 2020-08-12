@@ -153,6 +153,7 @@ class Edit extends \Magento\Backend\App\Action
                     $this->tagalysConfiguration->setConfig('stores_for_search', $params['stores_for_search'], true);
                     $this->tagalysConfiguration->setConfig('search_box_selector', $params['search_box_selector']);
                     $this->tagalysConfiguration->setConfig('suggestions_align_to_parent_selector', $params['suggestions_align_to_parent_selector']);
+                    $this->tagalysConfiguration->setConfig('search:override_layout_name', $params['search_override_layout_name']);
                     $this->tagalysApi->log('warn', 'search:enabled:'.$params['enable_search']);
                     $redirectToTab = 'search';
                     break;
