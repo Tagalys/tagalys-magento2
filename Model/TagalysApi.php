@@ -199,6 +199,11 @@ class TagalysApi implements TagalysManagementInterface
                     $this->tagalysCategoryHelper->clearCacheForCategories($params['category_ids']);
                     $response = ['status' => 'OK', 'message' => 'cleared'];
                     break;
+                case 'reindex_categories':
+                    $this->logger->info("clear_category_caches: params: " . json_encode($params));
+                    $res = $this->tagalysCategoryHelper->reindexCategoryProducts($params['category_ids'], '', true);
+                    $response = ['status' => 'OK', 'reindexed' => $res];
+                    break;
                 case 'get_plugin_version':
                     $response = ['status' => 'OK', 'plugin_version' => $this->tagalysApi->getPluginVersion()];
                     break;

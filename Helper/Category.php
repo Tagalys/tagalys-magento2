@@ -8,6 +8,8 @@ class Category extends \Magento\Framework\App\Helper\AbstractHelper
      */
     private $tagalysConfiguration;
 
+    private $logger;
+
     const PLATFORM_CREATED = 'platform_created';
     const TAGALYS_CREATED = 'tagalys_created';
 
@@ -325,15 +327,27 @@ class Category extends \Magento\Framework\App\Helper\AbstractHelper
                     $syncStatus['updated_at'] = $timeNow;
                     $this->tagalysConfiguration->setConfig('categories_sync_status', $syncStatus, true);
                     foreach ($categoriesToSync as $categoryToSync) {
-                        $storeId = $categoryToSync->getStoreId();
-                        $categoryId = $categoryToSync->getCategoryId();
-                        $response = $this->tagalysApi->storeApiCall($storeId . '', "/v1/mpages/_product_positions", ['id_at_platform' => $categoryId]);
-                        if ($response != false) {
-                            if($this->isTagalysCreated($categoryId)){
-                                $this->bulkAssignProductsToCategoryAndRemove($storeId, $categoryId, $response['positions']);
-                            } else {
-                                $this->performCategoryPositionUpdate($storeId, $categoryId, $response['positions']);
+                        try {
+                            $storeId = $categoryToSync->getStoreId();
+                            $categoryId = $categoryToSync->getCategoryId();
+                            $response = $this->tagalysApi->storeApiCall($storeId . '', "/v1/mpages/_product_positions", ['id_at_platform' => 24]);
+                            echo json_encode($response);
+                            if ($response != false) {
+                                $category = $this->categoryFactory->create()->load($categoryId);
+                                if($this->categoryExist($category)) {
+                                    if($this->isTagalysCreated($category)){
+                                        $this->bulkAssignProductsToCategoryAndRemove($storeId, $categoryId, $response['positions']);
+                                    } else {
+                                        $this->performCategoryPositionUpdate($storeId, $categoryId, $response['positions']);
+                                    }
+                                } else {
+                                    $categoryToSync->addData(['positions_sync_required' => 0, 'marked_for_deletion' => 1])->save();
+                                }
                             }
+                        } catch (\Throwable $e) {
+                            // should we mark it sa updated?
+                            // $categoryToSync->addData(['positions_sync_required' => 0])->save();
+                            $this->logger->err(json_encode(["updatePositionsIfRequired: category: $categoryId for store:$storeId", "error: {$e->getMessage()}", $e->getTrace()]));
                         }
                     }
                     $numberCompleted += $categoriesToSync->count();
@@ -1155,12 +1169,11 @@ class Category extends \Magento\Framework\App\Helper\AbstractHelper
         return $activeStores;
     }
 
-    public function categoryExist($categoryId){
-        $categoryId = $this->categoryFactory->create()->load($categoryId)->getId();
-        if ($categoryId){
-            return true;
+    public function categoryExist($category){
+        if(!is_object($category)) {
+            $category = $this->categoryFactory->create()->load($category);
         }
-        return false;
+        return !empty($category->getId());
     }
 
     public function getIndexTableName($storeId) {
