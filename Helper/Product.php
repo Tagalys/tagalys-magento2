@@ -739,4 +739,11 @@ class Product extends \Magento\Framework\App\Helper\AbstractHelper
         });
     }
 
+    public function getIdsBySku($skus) {
+        $conn = $this->resourceConnection->getConnection();
+        $cpe = $this->resourceConnection->getTableName('catalog_product_entity');
+        $select = $conn->select()->from($cpe, ['entity_id as product_id', 'sku'])->where('sku IN (?)', $skus);
+        return $this->runSqlSelect($select);
+    }
+
 }
