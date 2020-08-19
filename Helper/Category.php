@@ -348,7 +348,9 @@ class Category extends \Magento\Framework\App\Helper\AbstractHelper
                             $errorData = [
                                 'store_id' => $storeId,
                                 'message' => $e->getMessage(),
-                                'trace' => $e->getTrace()
+                                'trace' => $e->getTrace(),
+                                'file' => $e->getFile(),
+                                'line' => $e->getLine()
                             ];
                             $this->tagalysApi->log('error', "Exception in updatePositionsIfRequired: category: $categoryId", $errorData);
                         }
