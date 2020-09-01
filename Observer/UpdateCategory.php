@@ -28,23 +28,25 @@ class UpdateCategory implements \Magento\Framework\Event\ObserverInterface
             }
             $this->updateTagalysCategoryStatus($category);
             $products = $category->getPostedProducts();
-            $oldProducts = $category->getProductsPosition();
-            $insert = array_diff_key($products, $oldProducts);
-            $delete = array_diff_key($oldProducts, $products);
+            if(!is_null($products)){ // products have changed
+                $oldProducts = $category->getProductsPosition();
+                $insert = array_diff_key($products, $oldProducts);
+                $delete = array_diff_key($oldProducts, $products);
 
-            $insertedProductIds = array();
-            $modifiedProductIds = array();
-            foreach($insert as $productId => $pos) {
-                array_push($insertedProductIds, $productId);
-                array_push($modifiedProductIds, $productId);
-            }
-            foreach($delete as $productId => $pos) {
-                array_push($modifiedProductIds, $productId);
-            }
-            $this->queueHelper->insertUnique($modifiedProductIds);
-            if (count($insertedProductIds) > 0) {
-                $this->tagalysCategory->pushDownProductsIfRequired($insertedProductIds, array($category->getId()), 'category');
-                $this->tagalysCategory->categoryUpdateAfter($category);
+                $insertedProductIds = array();
+                $modifiedProductIds = array();
+                foreach($insert as $productId => $pos) {
+                    array_push($insertedProductIds, $productId);
+                    array_push($modifiedProductIds, $productId);
+                }
+                foreach($delete as $productId => $pos) {
+                    array_push($modifiedProductIds, $productId);
+                }
+                $this->queueHelper->insertUnique($modifiedProductIds);
+                if (count($insertedProductIds) > 0) {
+                    $this->tagalysCategory->pushDownProductsIfRequired($insertedProductIds, array($category->getId()), 'category');
+                    $this->tagalysCategory->categoryUpdateAfter($category);
+                }
             }
         } catch (\Throwable $e) { }
     }
