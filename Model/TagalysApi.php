@@ -301,7 +301,7 @@ class TagalysApi implements TagalysManagementInterface
                         'values' => $this->tagalysProduct->getBooleanAttrValueForAPI($params['store_id'], $params['product_id'])
                     ];
                     break;
-                case 'get_ids_by_sku':
+                case 'get_id_by_sku':
                     $response = [
                         'status' => 'OK',
                         'ids' => $this->tagalysProduct->getIdsBySku($params['skus'])

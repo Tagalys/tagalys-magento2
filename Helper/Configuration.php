@@ -99,6 +99,22 @@ class Configuration extends \Magento\Framework\App\Helper\AbstractHelper
     public function getConfig($configPath, $jsonDecode = false) {
         $configValue = $this->configFactory->create()->load($configPath)->getValue();
         if ($configValue === NULL) {
+            $legacyPathMapping = [
+                "listing_pages:allow_reindex_for_mcc" => "listing_pages:reindex_category_product_after_updates",
+                "listing_pages:allow_cache_clear_for_mcc" => "listing_pages:clear_cache_after_reindex",
+                "listing_pages:allow_reindex_for_tcc" => "listing_pages:reindex_category_product_after_updates",
+                "listing_pages:allow_cache_clear_for_tcc" => "listing_pages:clear_cache_after_reindex",
+                "listing_pages:update_position_via_db_for_mcc" => "listing_pages:update_position_via_db",
+                "listing_pages:update_position_via_db_for_tcc" => "listing_pages:update_smart_category_products_via_db"
+            ];
+            if (array_key_exists($configPath, $legacyPathMapping)) {
+                $configValue = $this->configFactory->create()->load($legacyPathMapping[$configPath])->getValue();
+                if ($configValue !== NULL) {
+                    $this->setConfig($configPath, $configValue);
+                }
+            }
+        }
+        if ($configValue === NULL) {
             /* Key:
                 mcc -> magento created category
                 tcc -> tagalys created category
