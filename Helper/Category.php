@@ -651,7 +651,7 @@ class Category extends \Magento\Framework\App\Helper\AbstractHelper
         if ($this->tagalysConfiguration->isProductSortingReverse()) {
             $positions = $this->reverseProductPositionsHash($positions);
         }
-        $updateViaDb = $this->tagalysConfiguration->getConfig('listing_pages:update_position_via_db', true);
+        $updateViaDb = $this->tagalysConfiguration->getConfig('listing_pages:update_position_via_db_for_mcc', true);
         $considerMultiStore = $this->tagalysConfiguration->getConfig('listing_pages:consider_multi_store_during_position_updates', true);
         if($updateViaDb || $considerMultiStore){
             $this->pushDownProductsViaDb($storeId, $categoryId, $positions, $considerMultiStore);
@@ -663,7 +663,7 @@ class Category extends \Magento\Framework\App\Helper\AbstractHelper
         }
         $this->_setPositionSortOrder($storeId, $categoryId);
         $this->updateWithData($storeId, $categoryId, ['positions_sync_required' => 0, 'positions_synced_at' => date("Y-m-d H:i:s"), 'status' => 'powered_by_tagalys']);
-        $this->reindexCategoryProducts($categoryId);
+        $this->reindexCategoryProducts($categoryId, self::PLATFORM_CREATED);
         return true;
     }
 
@@ -823,7 +823,7 @@ class Category extends \Magento\Framework\App\Helper\AbstractHelper
                 $productPositions = $this->reverseProductPositionsHash($productPositions);
             }
             $productPositions = $this->filterDeletedProducts($productPositions);
-            $updateSmartCategoryProductsViaDb = $this->tagalysConfiguration->getConfig('listing_pages:update_smart_category_products_via_db', true);
+            $updateSmartCategoryProductsViaDb = $this->tagalysConfiguration->getConfig('listing_pages:update_position_via_db_for_tcc', true);
             $considerMultiStore = $this->tagalysConfiguration->getConfig('listing_pages:consider_multi_store_during_position_updates', true);
             if($updateSmartCategoryProductsViaDb){
                 $productsToRemove = $this->getProductsToRemove($storeId, $categoryId, $productPositions, $considerMultiStore);
@@ -1004,7 +1004,7 @@ class Category extends \Magento\Framework\App\Helper\AbstractHelper
             $categoryIds = array_unique($categoryIds);
             $this->indexerFactory->create()->load('catalog_category_product')->reindexList($categoryIds);
 
-            $this->logger->info("reindexCategoryProducts: categoryIds: ".json_encode($categoryIds));
+            $this->logger->info("reindexCategoryProducts: reindexed categoryIds: " . json_encode($categoryIds));
 
             if ($this->tagalysConfiguration->isCacheClearAllowed($categoryType)) {
                 $this->clearCacheForCategories($categoryIds);
@@ -1023,6 +1023,7 @@ class Category extends \Magento\Framework\App\Helper\AbstractHelper
         // Tagalys custom cache clear event
         $categoryIdsObj = new \Magento\Framework\DataObject(array('category_ids' => $categoryIds));
         $this->eventManager->dispatch('tagalys_category_positions_updated', ['tgls_data' => $categoryIdsObj]);
+        $this->logger->info("clearCacheForCategories: cleared page cache for categoryIds: " . json_encode($categoryIds));
     }
 
     public function reindexUpdatedProducts($productIds) {
