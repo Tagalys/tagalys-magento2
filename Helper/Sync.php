@@ -152,6 +152,15 @@ class Sync extends \Magento\Framework\App\Helper\AbstractHelper
             // 3. sync pending categories
             $this->tagalysCategory->sync($max_categories);
 
+            // perform priority updates and mini feed sync
+            $cronUnlocked = $this->lockedCronOperation(function() use ($stores) {
+                $this->runPriorityUpdatesIfRequired($stores);
+                $this->runMiniFeedIfRequired($stores);
+            });
+            if(!$cronUnlocked) {
+                return false;
+            }
+
             // 4. check updated_at if enabled
             $productUpdateDetectionMethods = $this->tagalysConfiguration->getConfig('product_update_detection_methods', true);
             if (in_array('db.catalog_product_entity.updated_at', $productUpdateDetectionMethods)) {
@@ -159,24 +168,9 @@ class Sync extends \Magento\Framework\App\Helper\AbstractHelper
             }
 
             // 5. check queue size and (clear_queue, trigger_feed) if required
-            $remainingProductUpdates = $this->queueFactory->create()->getCollection()->count();
-            $clearQueueAndTriggerResync = false;
-            if ($remainingProductUpdates > 1) { // don't waste query cycles if updates are under 100
-                foreach($stores as $i => $storeId) {
-                    $totalProducts = $this->getProductsCount($storeId);
-                    $cutoff = 0.33 * $totalProducts;
-                    if ($remainingProductUpdates > $cutoff && $remainingProductUpdates > 1000) {
-                        $clearQueueAndTriggerResync = true;
-                        break;
-                    }
-                }
-                if ($clearQueueAndTriggerResync) {
-                    $this->queueHelper->truncate();
-                    foreach ($stores as $i => $storeId) {
-                        $this->triggerFeedForStore($storeId, false, false, true);
-                    }
-                    $this->tagalysApi->log('warn', 'Clearing updates queue and triggering full products sync', array('remainingProductUpdates' => $remainingProductUpdates));
-                }
+            $remainingProductUpdates = $this->queueFactory->create()->getCollection()->addFieldToFilter('priority', 0)->getSize();
+            if ($remainingProductUpdates > 100) { // don't waste query cycles if updates are under 100
+                $this->truncateQueueAndTriggerSyncIfRequired($stores, $remainingProductUpdates);
             }
 
             // 6. get product ids from update queue to be processed in this cron instance
@@ -184,7 +178,6 @@ class Sync extends \Magento\Framework\App\Helper\AbstractHelper
             // products from obervers are added to queue without any checks. so add related configurable products if necessary
             foreach($productIdsFromUpdatesQueueForCronInstance as $productId) {
                 $this->queueHelper->queuePrimaryProductIdFor($productId);
-
             }
 
             // 7. perform feed, updates sync (updates only if feed sync is finished)
@@ -236,7 +229,6 @@ class Sync extends \Magento\Framework\App\Helper\AbstractHelper
 
     public function _syncForStore($storeId, $productIdsFromUpdatesQueueForCronInstance) {
         $updatesPerformed = false;
-        $this->runSelectiveSyncIfRequired($storeId);
         $feedResponse = $this->_generateFilePart($storeId, 'feed');
         $syncFileStatus = $feedResponse['syncFileStatus'];
         if (!$this->_isFeedGenerationInProgress($storeId, $syncFileStatus)) {
@@ -814,7 +806,8 @@ class Sync extends \Magento\Framework\App\Helper\AbstractHelper
         }
     }
 
-    public function lockedCronOperation($configPath, $callback) {
+    public function lockedCronOperation($callback) {
+        $configPath = 'cron_status';
         $status = $this->tagalysConfiguration->getConfig($configPath, true);
         $now = new \DateTime();
         if($status and isset($status['locked_by'])) {
@@ -836,7 +829,7 @@ class Sync extends \Magento\Framework\App\Helper\AbstractHelper
             'status' => 'processing'
         ]);
 
-        $res = $callback();
+        $callback();
 
         $this->tagalysConfiguration->updateJsonConfig($configPath, [
             'locked_by' => null,
@@ -844,53 +837,59 @@ class Sync extends \Magento\Framework\App\Helper\AbstractHelper
             'status' => 'finished'
         ]);
 
-        return $res;
+        return true;
     }
-    public function touchLock($configPath) {
-        $this->tagalysConfiguration->updateJsonConfig($configPath, ['updated_at' => $this->now()]);
+    public function touchLock() {
+        $this->tagalysConfiguration->updateJsonConfig('cron_status', ['updated_at' => $this->now()]);
     }
     public function now() {
         $utcNow = new \DateTime("now", new \DateTimeZone('UTC'));
         return $utcNow->format(\DateTime::ATOM);
     }
-
-    public function isSelectiveSyncScheduled($selectiveSyncConfig) {
-        return true;
+    public function sleepIfRequired($productCount) {
+        $cronConfig = $this->tagalysConfiguration->getConfig('cron_config', true, true);
+        if($cronConfig and array_key_exists('sleep', $cronConfig)) {
+            if($productCount % $cronConfig['sleep_every'] == 0) {
+                // don't sleep for more than 5 min
+                sleep(min($cronConfig['sleep'], 300));
+            }
+        }
     }
 
-    public function runSelectiveSyncIfRequired($storeId) {
-        $selectiveSyncConfig = $this->tagalysConfiguration->getSelectiveSyncConfig($storeId);
-        if($this->isSelectiveSyncScheduled($selectiveSyncConfig)) {
-            $configPath = "selective_sync_config_for_store_$storeId";
-            $this->lockedCronOperation($configPath, function() use ($storeId, $selectiveSyncConfig, $configPath) {
+    public function isMiniFeedcScheduled($storeId) {
+        return !!$this->tagalysConfiguration->getConfig("sync:trigger_mini_feed", true);
+    }
+
+    public function runMiniFeedIfRequired($stores) {
+        foreach($stores as $storeId) {
+            if($this->isMiniFeedcScheduled($storeId)) {
                 $fileName = $this->_getNewSyncFileName($storeId, 'mini-feed');
                 $collection = $this->_getCollection($storeId);
-                $productsToWrite = [];
-
-                $productCount = 0;
-                foreach($collection as $product) {
-                    $productDetails = $this->tagalysProduct->getSelectiveProductDetails($storeId, $product);
-                    $productsToWrite[] = json_encode($productDetails);
-                    echo json_encode($productDetails);
-
-                    $productCount++;
-                    if($productCount % 50) {
-                        $this->touchLock($configPath);
-                        $this->writeToFile($fileName, $productsToWrite);
-                        $productsToWrite = [];
-                    }
-                    if($productCount % $selectiveSyncConfig['sleep_every'] == 0) {
-                        // don't sleep for more than 5 min
-                        sleep(min($selectiveSyncConfig['sleep'], 300));
-                    }
-                }
-                if(count($productsToWrite) > 0) {
-                    $this->writeToFile($fileName, $productsToWrite);
-                }
-            });
-            return true;
+                $this->syncToFile($storeId, $fileName, $collection, function($storeId, $product) {
+                    return $this->tagalysProduct->getSelectiveProductDetails($storeId, $product);
+                });
+            }
         }
-        return false;
+    }
+
+    public function syncToFile($storeId, $fileName, $collection, $getProductDetails) {
+        $rowsToWrite = [];
+        $productCount = 0;
+        foreach($collection as $product) {
+            $productDetails = $getProductDetails($storeId, $product);
+            $rowsToWrite[] = json_encode($productDetails);
+
+            $productCount++;
+            if($productCount % 50) {
+                $this->touchLock();
+                $this->writeToFile($fileName, $rowsToWrite);
+                $rowsToWrite = [];
+            }
+            $this->sleepIfRequired($productCount);
+        }
+        if(count($rowsToWrite) > 0) {
+            $this->writeToFile($fileName, $rowsToWrite);
+        }
     }
 
     public function writeToFile($fileName, $rows) {
@@ -901,5 +900,52 @@ class Sync extends \Magento\Framework\App\Helper\AbstractHelper
         }
         $stream->unlock();
         $stream->close();
+    }
+
+    public function getProductIdsForPriorityUpdate() {
+        $collection = $this->queueFactory->create()->getCollection()->addFieldToFilter('priority', ['gt' => 0])->setOrder('priority', 'desc');
+        $productIds = array_map(function($item){
+            return $item['product_id'];
+        }, $collection->toArray(['product_id'])['items']);
+        return $productIds;
+    }
+
+    public function runPriorityUpdatesIfRequired($stores) {
+        $productIds = $this->getProductIdsForPriorityUpdate();
+        $updatesCount = count($productIds);
+        if($updatesCount > 1000) {
+            $syncTriggered = $this->truncateQueueAndTriggerSyncIfRequired($stores, $updatesCount);
+            if($syncTriggered) {
+                $updatesCount = 0;
+            }
+        }
+        if($updatesCount > 0) {
+            foreach($stores as $storeId) {
+                $collection = $this->_getCollection($storeId, 'updates', $productIds);
+                $this->syncToFile($storeId, 'priority_updates', $collection, function($storeId, $product) {
+                    return $this->tagalysProduct->productDetails($storeId, $product, true);
+                });
+            }
+        }
+    }
+
+    public function truncateQueueAndTriggerSyncIfRequired($stores, $updatesCount) {
+        $clearQueueAndTriggerResync = false;
+        foreach($stores as $i => $storeId) {
+            $totalProducts = $this->getProductsCount($storeId);
+            $cutoff = 0.33 * $totalProducts;
+            if ($updatesCount > $cutoff && $updatesCount > 1000) {
+                $clearQueueAndTriggerResync = true;
+                break;
+            }
+        }
+        if ($clearQueueAndTriggerResync) {
+            $this->queueHelper->truncate();
+            foreach ($stores as $storeId) {
+                $this->triggerFeedForStore($storeId, false, false, true);
+            }
+            $this->tagalysApi->log('warn', 'Clearing updates queue and triggering full products sync', array('remainingProductUpdates' => $updatesCount));
+        }
+        return $clearQueueAndTriggerResync;
     }
 }

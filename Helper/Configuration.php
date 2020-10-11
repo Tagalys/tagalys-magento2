@@ -169,7 +169,8 @@ class Configuration extends \Magento\Framework\App\Helper\AbstractHelper
                 'sync:multi_source_inventory_used' => 'false',
                 'sync:whitelisted_product_attributes' => '[]',
                 'stores_for_search' => '[]',
-                'sync:read_boolean_attributes_via_db' => 'false'
+                'sync:read_boolean_attributes_via_db' => 'false',
+                'cron_status' => '[]',
             );
             if (array_key_exists($configPath, $defaultConfigValues)) {
                 $configValue = $defaultConfigValues[$configPath];
@@ -989,20 +990,5 @@ class Configuration extends \Magento\Framework\App\Helper\AbstractHelper
             $newValue = $updateValue;
         }
         $this->setConfig($path, $newValue, true);
-    }
-
-    public function getSelectiveSyncConfig($storeId) {
-        $defaultConfig = [
-            'sleep' => 30,
-            'sleep_every' => 1000,
-            'scheduled' => false
-        ];
-        $path = "selective_sync_config_for_store_$storeId";
-        $config = $this->getConfig($path, true);
-        if ($config === NULL) {
-            $this->setConfig($path, $defaultConfig, true);
-            return $defaultConfig;
-        }
-        return $config;
     }
 }
