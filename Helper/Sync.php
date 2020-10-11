@@ -4,6 +4,11 @@ namespace Tagalys\Sync\Helper;
 
 class Sync extends \Magento\Framework\App\Helper\AbstractHelper
 {
+    /**
+     * @param \Tagalys\Sync\Helper\Configuration
+     */
+    private $tagalysConfiguration;
+
     public function __construct(
         \Magento\Framework\Filesystem $filesystem,
         \Tagalys\Sync\Helper\Configuration $tagalysConfiguration,
@@ -92,7 +97,7 @@ class Sync extends \Magento\Framework\App\Helper\AbstractHelper
         return $this->_getCollection($storeId, 'feed')->getSize();
     }
 
-    public function _getCollection($storeId, $type, $productIdsFromUpdatesQueueForCronInstance = array()) {
+    public function _getCollection($storeId, $type = 'feed', $productIdsFromUpdatesQueueForCronInstance = array()) {
         $websiteId = $this->storeManager->getStore($storeId)->getWebsiteId();
         $collection = $this->productFactory->create()->getCollection()
             ->setStoreId($storeId)
@@ -231,6 +236,7 @@ class Sync extends \Magento\Framework\App\Helper\AbstractHelper
 
     public function _syncForStore($storeId, $productIdsFromUpdatesQueueForCronInstance) {
         $updatesPerformed = false;
+        $this->runSelectiveSyncIfRequired($storeId);
         $feedResponse = $this->_generateFilePart($storeId, 'feed');
         $syncFileStatus = $feedResponse['syncFileStatus'];
         if (!$this->_isFeedGenerationInProgress($storeId, $syncFileStatus)) {
@@ -806,5 +812,94 @@ class Sync extends \Magento\Framework\App\Helper\AbstractHelper
         foreach ($this->tagalysConfiguration->getStoresForTagalys() as $storeId) {
             $this->triggerFeedForStore($storeId, true, false, true);
         }
+    }
+
+    public function lockedCronOperation($configPath, $callback) {
+        $status = $this->tagalysConfiguration->getConfig($configPath, true);
+        $now = new \DateTime();
+        if($status and isset($status['locked_by'])) {
+            $lockedAt = new \DateTime($status['updated_at']);
+            $intervalSeconds = $now->getTimestamp() - $lockedAt->getTimestamp();
+            $minSecondsForOverride = 10 * 60;
+            if ($intervalSeconds < $minSecondsForOverride) {
+                // updated less than 10 min ago
+                return false;
+            } else {
+                // log: override lock
+            }
+        }
+
+        $pid = $this->random->getRandomString(24);
+        $this->tagalysConfiguration->updateJsonConfig($configPath, [
+            'locked_by' => $pid,
+            'updated_at' => $this->now(),
+            'status' => 'processing'
+        ]);
+
+        $res = $callback();
+
+        $this->tagalysConfiguration->updateJsonConfig($configPath, [
+            'locked_by' => null,
+            'updated_at' => $this->now(),
+            'status' => 'finished'
+        ]);
+
+        return $res;
+    }
+    public function touchLock($configPath) {
+        $this->tagalysConfiguration->updateJsonConfig($configPath, ['updated_at' => $this->now()]);
+    }
+    public function now() {
+        $utcNow = new \DateTime("now", new \DateTimeZone('UTC'));
+        return $utcNow->format(\DateTime::ATOM);
+    }
+
+    public function isSelectiveSyncScheduled($selectiveSyncConfig) {
+        return true;
+    }
+
+    public function runSelectiveSyncIfRequired($storeId) {
+        $selectiveSyncConfig = $this->tagalysConfiguration->getSelectiveSyncConfig($storeId);
+        if($this->isSelectiveSyncScheduled($selectiveSyncConfig)) {
+            $configPath = "selective_sync_config_for_store_$storeId";
+            $this->lockedCronOperation($configPath, function() use ($storeId, $selectiveSyncConfig, $configPath) {
+                $fileName = $this->_getNewSyncFileName($storeId, 'mini-feed');
+                $collection = $this->_getCollection($storeId);
+                $productsToWrite = [];
+
+                $productCount = 0;
+                foreach($collection as $product) {
+                    $productDetails = $this->tagalysProduct->getSelectiveProductDetails($storeId, $product);
+                    $productsToWrite[] = json_encode($productDetails);
+                    echo json_encode($productDetails);
+
+                    $productCount++;
+                    if($productCount % 50) {
+                        $this->touchLock($configPath);
+                        $this->writeToFile($fileName, $productsToWrite);
+                        $productsToWrite = [];
+                    }
+                    if($productCount % $selectiveSyncConfig['sleep_every'] == 0) {
+                        // don't sleep for more than 5 min
+                        sleep(min($selectiveSyncConfig['sleep'], 300));
+                    }
+                }
+                if(count($productsToWrite) > 0) {
+                    $this->writeToFile($fileName, $productsToWrite);
+                }
+            });
+            return true;
+        }
+        return false;
+    }
+
+    public function writeToFile($fileName, $rows) {
+        $stream = $this->directory->openFile("tagalys/$fileName", 'a');
+        $stream->lock();
+        foreach($rows as $row) {
+            $stream->write("$row\r\n");
+        }
+        $stream->unlock();
+        $stream->close();
     }
 }

@@ -460,93 +460,40 @@ class Product extends \Magento\Framework\App\Helper\AbstractHelper
         return array('details' => $productDetails, 'product_for_price'=>$productForPrice);
     }
 
-    public function productDetails($product, $storeId, $forceRegenerateThumbnail = false) {
-        if (!is_object($product)) {
-            $product = $this->productFactory->create()->setStoreId($storeId)->load($product);
-        }
-        $originalStoreId = $this->storeManager->getStore()->getId();
-        $originalCurrency = $this->storeManager->getStore()->getCurrentCurrencyCode();
-        $this->storeManager->setCurrentStore($storeId);
+    public function addPriceDetails($product, $productDetails)
+    {
         $store = $this->storeManager->getStore();
         $baseCurrency = $store->getBaseCurrencyCode();
         $allowedCurrencies = $store->getAvailableCurrencies(true);
-        $baseCurrencyNotAllowed = ($allowedCurrencies==null || !in_array($baseCurrency, $allowedCurrencies));
-        $useNewMethodToGetPriceValues = $this->tagalysConfiguration->getConfig('sync:use_get_final_price_for_sale_price', true);
-        $store->setCurrentCurrencyCode($baseCurrency);
-        // FIXME: stockRegistry deprecated
-        $stockItem = $this->stockRegistry->getStockItem($product->getId());
-        $productForPrice = $product;
-        $productDetails = array(
-            '__id' => $product->getId(),
-            '__magento_type' => $product->getTypeId(),
-            'name' => $product->getName(),
-            'link' => $product->getProductUrl(),
-            'sku' => $product->getSku(),
-            'scheduled_updates' => array(),
-            'introduced_at' => date(\DateTime::ATOM, strtotime($product->getCreatedAt())),
-            // potential optimization: the below line doesn't need to run for configurable products
-            'in_stock' => $stockItem->getIsInStock(),
-            'image_url' => $this->getProductImageUrl($storeId, $this->tagalysConfiguration->getConfig('product_image_attribute'), true, $product, $forceRegenerateThumbnail),
-            '__tags' => $this->getDirectProductTags($product, $storeId)
-        );
-
-        if ($productDetails['__magento_type'] == 'simple') {
-            $inventoryDetails = $this->getSimpleProductInventoryDetails($product, $stockItem);
-            $productDetails['in_stock'] = $inventoryDetails['in_stock'];
-            $productDetails['__inventory_total'] = $inventoryDetails['qty'];
-            $productDetails['__inventory_average'] = $inventoryDetails['qty'];
-        }
-
-        if ($productDetails['__magento_type'] == 'configurable') {
-            $result = $this->addAssociatedProductDetails($product, $productDetails, $storeId);
-            $productDetails = $result['details'];
-            $productForPrice = $result['product_for_price'];
-        }
-
-        if ($productDetails['__magento_type'] == 'grouped') {
-            $productForPrice = $this->getProductForPrices($product, $storeId);
-        }
-
-        $productDetails = $this->addProductRatingsFields($storeId, $product, $productDetails);
-
-        if ($this->tagalysConfiguration->getConfig("product_image_hover_attribute") != '') {
-            $productDetails['image_hover_url'] = $this->getProductImageUrl($storeId, $this->tagalysConfiguration->getConfig('product_image_hover_attribute'), false, $product, $forceRegenerateThumbnail);
-        }
-
-        $productDetails = array_merge($productDetails, $this->getProductFields($product));
-
-        // synced_at
-        $utcNow = new \DateTime("now", new \DateTimeZone('UTC'));
-        $timeNow =  $utcNow->format(\DateTime::ATOM);
-        $productDetails['synced_at'] = $timeNow;
-
-        // prices and sale price from/to
+        $baseCurrencyNotAllowed = ($allowedCurrencies == null || !in_array($baseCurrency, $allowedCurrencies));
+        $productDetails['scheduled_updates'] = [];
         if ($product->getTypeId() == 'bundle') {
             // already returning price in base currency. no conversion needed.
             $productDetails['price'] = $product->getPriceModel()->getTotalPrices($product, 'min', 1);
             $productDetails['sale_price'] = $product->getPriceModel()->getTotalPrices($product, 'min', 1);
         } else {
+            $useNewMethodToGetPriceValues = $this->tagalysConfiguration->getConfig('sync:use_get_final_price_for_sale_price', true, true);
             if($useNewMethodToGetPriceValues){
                 // returns values in base currency. Includes the catalog price rule and special price.
-                $productDetails['price'] = $productForPrice->getPrice();
-                $productDetails['sale_price'] = $productForPrice->getFinalPrice();
+                $productDetails['price'] = $product->getPrice();
+                $productDetails['sale_price'] = $product->getFinalPrice();
             } else {
                 // https://magento.stackexchange.com/a/152692/80853
                 // returns values in current currency (set to base currency if base is in allowed currencies).
-                $productDetails['price'] = $productForPrice->getPriceInfo()->getPrice('regular_price')->getAmount()->getValue();
-                $productDetails['sale_price'] = $productForPrice->getPriceInfo()->getPrice('final_price')->getAmount()->getValue();
+                $productDetails['price'] = $product->getPriceInfo()->getPrice('regular_price')->getAmount()->getValue();
+                $productDetails['sale_price'] = $product->getPriceInfo()->getPrice('final_price')->getAmount()->getValue();
                 if($baseCurrencyNotAllowed){
                     $productDetails['price'] = $this->getPriceInBaseCurrency($productDetails['price']);
                     $productDetails['sale_price'] = $this->getPriceInBaseCurrency($productDetails['sale_price']);
                 }
             }
             /** Changing productForPrices->product (check if works) */
-            if ($productForPrice->getSpecialFromDate() != null) {
-                $specialPriceFromDatetime = new \DateTime($productForPrice->getSpecialFromDate(), new \DateTimeZone($this->timezoneInterface->getConfigTimezone()));
+            if ($product->getSpecialFromDate() != null) {
+                $specialPriceFromDatetime = new \DateTime($product->getSpecialFromDate(), new \DateTimeZone($this->timezoneInterface->getConfigTimezone()));
                 $currentDatetime = new \DateTime("now", new \DateTimeZone('UTC'));
                 if ($currentDatetime->getTimestamp() >= $specialPriceFromDatetime->getTimestamp()) {
-                    if ($productForPrice->getSpecialToDate() != null) {
-                        $specialPriceToDatetime = new \DateTime($productForPrice->getSpecialToDate(), new \DateTimeZone($this->timezoneInterface->getConfigTimezone()));
+                    if ($product->getSpecialToDate() != null) {
+                        $specialPriceToDatetime = new \DateTime($product->getSpecialToDate(), new \DateTimeZone($this->timezoneInterface->getConfigTimezone()));
                         if ($currentDatetime->getTimestamp() <= ($specialPriceToDatetime->getTimestamp() + 24*60*60 - 1)) {
                             // sale price is currently valid. record to date
                             array_push($productDetails['scheduled_updates'], array('at' => str_replace('00:00:00', '23:59:59', $specialPriceToDatetime->format('Y-m-d H:i:sP')), 'updates' => array('sale_price' => $productDetails['price'])));
@@ -558,28 +505,121 @@ class Product extends \Magento\Framework\App\Helper\AbstractHelper
                     }
                 } else {
                     // future sale - record other sale price and from/to datetimes
-                    $specialPrice = $productForPrice->getSpecialPrice();
+                    $specialPrice = $product->getSpecialPrice();
                     if ($specialPrice != null && $specialPrice > 0) {
                         if($baseCurrencyNotAllowed){
                             $specialPrice = $this->getPriceInBaseCurrency($specialPrice);
                         }
-                        $specialPriceFromDatetime = new \DateTime($productForPrice->getSpecialFromDate(), new \DateTimeZone($this->timezoneInterface->getConfigTimezone()));
+                        $specialPriceFromDatetime = new \DateTime($product->getSpecialFromDate(), new \DateTimeZone($this->timezoneInterface->getConfigTimezone()));
                         array_push($productDetails['scheduled_updates'], array('at' => $specialPriceFromDatetime->format('Y-m-d H:i:sP'), 'updates' => array('sale_price' => $specialPrice)));
-                        if ($productForPrice->getSpecialToDate() != null) {
-                            $specialPriceToDatetime = new \DateTime($productForPrice->getSpecialToDate(), new \DateTimeZone($this->timezoneInterface->getConfigTimezone()));
+                        if ($product->getSpecialToDate() != null) {
+                            $specialPriceToDatetime = new \DateTime($product->getSpecialToDate(), new \DateTimeZone($this->timezoneInterface->getConfigTimezone()));
                             array_push($productDetails['scheduled_updates'], array('at' => str_replace('00:00:00', '23:59:59', $specialPriceToDatetime->format('Y-m-d H:i:sP')), 'updates' => array('sale_price' => $productDetails['price'])));
                         }
                     }
                 }
             }
         }
+        return $productDetails;
+    }
 
-        // New
-        $currentDatetime = new \DateTime("now", new \DateTimeZone('UTC'));
-        $productDetails['__new'] = false;
-        if ($product->getNewsFromDate() != null) {
-            $newFromDatetime = new \DateTime($product->getNewsFromDate(), new \DateTimeZone($this->timezoneInterface->getConfigTimezone()));
-            if ($currentDatetime->getTimestamp() >= $newFromDatetime->getTimestamp()) {
+    public function addSyncedAtTime($productDetails) {
+        $utcNow = new \DateTime("now", new \DateTimeZone('UTC'));
+        $timeNow =  $utcNow->format(\DateTime::ATOM);
+        $productDetails['synced_at'] = $timeNow;
+        return $productDetails;
+    }
+
+    public function dispatchProductDetails($productDetails) {
+        $productDetailsObj = new \Magento\Framework\DataObject(array('product_details' => $productDetails));
+        $this->eventManager->dispatch('tagalys_read_product_details', ['tgls_data' => $productDetailsObj]);
+        $productDetails = $productDetailsObj->getProductDetails();
+        return $productDetails;
+    }
+
+    public function productDetails($product, $storeId, $forceRegenerateThumbnail = false) {
+        if (!is_object($product)) {
+            $product = $this->productFactory->create()->setStoreId($storeId)->load($product);
+        }
+        return $this->tagalysConfiguration->processInStoreContext($storeId, function() use ($product, $storeId, $forceRegenerateThumbnail) {
+            // FIXME: stockRegistry deprecated
+            $stockItem = $this->stockRegistry->getStockItem($product->getId());
+            $productForPrice = $product;
+            $productDetails = array(
+                '__id' => $product->getId(),
+                '__magento_type' => $product->getTypeId(),
+                'name' => $product->getName(),
+                'link' => $product->getProductUrl(),
+                'sku' => $product->getSku(),
+                'scheduled_updates' => array(),
+                'introduced_at' => date(\DateTime::ATOM, strtotime($product->getCreatedAt())),
+                // potential optimization: the below line doesn't need to run for configurable products
+                'in_stock' => $stockItem->getIsInStock(),
+                'image_url' => $this->getProductImageUrl($storeId, $this->tagalysConfiguration->getConfig('product_image_attribute'), true, $product, $forceRegenerateThumbnail),
+                '__tags' => $this->getDirectProductTags($product, $storeId)
+            );
+
+            if ($productDetails['__magento_type'] == 'simple') {
+                $inventoryDetails = $this->getSimpleProductInventoryDetails($product, $stockItem);
+                $productDetails['in_stock'] = $inventoryDetails['in_stock'];
+                $productDetails['__inventory_total'] = $inventoryDetails['qty'];
+                $productDetails['__inventory_average'] = $inventoryDetails['qty'];
+            }
+
+            if ($productDetails['__magento_type'] == 'configurable') {
+                $result = $this->addAssociatedProductDetails($product, $productDetails, $storeId);
+                $productDetails = $result['details'];
+                $productForPrice = $result['product_for_price'];
+            }
+
+            if ($productDetails['__magento_type'] == 'grouped') {
+                $productForPrice = $this->getProductForPrices($product, $storeId);
+            }
+
+            $productDetails = $this->addProductRatingsFields($storeId, $product, $productDetails);
+
+            $imageHoverAttr = $this->tagalysConfiguration->getConfig('product_image_hover_attribute', false, true);
+            if ($imageHoverAttr != '') {
+                $productDetails['image_hover_url'] = $this->getProductImageUrl($storeId, $imageHoverAttr, false, $product, $forceRegenerateThumbnail);
+            }
+
+            $productDetails = array_merge($productDetails, $this->getProductFields($product));
+
+            // synced_at
+            $productDetails = $this->addSyncedAtTime($productDetails);
+
+            // prices and sale price from/to
+            $productDetails = $this->addPriceDetails($productForPrice, $productDetails);
+
+            // New
+            $currentDatetime = new \DateTime("now", new \DateTimeZone('UTC'));
+            $productDetails['__new'] = false;
+            if ($product->getNewsFromDate() != null) {
+                $newFromDatetime = new \DateTime($product->getNewsFromDate(), new \DateTimeZone($this->timezoneInterface->getConfigTimezone()));
+                if ($currentDatetime->getTimestamp() >= $newFromDatetime->getTimestamp()) {
+                    if ($product->getNewsToDate() != null) {
+                        $newToDatetime = new \DateTime($product->getNewsToDate(), new \DateTimeZone($this->timezoneInterface->getConfigTimezone()));
+                        if ($currentDatetime->getTimestamp() <= ($newToDatetime->getTimestamp() + 24*60*60 - 1)) {
+                            // currently new. record to date
+                            $productDetails['__new'] = true;
+                            array_push($productDetails['scheduled_updates'], array('at' => str_replace('00:00:00', '23:59:59', $newToDatetime->format('Y-m-d H:i:sP')), 'updates' => array('__new' => false)));
+                        } else {
+                            // new is past expiry; don't record from/to datetimes
+                        }
+                    } else {
+                        // new is valid indefinitely
+                        $productDetails['__new'] = true;
+                    }
+                } else {
+                    // new in the future - record from/to datetimes
+                    array_push($productDetails['scheduled_updates'], array('at' => $newFromDatetime->format('Y-m-d H:i:sP'), 'updates' => array('__new' => true)));
+                    if ($product->getNewsToDate() != null) {
+                        $newToDatetime = new \DateTime($product->getNewsToDate(), new \DateTimeZone($this->timezoneInterface->getConfigTimezone()));
+                        array_push($productDetails['scheduled_updates'], array('at' => str_replace('00:00:00', '23:59:59', $newToDatetime->format('Y-m-d H:i:sP')), 'updates' => array('__new' => false)));
+                    }
+                }
+            } else {
+                // no from date. assume applicable from now
                 if ($product->getNewsToDate() != null) {
                     $newToDatetime = new \DateTime($product->getNewsToDate(), new \DateTimeZone($this->timezoneInterface->getConfigTimezone()));
                     if ($currentDatetime->getTimestamp() <= ($newToDatetime->getTimestamp() + 24*60*60 - 1)) {
@@ -589,40 +629,29 @@ class Product extends \Magento\Framework\App\Helper\AbstractHelper
                     } else {
                         // new is past expiry; don't record from/to datetimes
                     }
-                } else {
-                    // new is valid indefinitely
-                    $productDetails['__new'] = true;
-                }
-            } else {
-                // new in the future - record from/to datetimes
-                array_push($productDetails['scheduled_updates'], array('at' => $newFromDatetime->format('Y-m-d H:i:sP'), 'updates' => array('__new' => true)));
-                if ($product->getNewsToDate() != null) {
-                    $newToDatetime = new \DateTime($product->getNewsToDate(), new \DateTimeZone($this->timezoneInterface->getConfigTimezone()));
-                    array_push($productDetails['scheduled_updates'], array('at' => str_replace('00:00:00', '23:59:59', $newToDatetime->format('Y-m-d H:i:sP')), 'updates' => array('__new' => false)));
                 }
             }
-        } else {
-            // no from date. assume applicable from now
-            if ($product->getNewsToDate() != null) {
-                $newToDatetime = new \DateTime($product->getNewsToDate(), new \DateTimeZone($this->timezoneInterface->getConfigTimezone()));
-                if ($currentDatetime->getTimestamp() <= ($newToDatetime->getTimestamp() + 24*60*60 - 1)) {
-                    // currently new. record to date
-                    $productDetails['__new'] = true;
-                    array_push($productDetails['scheduled_updates'], array('at' => str_replace('00:00:00', '23:59:59', $newToDatetime->format('Y-m-d H:i:sP')), 'updates' => array('__new' => false)));
-                } else {
-                    // new is past expiry; don't record from/to datetimes
-                }
-            }
-        }
 
-        $productDetailsObj = new \Magento\Framework\DataObject(array('product_details' => $productDetails));
-        $this->eventManager->dispatch('tagalys_read_product_details', ['tgls_data' => $productDetailsObj]);
-        $productDetails = $productDetailsObj->getProductDetails();
+            $productDetails = $this->dispatchProductDetails($productDetails);
+            return $productDetails;
+        });
+    }
 
-        $this->storeManager->setCurrentStore($originalStoreId);
-        $this->storeManager->getStore()->setCurrentCurrencyCode($originalCurrency);
+    public function getSelectiveProductDetails($storeId, $product) {
+        return $this->tagalysConfiguration->processInStoreContext($storeId, function () use ($storeId, $product) {
 
-        return $productDetails;
+            // $productType = $product->getTypeId();
+            $productDetails = ['__id' => $product->getId()];
+
+            // does not consider MSI. Ok for now.
+            $productDetails['in_stock'] = $product->isSaleable();
+
+            $productDetails = $this->addSyncedAtTime($productDetails);
+            $productDetails = $this->addPriceDetails($product, $productDetails);
+            $productDetails = $this->dispatchProductDetails($productDetails);
+
+            return $productDetails;
+        });
     }
 
     public function getPriceInBaseCurrency($amount, $store = null){
