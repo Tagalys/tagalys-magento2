@@ -9,8 +9,8 @@ class Sync extends \Magento\Framework\App\Helper\AbstractHelper
      */
     private $tagalysConfiguration;
 
-    public const PRIORITY_UPDATES = 'priority-updates';
-    public const QUICK_FEED = 'quick-feed';
+    public const PRIORITY_UPDATES = 'priority_updates';
+    public const QUICK_FEED = 'quick_feed';
 
     public function __construct(
         \Magento\Framework\Filesystem $filesystem,
@@ -537,12 +537,14 @@ class Sync extends \Magento\Framework\App\Helper\AbstractHelper
             if ($response != false && $response['result']) {
                 $syncFileStatus['status'] = 'sent_to_tagalys';
                 $this->tagalysConfiguration->setConfig("store:$storeId:{$type}_status", $syncFileStatus, true);
+                return true;
             } else {
                 $this->tagalysApi->log('error', 'Unexpected response in _sendFileToTagalys', array('storeId' => $storeId, 'syncFileStatus' => $syncFileStatus, 'response' => $response));
             }
         } else {
             $this->tagalysApi->log('error', 'Error: Called _sendFileToTagalys with syncFileStatus ' . $syncFileStatus['status'], array('storeId' => $storeId, 'syncFileStatus' => $syncFileStatus));
         }
+        return false;
     }
 
     public function receivedCallback($storeId, $filename) {
@@ -878,14 +880,10 @@ class Sync extends \Magento\Framework\App\Helper\AbstractHelper
         }
     }
 
-    public function isQuickFeedScheduled($storeId) {
-        $quickFeedStatus = $this->tagalysConfiguration->getConfig("store:$storeId:quick_feed_status", true);
-        return $quickFeedStatus['status'] == 'scheduled';
-    }
-
     public function runQuickFeedIfRequired($stores) {
         foreach($stores as $storeId) {
-            if($this->isQuickFeedScheduled($storeId)) {
+            $quickFeedStatus = $this->tagalysConfiguration->getConfig("store:$storeId:quick_feed_status", true);
+            if($quickFeedStatus['status'] == 'scheduled') {
                 $fileName = $this->_getNewSyncFileName($storeId, self::QUICK_FEED);
                 $quickFeedStatus = [
                     'status' => 'processing',
@@ -900,6 +898,9 @@ class Sync extends \Magento\Framework\App\Helper\AbstractHelper
                 });
                 $quickFeedStatus['status'] = 'generated_file';
                 $this->tagalysConfiguration->setConfig("store:$storeId:quick_feed_status", $quickFeedStatus, true);
+                $this->_sendFileToTagalys($storeId, self::QUICK_FEED, $quickFeedStatus);
+            } else if ($quickFeedStatus['status'] == 'generated_file') {
+                // already generated file, sending failed maybe
                 $this->_sendFileToTagalys($storeId, self::QUICK_FEED, $quickFeedStatus);
             }
         }
@@ -952,7 +953,32 @@ class Sync extends \Magento\Framework\App\Helper\AbstractHelper
         return $productIds;
     }
 
+    public function areAllUpdatesSentToTagalys($stores) {
+        foreach($stores as $storeId) {
+            $updateStatus = $this->tagalysConfiguration->getConfig("store:$storeId:priority_updates_status", true);
+            if($updateStatus['status'] == 'generated_file') {
+                return false;
+            }
+        }
+        return true;
+    }
+
     public function runPriorityUpdatesIfRequired($stores) {
+        $areAllUpdatesSentToTagalys = $this->areAllUpdatesSentToTagalys($stores);
+        if(!$areAllUpdatesSentToTagalys) {
+            $areAllUpdatesSentToTagalys = true;
+            foreach($stores as $storeId) {
+                $updateStatus = $this->tagalysConfiguration->getConfig("store:$storeId:priority_updates_status", true);
+                if($updateStatus['status'] == 'generated_file') {
+                    if(!$this->_sendFileToTagalys($storeId, self::PRIORITY_UPDATES, $updateStatus)) {
+                        $areAllUpdatesSentToTagalys = false;
+                    }
+                }
+            }
+        }
+        if(!$areAllUpdatesSentToTagalys) {
+            return false;
+        }
         $productIds = $this->getProductIdsForPriorityUpdate();
         $updatesCount = count($productIds);
         if($updatesCount > 0) {
@@ -989,11 +1015,11 @@ class Sync extends \Magento\Framework\App\Helper\AbstractHelper
                     $clearQueueAndTriggerResync = true;
                     break;
                 }
-        }
-        if ($clearQueueAndTriggerResync) {
-            $this->queueHelper->truncate();
-            foreach ($stores as $storeId) {
-                $this->triggerFeedForStore($storeId, false, false, true);
+            }
+            if ($clearQueueAndTriggerResync) {
+                $this->queueHelper->truncate();
+                foreach ($stores as $storeId) {
+                    $this->triggerFeedForStore($storeId, false, false, true);
                 }
                 $this->tagalysApi->log('warn', 'Clearing updates queue and triggering full products sync', array('remainingProductUpdates' => $updatesCount));
             }
