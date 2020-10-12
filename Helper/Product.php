@@ -574,7 +574,8 @@ class Product extends \Magento\Framework\App\Helper\AbstractHelper
 
             if ($productDetails['__magento_type'] == 'grouped') {
                 $productForPrice = $this->getProductForPrices($product, $storeId);
-                $productDetails['in_stock'] = $product->isSaleable();
+                $useIsSaleable = $this->tagalysConfiguration->getConfig("sync:use_is_saleable_for_in_stock", true, true);
+                $productDetails['in_stock'] = $useIsSaleable ? $product->isSaleable() : $product->isAvailable();
             }
 
             $productDetails = $this->addProductRatingsFields($storeId, $product, $productDetails);
@@ -647,8 +648,8 @@ class Product extends \Magento\Framework\App\Helper\AbstractHelper
             ];
 
             // does not consider MSI. Ok for now.
-            // Todo: have option to use isAvailable or isSaleable
-            $productDetails['in_stock'] = $product->isSaleable();
+            $useIsSaleable = $this->tagalysConfiguration->getConfig("sync:use_is_saleable_for_in_stock", true, true);
+            $productDetails['in_stock'] = $useIsSaleable ? $product->isSaleable() : $product->isAvailable();
 
             $productDetails = $this->addSyncedAtTime($productDetails);
             $productDetails = $this->addPriceDetails($product, $productDetails);
