@@ -130,10 +130,31 @@ class Queue extends \Magento\Framework\App\Helper\AbstractHelper
     }
 
     public function truncate() {
+        $priorityRows = $this->getPriorityRows();
         $queue = $this->queueFactory->create();
         $connection = $queue->getResource()->getConnection();
         $tableName = $queue->getResource()->getMainTable();
         $connection->truncateTable($tableName);
+        $this->insertRows($priorityRows);
+    }
+
+    public function getPriorityRows() {
+        $collection = $this->queueFactory->create()->getCollection()->addFieldToFilter('priority', ['gt' => 0])->setOrder('priority', 'desc');
+        $productIds = array_map(function($item){
+            $productId = $item['product_id'];
+            $priority = $item['priority'];
+            return "($productId, $priority)";
+        }, $collection->toArray(['product_id', 'priority'])['items']);
+        return $productIds;
+    }
+
+    public function insertRows($rows) {
+        $queueTable = $this->resourceConnection->getTableName('tagalys_queue');
+        Utils::forEachChunk($rows, 500, function($rowsToInsert) use ($queueTable){
+            $values = implode(',', $rowsToInsert);
+            $sql = "REPLACE $queueTable (product_id, priority) VALUES $values;";
+            $this->runSql($sql);
+        });
     }
 
     public function queuePrimaryProductIdFor($productId) {
