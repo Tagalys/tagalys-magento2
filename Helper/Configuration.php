@@ -325,7 +325,7 @@ class Configuration extends \Magento\Framework\App\Helper\AbstractHelper
         $selectedCategoryDetails = [];
         foreach ($tagalysCategories as $tagalysCategory) {
             $id = $tagalysCategory->getCategoryId();
-            $details = Configuration::findByKey('id', $id, $allCategoryDetails);
+            $details = Utils::findByKey('id', $id, $allCategoryDetails);
             if ($details) {
                 $selectedCategoryDetails[$id] = [
                     'id' => $id,
@@ -825,20 +825,6 @@ class Configuration extends \Magento\Framework\App\Helper\AbstractHelper
         return $attributeData;
     }
 
-    public static function getInstanceOf($class) {
-        $objectManager = \Magento\Framework\App\ObjectManager::getInstance();
-        return $objectManager->create($class);
-    }
-
-    public static function findByKey($key, $value, $list) {
-        foreach($list as $item) {
-            if (array_key_exists($key, $item) && $item[$key] == $value) {
-                return $item;
-            }
-        }
-        return false;
-    }
-
     public function isTSearchEnabled($storeId) {
         $moduleEnabled = $this->isTagalysEnabledForStore($storeId, 'search');
         if($moduleEnabled){
@@ -897,7 +883,7 @@ class Configuration extends \Magento\Framework\App\Helper\AbstractHelper
             ->addAttributeToFilter('path', array('like' => "1/{$rootCategoryId}/%"))
             ->addAttributeToSelect('*');
         if (!$includeTagalysCreated) {
-            $tagalysParentId = Configuration::getInstanceOf('Tagalys\Sync\Helper\Category')->getTagalysParentCategory($storeId);
+            $tagalysParentId = Utils::getInstanceOf('Tagalys\Sync\Helper\Category')->getTagalysParentCategory($storeId);
             $categories->addAttributeToFilter('path', array('nlike' => "1/{$rootCategoryId}/{$tagalysParentId}/%"));
         }
         return $categories;

@@ -256,7 +256,13 @@ class TagalysApi implements TagalysManagementInterface
                     $response = array('status' => 'OK', 'products' => $productIds);
                     break;
                 case 'remove_from_tagalys_queue':
-                    $res = $this->queueHelper->removeProductIdsIn($params['product_ids']);
+                    if (array_key_exists('product_ids', $params)){
+                        $res = $this->queueHelper->removeProductIdsIn($params['product_ids']);
+                    } else if (array_key_exists('priority', $params)) {
+                        $res = $this->queueHelper->removeProductIdsWithPriority($params['priority']);
+                    } else {
+                        $res = false;
+                    }
                     $response = array('status' => 'OK', 'removed' => $res);
                     break;
                 case 'get_positions':
@@ -307,6 +313,17 @@ class TagalysApi implements TagalysManagementInterface
                         'ids' => $this->tagalysProduct->getIdsBySku($params['skus'])
                     ];
                     break;
+
+                case 'delete_sync_files':
+                    $deletedAllFiles = (array_key_exists('delete_all', $params) && !!$params['delete_all']);
+                    if($deletedAllFiles) {
+                        $res = $this->tagalysSync->deleteAllSyncFiles();
+                    } else {
+                        $res = $this->tagalysSync->deleteSyncFiles($params['files']);
+                    }
+                    $response = ['status' => 'OK', 'deleted' => $res];
+                    break;
+
             }
         } catch (\Exception $e) {
             $response = ['status' => 'error', 'message' => $e->getMessage(), 'trace' => $e->getTrace()];

@@ -574,6 +574,7 @@ class Product extends \Magento\Framework\App\Helper\AbstractHelper
 
             if ($productDetails['__magento_type'] == 'grouped') {
                 $productForPrice = $this->getProductForPrices($product, $storeId);
+                $productDetails['in_stock'] = $product->isSaleable();
             }
 
             $productDetails = $this->addProductRatingsFields($storeId, $product, $productDetails);
@@ -640,10 +641,13 @@ class Product extends \Magento\Framework\App\Helper\AbstractHelper
     public function getSelectiveProductDetails($storeId, $product) {
         return $this->tagalysConfiguration->processInStoreContext($storeId, function () use ($storeId, $product) {
 
-            // $productType = $product->getTypeId();
-            $productDetails = ['__id' => $product->getId()];
+            $productDetails = [
+                '__id' => $product->getId(),
+                '__magento_type' => $product->getTypeId(),
+            ];
 
             // does not consider MSI. Ok for now.
+            // Todo: have option to use isAvailable or isSaleable
             $productDetails['in_stock'] = $product->isSaleable();
 
             $productDetails = $this->addSyncedAtTime($productDetails);
@@ -671,9 +675,9 @@ class Product extends \Magento\Framework\App\Helper\AbstractHelper
             if(version_compare($magentoVersion, '2.3.0', '>=') && $msiUsed) {
                 // only do this if MSI is used, coz the else part will work for non MSI stores and is faster too.
                 $websiteCode = $this->storeManager->getWebsite()->getCode();
-                $stockResolver = Configuration::getInstanceOf("\Magento\InventorySalesApi\Api\StockResolverInterface");
-                $isProductSalableInterface = Configuration::getInstanceOf("\Magento\InventorySalesApi\Api\IsProductSalableInterface");
-                $getProductSalableQty = Configuration::getInstanceOf("\Magento\InventorySalesApi\Api\GetProductSalableQtyInterface");
+                $stockResolver = Utils::getInstanceOf("\Magento\InventorySalesApi\Api\StockResolverInterface");
+                $isProductSalableInterface = Utils::getInstanceOf("\Magento\InventorySalesApi\Api\IsProductSalableInterface");
+                $getProductSalableQty = Utils::getInstanceOf("\Magento\InventorySalesApi\Api\GetProductSalableQtyInterface");
                 $stockId = $stockResolver->execute(\Magento\InventorySalesApi\Api\Data\SalesChannelInterface::TYPE_WEBSITE, $websiteCode)->getStockId();
 
                 $stockQty = $getProductSalableQty->execute($product->getSku(), $stockId);
