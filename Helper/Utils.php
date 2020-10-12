@@ -26,4 +26,13 @@ class Utils
         }
         return false;
     }
+
+    public static function getExceptionDetails($e) {
+        return [
+            'message' => $e->getMessage(),
+            'file' => $e->getFile(),
+            'line' => $e->getLine(),
+            'trace' => $e->getTrace(),
+        ];
+    }
 }

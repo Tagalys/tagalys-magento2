@@ -234,6 +234,10 @@ class TagalysApi implements TagalysManagementInterface
                     $this->tagalysConfiguration->setConfig($params['path'], $params['value'], $params['json_encode']);
                     $response = array('updated' => true, $params['value']);
                     break;
+                case 'update_config':
+                    $this->tagalysConfiguration->updateJsonConfig($params['path'], $params['value']);
+                    $response = array('updated' => true, $params['value']);
+                    break;
                 case 'get_order_data':
                     $res = $this->tagalysSync->getOrderData($params['store_id'], $params['from'], $params['to']);
                     $response = array('status' => 'OK', 'message' => $res);

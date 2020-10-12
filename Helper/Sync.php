@@ -907,7 +907,7 @@ class Sync extends \Magento\Framework\App\Helper\AbstractHelper
                     try {
                         return $this->tagalysProduct->getSelectiveProductDetails($storeId, $product);
                     } catch (\Throwable $e) {
-                        // todo: log crash
+                        $this->tagalysApi->log('local', 'error in runQuickFeedIfRequired', Utils::getExceptionDetails($e));
                         return [];
                     }
                 });
@@ -1015,7 +1015,7 @@ class Sync extends \Magento\Framework\App\Helper\AbstractHelper
                         try {
                             $productDetails = $this->tagalysProduct->productDetails($product, $storeId, true);
                         } catch (\Throwable $e) {
-                            // todo: log crash
+                            $this->tagalysApi->log('local', 'error in runPriorityUpdatesIfRequired', Utils::getExceptionDetails($e));
                             $productDetails = [];
                         }
                         return ["perform" => "index", "payload" => $productDetails];
