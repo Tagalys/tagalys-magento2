@@ -991,4 +991,16 @@ class Configuration extends \Magento\Framework\App\Helper\AbstractHelper
         }
         $this->setConfig($path, $newValue, true);
     }
+
+    public function getCronConfig() {
+        $defaultConfig = [
+            'sleep' => 30,
+            'sleep_every' => 1000
+        ];
+        $config = $this->getConfig("cron_config", true, true);
+        if ($config === NULL) {
+            return $defaultConfig;
+        }
+        return $config;
+    }
 }

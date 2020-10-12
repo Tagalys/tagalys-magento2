@@ -847,8 +847,8 @@ class Sync extends \Magento\Framework\App\Helper\AbstractHelper
         return $utcNow->format(\DateTime::ATOM);
     }
     public function sleepIfRequired($productCount) {
-        $cronConfig = $this->tagalysConfiguration->getConfig('cron_config', true, true);
-        if($cronConfig and array_key_exists('sleep', $cronConfig)) {
+        $cronConfig = $this->tagalysConfiguration->getCronConfig();
+        if(array_key_exists('sleep', $cronConfig)) {
             if($productCount % $cronConfig['sleep_every'] == 0) {
                 // don't sleep for more than 5 min
                 sleep(min($cronConfig['sleep'], 300));
