@@ -1,19 +1,19 @@
 <?php
- 
+
 namespace Tagalys\Sync\Setup;
- 
+
 use Magento\Framework\Setup\InstallSchemaInterface;
 use Magento\Framework\Setup\ModuleContextInterface;
 use Magento\Framework\Setup\SchemaSetupInterface;
 use Magento\Framework\DB\Ddl\Table;
- 
+
 class InstallSchema implements InstallSchemaInterface
 {
     public function install(SchemaSetupInterface $setup, ModuleContextInterface $context)
     {
         $installer = $setup;
         $installer->startSetup();
- 
+
         $configTableName = $installer->getTable('tagalys_config');
         if ($installer->getConnection()->isTableExists($configTableName) != true) {
             $configTable = $installer->getConnection()
@@ -49,6 +49,15 @@ class InstallSchema implements InstallSchemaInterface
                         'default' => ''
                     ],
                     'Config Value'
+                )->addColumn(
+                    'priority',
+                    Table::TYPE_INTEGER,
+                    null,
+                    [
+                        'nullable' => false,
+                        'default' => '0',
+                    ],
+                    'Priority of the update'
                 )
                 ->setComment('Tagalys Configuration Table')
                 ->setOption('type', 'InnoDB')
@@ -176,7 +185,7 @@ class InstallSchema implements InstallSchemaInterface
             );
             $installer->getConnection()->createTable($categoryTable);
         }
- 
+
         $installer->endSetup();
     }
 }

@@ -787,17 +787,23 @@ class Sync extends \Magento\Framework\App\Helper\AbstractHelper
         }
     }
 
-    public function deleteSyncFiles($files) {
-        foreach($files as $file) {
-            $filePath = $this->filesystem->getDirectoryRead('media')->getAbsolutePath() . 'tagalys/' . $file;
-            if(file_exists($filePath) && !unlink($filePath)) {
-                return false;
+    public function deleteSyncFiles($filesToDelete) {
+        $this->forEachSyncFile(function($fullPath, $fileName) use ($filesToDelete) {
+            if (in_array($fileName, $filesToDelete)) {
+                unlink($fullPath);
             }
-        }
+        });
         return true;
     }
 
     public function deleteAllSyncFiles() {
+        $this->forEachSyncFile(function($fullPath, $_){
+            unlink($fullPath);
+        });
+        return true;
+    }
+
+    public function forEachSyncFile($callback) {
         $mediaDirectory = $this->filesystem->getDirectoryRead('media')->getAbsolutePath('tagalys');
         $filesInMediaDirectory = scandir($mediaDirectory);
         foreach ($filesInMediaDirectory as $key => $value) {
@@ -805,13 +811,14 @@ class Sync extends \Magento\Framework\App\Helper\AbstractHelper
                 if (!preg_match("/^\./", $value)) {
                     if (substr($value, 0, 8) == 'syncfile'){
                         try {
-                            unlink($mediaDirectory . DIRECTORY_SEPARATOR . $value);
+                            $fileName = $value;
+                            $fullPath = $mediaDirectory . DIRECTORY_SEPARATOR . $fileName;
+                            $callback($fullPath, $fileName);
                         } catch (\Exception $e) { }
                     }
                 }
             }
         }
-        return true;
     }
 
     public function triggerFullSync(){
@@ -856,9 +863,12 @@ class Sync extends \Magento\Framework\App\Helper\AbstractHelper
 
         return true;
     }
-    public function touchLock() {
+    public function touchLock($completedCount) {
         $this->raiseIfForceRevoked();
-        $this->tagalysConfiguration->updateJsonConfig('cron_status', ['updated_at' => $this->now()]);
+        $this->tagalysConfiguration->updateJsonConfig('cron_status', [
+            'updated_at' => $this->now(),
+            'completed_count' => $completedCount
+        ]);
     }
     public function now() {
         $utcNow = new \DateTime("now", new \DateTimeZone('UTC'));
@@ -894,7 +904,12 @@ class Sync extends \Magento\Framework\App\Helper\AbstractHelper
                 $this->tagalysConfiguration->setConfig("store:$storeId:quick_feed_status", $quickFeedStatus, true);
                 $collection = $this->_getCollection($storeId);
                 $this->syncToFile($storeId, $fileName, $collection, function($storeId, $product) {
-                    return $this->tagalysProduct->getSelectiveProductDetails($storeId, $product);
+                    try {
+                        return $this->tagalysProduct->getSelectiveProductDetails($storeId, $product);
+                    } catch (\Throwable $e) {
+                        // todo: log crash
+                        return [];
+                    }
                 });
                 $quickFeedStatus['status'] = 'generated_file';
                 $this->tagalysConfiguration->setConfig("store:$storeId:quick_feed_status", $quickFeedStatus, true);
@@ -915,7 +930,7 @@ class Sync extends \Magento\Framework\App\Helper\AbstractHelper
 
             $productCount++;
             if($productCount % 50) {
-                $this->touchLock();
+                $this->touchLock($productCount);
                 $this->writeToFile($fileName, $rowsToWrite);
                 $rowsToWrite = [];
             }
@@ -979,6 +994,7 @@ class Sync extends \Magento\Framework\App\Helper\AbstractHelper
         if(!$areAllUpdatesSentToTagalys) {
             return false;
         }
+
         $productIds = $this->getProductIdsForPriorityUpdate();
         $updatesCount = count($productIds);
         if($updatesCount > 0) {
@@ -991,12 +1007,26 @@ class Sync extends \Magento\Framework\App\Helper\AbstractHelper
                     'products_count' => $updatesCount,
                 ];
                 $this->tagalysConfiguration->setConfig("store:$storeId:priority_updates_status", $updateStatus, true);
-                Utils::forEachChunk($productIds, 500, function($productIdsForThisBatch) use ($storeId, $fileName) {
+                $processedProductIds = [];
+                Utils::forEachChunk($productIds, 500, function($productIdsForThisBatch) use ($storeId, $fileName, $processedProductIds) {
                     $collection = $this->_getCollection($storeId, 'updates', $productIdsForThisBatch);
-                    $this->syncToFile($storeId, $fileName, $collection, function($storeId, $product) {
-                        return $this->tagalysProduct->productDetails($product, $storeId, true);
+                    $this->syncToFile($storeId, $fileName, $collection, function($storeId, $product) use ($processedProductIds) {
+                        $processedProductIds[] = $product->getId();
+                        try {
+                            $productDetails = $this->tagalysProduct->productDetails($product, $storeId, true);
+                        } catch (\Throwable $e) {
+                            // todo: log crash
+                            $productDetails = [];
+                        }
+                        return ["perform" => "index", "payload" => $productDetails];
                     });
                 });
+                $deletedIds = array_diff($productIds, $processedProductIds);
+                $deleteRows = array_map(function($deletedId){
+                    return json_encode(["perform" => "delete", "payload" => ['__id' => $deletedId]]);
+                }, $deletedIds);
+                $this->writeToFile($fileName, $deleteRows);
+
                 $updateStatus['status'] = 'generated_file';
                 $this->tagalysConfiguration->setConfig("store:$storeId:priority_updates_status", $updateStatus, true);
                 $this->_sendFileToTagalys($storeId, self::PRIORITY_UPDATES, $updateStatus);

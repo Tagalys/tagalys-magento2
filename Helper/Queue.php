@@ -129,6 +129,7 @@ class Queue extends \Magento\Framework\App\Helper\AbstractHelper
         }
     }
 
+    // Todo: rename this function, it's not just truncating anymore
     public function truncate() {
         $priorityRows = $this->getPriorityRows();
         $queue = $this->queueFactory->create();
