@@ -126,7 +126,8 @@ class TagalysApi implements TagalysManagementInterface
                     break;
                 case 'insert_into_sync_queue':
                     $this->tagalysApi->log('warn', 'Inserting into sync queue via API', array('product_ids' => $params['product_ids']));
-                    $this->queueHelper->insertUnique($params['product_ids']);
+                    $priority = array_key_exists('priority', $params) ? $params['priority'] : 0;
+                    $this->queueHelper->insertUnique($params['product_ids'], $priority);
                     $response = array('inserted' => true);
                     break;
                 case 'truncate_sync_queue':

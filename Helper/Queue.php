@@ -45,10 +45,13 @@ class Queue extends \Magento\Framework\App\Helper\AbstractHelper
             $productsToInsert = array_slice($productIds, $offset, $perPage);
             while(count($productsToInsert) > 0){
                 if($insertPrimary){
-                    $this->insertPrimaryProducts($productsToInsert);
+                    $this->insertPrimaryProducts($productsToInsert, $priority);
                 } else {
-                    $productsToInsert = implode('),(', $productsToInsert);
-                    $sql = "REPLACE $queueTable (product_id, priority) VALUES ($productsToInsert, $priority);";
+                    $productsToInsert = array_map(function($productId) use ($priority) {
+                        return "($productId, $priority)";
+                    }, $productsToInsert);
+                    $values = implode(',', $productsToInsert);
+                    $sql = "REPLACE $queueTable (product_id, priority) VALUES $values;";
                     $this->runSql($sql);
                 }
                 $offset += $perPage;
