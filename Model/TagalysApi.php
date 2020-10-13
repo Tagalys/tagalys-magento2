@@ -132,7 +132,8 @@ class TagalysApi implements TagalysManagementInterface
                     break;
                 case 'truncate_sync_queue':
                     $this->tagalysApi->log('warn', 'Truncating sync queue via API');
-                    $this->queueHelper->truncate();
+                    $preserve_priority_items = array_key_exists('preserve_priority_items', $params) ? $params['preserve_priority_items'] : true;
+                    $this->queueHelper->truncate($preserve_priority_items);
                     $response = array('truncated' => true);
                     break;
                 case 'mark_positions_sync_required_for_categories':
