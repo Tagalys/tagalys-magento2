@@ -9,8 +9,8 @@ class Sync extends \Magento\Framework\App\Helper\AbstractHelper
      */
     private $tagalysConfiguration;
 
-    public const PRIORITY_UPDATES = 'priority_updates';
-    public const QUICK_FEED = 'quick_feed';
+    const PRIORITY_UPDATES = 'priority_updates';
+    const QUICK_FEED = 'quick_feed';
 
     public function __construct(
         \Magento\Framework\Filesystem $filesystem,
