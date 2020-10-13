@@ -1008,9 +1008,9 @@ class Sync extends \Magento\Framework\App\Helper\AbstractHelper
                 ];
                 $this->tagalysConfiguration->setConfig("store:$storeId:priority_updates_status", $updateStatus, true);
                 $processedProductIds = [];
-                Utils::forEachChunk($productIds, 500, function($productIdsForThisBatch) use ($storeId, $fileName, $processedProductIds) {
+                Utils::forEachChunk($productIds, 500, function($productIdsForThisBatch) use ($storeId, $fileName, &$processedProductIds) {
                     $collection = $this->_getCollection($storeId, 'updates', $productIdsForThisBatch);
-                    $this->syncToFile($storeId, $fileName, $collection, function($storeId, $product) use ($processedProductIds) {
+                    $this->syncToFile($storeId, $fileName, $collection, function($storeId, $product) use (&$processedProductIds) {
                         $processedProductIds[] = $product->getId();
                         try {
                             $productDetails = $this->tagalysProduct->productDetails($product, $storeId, true);
