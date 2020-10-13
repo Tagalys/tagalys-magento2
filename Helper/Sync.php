@@ -1013,7 +1013,7 @@ class Sync extends \Magento\Framework\App\Helper\AbstractHelper
                     $this->syncToFile($storeId, $fileName, $collection, function($storeId, $product) use (&$processedProductIds) {
                         $processedProductIds[] = $product->getId();
                         try {
-                            $productDetails = $this->tagalysProduct->productDetails($product, $storeId, true);
+                            $productDetails = (array) $this->tagalysProduct->productDetails($product, $storeId, true);
                         } catch (\Throwable $e) {
                             $this->tagalysApi->log('local', 'error in runPriorityUpdatesIfRequired', Utils::getExceptionDetails($e));
                             $productDetails = [];

@@ -538,9 +538,6 @@ class Product extends \Magento\Framework\App\Helper\AbstractHelper
     }
 
     public function productDetails($product, $storeId, $forceRegenerateThumbnail = false) {
-        if (!is_object($product)) {
-            $product = $this->productFactory->create()->setStoreId($storeId)->load($product);
-        }
         return $this->tagalysConfiguration->processInStoreContext($storeId, function() use ($product, $storeId, $forceRegenerateThumbnail) {
             // FIXME: stockRegistry deprecated
             $stockItem = $this->stockRegistry->getStockItem($product->getId());

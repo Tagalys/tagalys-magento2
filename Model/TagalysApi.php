@@ -17,6 +17,11 @@ class TagalysApi implements TagalysManagementInterface
      */
     private $tagalysCategoryHelper;
 
+    /**
+     * @param \Magento\Catalog\Model\ProductFactory
+     */
+    private $productFactory;
+
     public function __construct(
         \Tagalys\Sync\Helper\Configuration $tagalysConfiguration,
         \Tagalys\Sync\Helper\Api $tagalysApi,
@@ -27,7 +32,8 @@ class TagalysApi implements TagalysManagementInterface
         \Tagalys\Sync\Model\CategoryFactory $tagalysCategoryFactory,
         \Magento\Framework\Filesystem $filesystem,
         \Tagalys\Sync\Helper\Product $tagalysProduct,
-        \Magento\Framework\Registry $_registry
+        \Magento\Framework\Registry $_registry,
+        \Magento\Catalog\Model\ProductFactory $productFactory
     ) {
         $this->tagalysConfiguration = $tagalysConfiguration;
         $this->tagalysApi = $tagalysApi;
@@ -39,6 +45,7 @@ class TagalysApi implements TagalysManagementInterface
         $this->filesystem = $filesystem;
         $this->tagalysProduct = $tagalysProduct;
         $this->_registry = $_registry;
+        $this->productFactory = $productFactory;
 
         $writer = new \Zend\Log\Writer\Stream(BP . '/var/log/tagalys_rest_api.log');
         $this->logger = new \Zend\Log\Logger();
@@ -94,7 +101,8 @@ class TagalysApi implements TagalysManagementInterface
                     foreach ($stores as $storeId) {
                         $productDetails['store-' . $storeId] = [];
                         foreach($params['product_ids'] as $pid) {
-                            $productDetailsForStore = (array) $this->tagalysProduct->productDetails($pid, $storeId);
+                            $product = $this->productFactory->create()->setStoreId($storeId)->load($pid);
+                            $productDetailsForStore = (array) $this->tagalysProduct->productDetails($product, $storeId);
                             $productDetails['store-' . $storeId][$pid] = $productDetailsForStore;
                         }
                     }
