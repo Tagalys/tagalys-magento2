@@ -929,6 +929,8 @@ class Sync extends \Magento\Framework\App\Helper\AbstractHelper
                         return [];
                     }
                 }, $statusPath);
+
+                $quickFeedStatus = $this->tagalysConfiguration->getConfig($statusPath, true);
                 $quickFeedStatus['status'] = 'generated_file';
                 $quickFeedStatus['took'] = strtotime($this->now()) - strtotime($quickFeedStatus['triggered_at']);
                 $this->tagalysConfiguration->setConfig($statusPath, $quickFeedStatus, true);
@@ -1049,6 +1051,7 @@ class Sync extends \Magento\Framework\App\Helper\AbstractHelper
                 }, $deletedIds);
                 $this->writeToFile($fileName, $deleteRows);
 
+                $updateStatus = $this->tagalysConfiguration->getConfig($statusPath, true);
                 $updateStatus['status'] = 'generated_file';
                 $this->tagalysConfiguration->setConfig($statusPath, $updateStatus, true);
                 $this->_sendFileToTagalys($storeId, self::PRIORITY_UPDATES, $updateStatus);
