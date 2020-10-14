@@ -431,7 +431,7 @@ class Sync extends \Magento\Framework\App\Helper\AbstractHelper
                                         $forceRegenerateThumbnail = $syncFileStatus['force_regenerate_thumbnails'];
                                     }
                                 }
-                                $productDetails = (array) $this->tagalysProduct->productDetails($product, $storeId, $forceRegenerateThumbnail);
+                                $productDetails = (array) $this->tagalysProduct->productDetails($storeId, $product, $forceRegenerateThumbnail);
 
                                 if (array_key_exists('scheduled_updates', $productDetails) && count($productDetails['scheduled_updates']) > 0) {
                                     for($i = 0; $i < count($productDetails['scheduled_updates']); $i++) {
@@ -1013,7 +1013,7 @@ class Sync extends \Magento\Framework\App\Helper\AbstractHelper
                     $this->syncToFile($storeId, $fileName, $collection, function($storeId, $product) use (&$processedProductIds) {
                         $processedProductIds[] = $product->getId();
                         try {
-                            $productDetails = (array) $this->tagalysProduct->productDetails($product, $storeId, true);
+                            $productDetails = (array) $this->tagalysProduct->productDetails($storeId, $product, true);
                         } catch (\Throwable $e) {
                             $this->tagalysApi->log('local', 'error in runPriorityUpdatesIfRequired', Utils::getExceptionDetails($e));
                             $productDetails = [];
