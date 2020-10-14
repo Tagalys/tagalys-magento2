@@ -87,7 +87,7 @@ class TagalysApi implements TagalysManagementInterface
             switch ($params['info_type']) {
                 case 'status':
                     $info = array(
-                        'config' => $this->tagalysConfiguration->defaultConfigValues,
+                        'config' => [],
                         'files_in_media_folder' => array(),
                         'sync_status' => $this->tagalysSync->status()
                     );
@@ -95,16 +95,30 @@ class TagalysApi implements TagalysManagementInterface
                     foreach ($configCollection as $i) {
                         $info['config'][$i->getData('path')] = $i->getData('value');
                     }
-                    $mediaDirectory = $this->filesystem->getDirectoryRead('media')->getAbsolutePath('tagalys');
-                    $filesInMediaDirectory = scandir($mediaDirectory);
-                    foreach ($filesInMediaDirectory as $key => $value) {
-                        if (!is_dir($mediaDirectory . DIRECTORY_SEPARATOR . $value)) {
-                            if (!preg_match("/^\./", $value)) {
-                                $info['files_in_media_folder'][] = $value;
-                            }
+                    $this->tagalysSync->forEachFileInMediaFolder(function($path, $name) use (&$info) {
+                        $info['files_in_media_folder'][] = $name;
+                    });
+                    $response = $info;
+                    break;
+                case 'get_config':
+                    if (!array_key_exists('only_default', $params)) {
+                        $params['only_default'] = false;
+                    }
+                    if (!array_key_exists('include_default', $params)) {
+                        $params['include_default'] = true;
+                    }
+                    $response = [];
+                    if($params['only_default']) {
+                        $response = $this->tagalysConfiguration->defaultConfigValues;
+                    } else {
+                        if($params['include_default']) {
+                            $response = $this->tagalysConfiguration->defaultConfigValues;
+                        }
+                        $configCollection = $this->configFactory->create()->getCollection()->setOrder('id', 'ASC');
+                        foreach ($configCollection as $config) {
+                            $response[$config->getPath()] = $config->getValue();
                         }
                     }
-                    $response = $info;
                     break;
                 case 'product_details':
                     $productDetails = array();

@@ -790,7 +790,9 @@ class Sync extends \Magento\Framework\App\Helper\AbstractHelper
     public function deleteSyncFiles($filesToDelete) {
         $this->forEachSyncFile(function($fullPath, $fileName) use ($filesToDelete) {
             if (in_array($fileName, $filesToDelete)) {
-                unlink($fullPath);
+                try {
+                    unlink($fullPath);
+                } catch (\Exception $e) { }
             }
         });
         return true;
@@ -798,27 +800,33 @@ class Sync extends \Magento\Framework\App\Helper\AbstractHelper
 
     public function deleteAllSyncFiles() {
         $this->forEachSyncFile(function($fullPath, $_){
-            unlink($fullPath);
+            try {
+                unlink($fullPath);
+            } catch (\Exception $e) { }
         });
         return true;
     }
 
-    public function forEachSyncFile($callback) {
+    public function forEachFileInMediaFolder($callback) {
         $mediaDirectory = $this->filesystem->getDirectoryRead('media')->getAbsolutePath('tagalys');
         $filesInMediaDirectory = scandir($mediaDirectory);
         foreach ($filesInMediaDirectory as $key => $value) {
             if (!is_dir($mediaDirectory . DIRECTORY_SEPARATOR . $value)) {
                 if (!preg_match("/^\./", $value)) {
-                    if (substr($value, 0, 8) == 'syncfile'){
-                        try {
-                            $fileName = $value;
-                            $fullPath = $mediaDirectory . DIRECTORY_SEPARATOR . $fileName;
-                            $callback($fullPath, $fileName);
-                        } catch (\Exception $e) { }
-                    }
+                    $name = $value;
+                    $path = $mediaDirectory . DIRECTORY_SEPARATOR . $name;
+                    $callback($path, $name);
                 }
             }
         }
+    }
+
+    public function forEachSyncFile($callback) {
+        $this->forEachFileInMediaFolder(function($path, $name) use ($callback) {
+            if (substr($name, 0, 8) == 'syncfile'){
+                $callback($path, $name);
+            }
+        });
     }
 
     public function triggerFullSync(){
