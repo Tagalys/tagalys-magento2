@@ -150,6 +150,9 @@ class Edit extends \Magento\Backend\App\Action
                     break;
                 case 'Save Search Settings':
                     $this->tagalysConfiguration->setConfig('module:search:enabled', $params['enable_search']);
+                    if (!array_key_exists('stores_for_search', $params)) {
+                        $params['stores_for_search'] = [];
+                    }
                     $this->tagalysConfiguration->setConfig('stores_for_search', $params['stores_for_search'], true);
                     $this->tagalysConfiguration->setConfig('search_box_selector', $params['search_box_selector']);
                     $this->tagalysConfiguration->setConfig('suggestions_align_to_parent_selector', $params['suggestions_align_to_parent_selector']);
