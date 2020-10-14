@@ -912,6 +912,7 @@ class Sync extends \Magento\Framework\App\Helper\AbstractHelper
                     }
                 }, $statusPath);
                 $quickFeedStatus['status'] = 'generated_file';
+                $quickFeedStatus['took'] = strtotime($this->now()) - strtotime($quickFeedStatus['triggered_at']);
                 $this->tagalysConfiguration->setConfig($statusPath, $quickFeedStatus, true);
                 $this->_sendFileToTagalys($storeId, self::QUICK_FEED, $quickFeedStatus);
             } else if ($quickFeedStatus['status'] == 'generated_file') {
