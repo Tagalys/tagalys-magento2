@@ -35,4 +35,8 @@ class Utils
             'trace' => $e->getTrace(),
         ];
     }
+
+    public static function isConfigurableProduct($product) {
+        return ($product->getTypeId() == 'configurable');
+    }
 }

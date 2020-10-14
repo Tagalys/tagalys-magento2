@@ -59,6 +59,7 @@ class Configuration extends \Magento\Framework\App\Helper\AbstractHelper
         'sync:catalog_price_rule_changed' => 'false',
         'sync:trigger_quick_feed_for_catalog_price_rule_change' => 'false',
         'cron_status' => '[]',
+        "sync:consider_parent_in_stock_value" => 'true',
     ];
 
     /**
