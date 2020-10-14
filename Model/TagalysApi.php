@@ -101,17 +101,17 @@ class TagalysApi implements TagalysManagementInterface
                     $response = $info;
                     break;
                 case 'get_config':
-                    if (!array_key_exists('only_default', $params)) {
-                        $params['only_default'] = false;
+                    if (!array_key_exists('only_defaults', $params)) {
+                        $params['only_defaults'] = false;
                     }
-                    if (!array_key_exists('include_default', $params)) {
-                        $params['include_default'] = true;
+                    if (!array_key_exists('include_defaults', $params)) {
+                        $params['include_defaults'] = true;
                     }
                     $response = [];
-                    if($params['only_default']) {
+                    if($params['only_defaults']) {
                         $response = $this->tagalysConfiguration->defaultConfigValues;
                     } else {
-                        if($params['include_default']) {
+                        if($params['include_defaults']) {
                             $response = $this->tagalysConfiguration->defaultConfigValues;
                         }
                         $configCollection = $this->configFactory->create()->getCollection()->setOrder('id', 'ASC');
@@ -126,7 +126,7 @@ class TagalysApi implements TagalysManagementInterface
                         $params['product_ids'] = [$params['product_id']];
                     }
                     if (!array_key_exists('selective', $params)) {
-                        $params['selective'] = true;
+                        $params['selective'] = false;
                     }
                     if (!array_key_exists('force_regenerate_thumbnail', $params)) {
                         $params['force_regenerate_thumbnail'] = false;
