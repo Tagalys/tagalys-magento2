@@ -828,6 +828,16 @@ class Sync extends \Magento\Framework\App\Helper\AbstractHelper
         }
     }
 
+    public function triggerQuickFeed($storeIds = false){
+        if($storeIds === false) {
+            $storeIds = $this->tagalysConfiguration->getStoresForTagalys();
+        }
+        foreach ($storeIds as $storeId) {
+            $statusPath = "store:$storeId:quick_feed_status";
+            $this->tagalysConfiguration->setConfig($statusPath, ['status' => 'scheduled'], true);
+        }
+    }
+
     public function lockedCronOperation($callback) {
         $configPath = 'cron_status';
         $status = $this->tagalysConfiguration->getConfig($configPath, true);

@@ -17,7 +17,12 @@ class CatalogRulePlugin {
     try{
       $catalogRuleChanged = $this->tagalysConfiguration->getConfig('sync:catalog_price_rule_changed', true);
       if($catalogRuleChanged){
-        $this->tagalysSync->triggerFullSync();
+        $triggerQuickFeed = $this->tagalysConfiguration->getConfig('sync:trigger_quick_feed_for_catalog_price_rule_change', true);
+        if($triggerQuickFeed) {
+            $this->tagalysSync->triggerQuickFeed();
+        } else {
+            $this->tagalysSync->triggerFullSync();
+        }
         $this->tagalysConfiguration->setConfig('sync:catalog_price_rule_changed',false, true);
       }
     } catch (\Exception $e) {}
