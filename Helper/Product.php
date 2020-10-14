@@ -471,7 +471,7 @@ class Product extends \Magento\Framework\App\Helper\AbstractHelper
         $allowedCurrencies = $store->getAvailableCurrencies(true);
         $baseCurrencyNotAllowed = ($allowedCurrencies == null || !in_array($baseCurrency, $allowedCurrencies));
         $productDetails['scheduled_updates'] = [];
-        if ($product->getTypeId() == 'bundle') {
+        if (Utils::isBundleProduct($product)) {
             // already returning price in base currency. no conversion needed.
             $productDetails['price'] = $product->getPriceModel()->getTotalPrices($product, 'min', 1);
             $productDetails['sale_price'] = $product->getPriceModel()->getTotalPrices($product, 'min', 1);
@@ -523,6 +523,9 @@ class Product extends \Magento\Framework\App\Helper\AbstractHelper
                     }
                 }
             }
+        }
+        if(Utils::isGiftCard($product) && $productDetails['price'] == 0) {
+            $productDetails['price'] = $productDetails['sale_price'];
         }
         return $productDetails;
     }
