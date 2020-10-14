@@ -863,11 +863,10 @@ class Sync extends \Magento\Framework\App\Helper\AbstractHelper
 
         return true;
     }
-    public function touchLock($completedCount) {
+    public function touchLock() {
         $this->raiseIfForceRevoked();
         $this->tagalysConfiguration->updateJsonConfig('cron_status', [
             'updated_at' => $this->now(),
-            'completed_count' => $completedCount
         ]);
     }
     public function now() {
@@ -892,7 +891,8 @@ class Sync extends \Magento\Framework\App\Helper\AbstractHelper
 
     public function runQuickFeedIfRequired($stores) {
         foreach($stores as $storeId) {
-            $quickFeedStatus = $this->tagalysConfiguration->getConfig("store:$storeId:quick_feed_status", true);
+            $statusPath = "store:$storeId:quick_feed_status";
+            $quickFeedStatus = $this->tagalysConfiguration->getConfig($statusPath, true);
             if($quickFeedStatus['status'] == 'scheduled') {
                 $fileName = $this->_getNewSyncFileName($storeId, self::QUICK_FEED);
                 $quickFeedStatus = [
@@ -901,7 +901,7 @@ class Sync extends \Magento\Framework\App\Helper\AbstractHelper
                     'triggered_at' => $this->now(),
                     'products_count' => $this->getProductsCount($storeId),
                 ];
-                $this->tagalysConfiguration->setConfig("store:$storeId:quick_feed_status", $quickFeedStatus, true);
+                $this->tagalysConfiguration->setConfig($statusPath, $quickFeedStatus, true);
                 $collection = $this->_getCollection($storeId);
                 $this->syncToFile($storeId, $fileName, $collection, function($storeId, $product) {
                     try {
@@ -910,9 +910,9 @@ class Sync extends \Magento\Framework\App\Helper\AbstractHelper
                         $this->tagalysApi->log('local', 'error in runQuickFeedIfRequired', Utils::getExceptionDetails($e));
                         return [];
                     }
-                });
+                }, $statusPath);
                 $quickFeedStatus['status'] = 'generated_file';
-                $this->tagalysConfiguration->setConfig("store:$storeId:quick_feed_status", $quickFeedStatus, true);
+                $this->tagalysConfiguration->setConfig($statusPath, $quickFeedStatus, true);
                 $this->_sendFileToTagalys($storeId, self::QUICK_FEED, $quickFeedStatus);
             } else if ($quickFeedStatus['status'] == 'generated_file') {
                 // already generated file, sending failed maybe
@@ -921,7 +921,7 @@ class Sync extends \Magento\Framework\App\Helper\AbstractHelper
         }
     }
 
-    public function syncToFile($storeId, $fileName, $collection, $getProductDetails) {
+    public function syncToFile($storeId, $fileName, $collection, $getProductDetails, $statusPath) {
         $rowsToWrite = [];
         $productCount = 0;
         foreach($collection as $product) {
@@ -929,15 +929,17 @@ class Sync extends \Magento\Framework\App\Helper\AbstractHelper
             $rowsToWrite[] = json_encode($productDetails);
 
             $productCount++;
-            if($productCount % 50) {
-                $this->touchLock($productCount);
+            if($productCount % 50 == 0) {
+                $this->touchLock();
                 $this->writeToFile($fileName, $rowsToWrite);
+                $this->tagalysConfiguration->updateJsonConfig($statusPath, ['completed_count' => $productCount]);
                 $rowsToWrite = [];
             }
             $this->sleepIfRequired($productCount);
         }
         if(count($rowsToWrite) > 0) {
             $this->writeToFile($fileName, $rowsToWrite);
+            $this->tagalysConfiguration->updateJsonConfig($statusPath, ['completed_count' => $productCount]);
         }
     }
 
@@ -1006,9 +1008,10 @@ class Sync extends \Magento\Framework\App\Helper\AbstractHelper
                     'triggered_at' => $this->now(),
                     'products_count' => $updatesCount,
                 ];
-                $this->tagalysConfiguration->setConfig("store:$storeId:priority_updates_status", $updateStatus, true);
+                $statusPath = "store:$storeId:priority_updates_status";
+                $this->tagalysConfiguration->setConfig($statusPath, $updateStatus, true);
                 $processedProductIds = [];
-                Utils::forEachChunk($productIds, 500, function($productIdsForThisBatch) use ($storeId, $fileName, &$processedProductIds) {
+                Utils::forEachChunk($productIds, 500, function($productIdsForThisBatch) use ($storeId, $fileName, &$processedProductIds, $statusPath) {
                     $collection = $this->_getCollection($storeId, 'updates', $productIdsForThisBatch);
                     $this->syncToFile($storeId, $fileName, $collection, function($storeId, $product) use (&$processedProductIds) {
                         $processedProductIds[] = $product->getId();
@@ -1019,7 +1022,7 @@ class Sync extends \Magento\Framework\App\Helper\AbstractHelper
                             $productDetails = [];
                         }
                         return ["perform" => "index", "payload" => $productDetails];
-                    });
+                    }, $statusPath);
                 });
                 $deletedIds = array_diff($productIds, $processedProductIds);
                 $deleteRows = array_map(function($deletedId){
@@ -1028,7 +1031,7 @@ class Sync extends \Magento\Framework\App\Helper\AbstractHelper
                 $this->writeToFile($fileName, $deleteRows);
 
                 $updateStatus['status'] = 'generated_file';
-                $this->tagalysConfiguration->setConfig("store:$storeId:priority_updates_status", $updateStatus, true);
+                $this->tagalysConfiguration->setConfig($statusPath, $updateStatus, true);
                 $this->_sendFileToTagalys($storeId, self::PRIORITY_UPDATES, $updateStatus);
             }
             $this->deleteFromPriorityUpdateQueue($productIds);
