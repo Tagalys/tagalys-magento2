@@ -22,6 +22,16 @@ class TagalysApi implements TagalysManagementInterface
      */
     private $productFactory;
 
+    /**
+     * @param \Tagalys\Sync\Helper\Configuration
+     */
+    private $tagalysConfiguration;
+
+    /**
+     * @param \Tagalys\Sync\Helper\Sync
+     */
+    private $tagalysSync;
+
     public function __construct(
         \Tagalys\Sync\Helper\Configuration $tagalysConfiguration,
         \Tagalys\Sync\Helper\Api $tagalysApi,
@@ -76,7 +86,11 @@ class TagalysApi implements TagalysManagementInterface
         try {
             switch ($params['info_type']) {
                 case 'status':
-                    $info = array('config' => array(), 'files_in_media_folder' => array(), 'sync_status' => $this->tagalysSync->status());
+                    $info = array(
+                        'config' => $this->tagalysConfiguration->defaultConfigValues,
+                        'files_in_media_folder' => array(),
+                        'sync_status' => $this->tagalysSync->status()
+                    );
                     $configCollection = $this->configFactory->create()->getCollection()->setOrder('id', 'ASC');
                     foreach ($configCollection as $i) {
                         $info['config'][$i->getData('path')] = $i->getData('value');
