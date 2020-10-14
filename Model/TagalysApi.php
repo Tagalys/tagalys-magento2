@@ -125,7 +125,7 @@ class TagalysApi implements TagalysManagementInterface
                             if($params['selective']) {
                                 $productDetailsForStore = (array) $this->tagalysProduct->getSelectiveProductDetails($storeId, $product);
                             } else {
-                                $productDetailsForStore = (array) $this->tagalysProduct->productDetails($storeId, $product, $params['force_regenerate_thumbnail']);
+                                $productDetailsForStore = (array) $this->tagalysProduct->productDetails($product, $storeId, $params['force_regenerate_thumbnail']);
                             }
                             $productDetails['store-' . $storeId][$pid] = $productDetailsForStore;
                         }
