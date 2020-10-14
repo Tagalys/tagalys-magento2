@@ -994,4 +994,8 @@ class Configuration extends \Magento\Framework\App\Helper\AbstractHelper
         }
         return $config;
     }
+
+    public function isTagalysHealthy() {
+        return ($this->getConfig("tagalys:health") === '1');
+    }
 }
