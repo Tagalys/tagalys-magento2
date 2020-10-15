@@ -824,7 +824,8 @@ class Configuration extends \Magento\Framework\App\Helper\AbstractHelper
                 'is_for_display' => $isForDisplay,
                 'is_necessary_system_attribute' => $isNecessarySystemAttribute,
                 'is_white_listed' => in_array($attributeCode, $whitelistedAttributes),
-                'should_sync_attribute' => $this->shouldSyncAttribute($attribute, $whitelistedAttributes)
+                'should_sync_attribute' => $this->shouldSyncAttribute($attribute, $whitelistedAttributes),
+                'front_end_input' => $attribute->getFrontendInput()
             ];
         }
         return $attributeData;
