@@ -35,6 +35,10 @@ class Configuration extends \Magento\Framework\App\Helper\AbstractHelper
         'integration_permissions' => '["Tagalys_Sync::tagalys"]',
         'product_update_detection_methods' => '["events"]',
         'use_optimized_product_updated_at' => 'true',
+        /* Key:
+            mcc -> magento created category
+            tcc -> tagalys created category
+        */
         'listing_pages:allow_reindex_for_mcc' => 'false',
         'listing_pages:allow_cache_clear_for_mcc' => 'false',
         'listing_pages:allow_reindex_for_tcc' => 'true',
@@ -166,16 +170,17 @@ class Configuration extends \Magento\Framework\App\Helper\AbstractHelper
             ];
             if (array_key_exists($configPath, $legacyPathMapping)) {
                 $configValue = $this->configFactory->create()->load($legacyPathMapping[$configPath])->getValue();
-                if ($configValue !== NULL) {
+                // set the default value of new one explicitly
+                if ($configValue === NULL) {
+                    // setting default value explicitly to avoid 2 SQL reads for each function call
+                    $configValue = $this->defaultConfigValues[$configPath];
+                    $this->setConfig($configPath, $configValue);
+                } else if(array_key_exists($configPath, $this->defaultConfigValues)) {
                     $this->setConfig($configPath, $configValue);
                 }
             }
         }
         if ($configValue === NULL) {
-            /* Key:
-                mcc -> magento created category
-                tcc -> tagalys created category
-            */
             $defaultConfigValues = $this->defaultConfigValues;
             if (array_key_exists($configPath, $defaultConfigValues)) {
                 $configValue = $defaultConfigValues[$configPath];
