@@ -241,15 +241,10 @@ class Queue extends \Magento\Framework\App\Helper\AbstractHelper
         return false;
     }
 
-    public function getProductsInQueue(){
-        $productIds = [];
+    public function getProductsInQueueForAPI(){
         $queueTable = $this->resourceConnection->getTableName('tagalys_queue');
-        $sql = "SELECT product_id FROM $queueTable";
-        $rows = $this->runSqlSelect($sql);
-        foreach ($rows as $row) {
-            $productIds[] = $row['product_id'];
-        }
-        return $productIds;
+        $sql = "SELECT * FROM $queueTable";
+        return $this->runSqlSelect($sql);
     }
 
     public function removeProductIdsIn($productIds){
