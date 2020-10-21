@@ -524,7 +524,7 @@ class Product extends \Magento\Framework\App\Helper\AbstractHelper
                 }
             }
         }
-        if(Utils::isGiftCard($product) && $productDetails['price'] == 0) {
+        if(($productDetails['price'] == 0) && (Utils::isGiftCard($product) || Utils::isGroupedProduct($product))) {
             $productDetails['price'] = $productDetails['sale_price'];
         }
         return $productDetails;
