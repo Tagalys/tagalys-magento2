@@ -304,7 +304,7 @@ class TagalysApi implements TagalysManagementInterface
                     $response = array('status' => 'OK', 'updated' => true);
                     break;
                 case 'get_tagalys_queue':
-                    $productIds = $this->queueHelper->getProductsInQueue();
+                    $productIds = $this->queueHelper->getProductsInQueueForAPI();
                     $response = array('status' => 'OK', 'products' => $productIds);
                     break;
                 case 'remove_from_tagalys_queue':
