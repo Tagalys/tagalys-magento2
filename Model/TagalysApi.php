@@ -159,6 +159,12 @@ class TagalysApi implements TagalysManagementInterface
                     $response = array('reset' => true);
                     break;
                 case 'trigger_full_product_sync':
+                    if (!array_key_exists('force_regenerate_thumbnails', $params)) {
+                        $params['force_regenerate_thumbnails'] = false;
+                    }
+                    if (!array_key_exists('products_count', $params)) {
+                        $params['products_count'] = false;
+                    }
                     $this->tagalysApi->log('warn', 'Triggering full products resync via API', array('force_regenerate_thumbnails' => ($params['force_regenerate_thumbnails'] == 'true')));
                     foreach ($this->tagalysConfiguration->getStoresForTagalys() as $storeId) {
                         if (isset($params['products_count'])) {
@@ -168,6 +174,14 @@ class TagalysApi implements TagalysManagementInterface
                         }
                     }
                     $this->queueHelper->truncate();
+                    $response = array('triggered' => true);
+                    break;
+                case 'trigger_quick_feed':
+                    if (!array_key_exists('stores', $params)) {
+                        $params['stores'] = $this->tagalysConfiguration->getStoresForTagalys();
+                    }
+                    $this->tagalysApi->log('warn', 'Triggering quick feed via API', array('stores' => $params['stores']));
+                    $this->tagalysSync->triggerQuickFeed($params['stores']);
                     $response = array('triggered' => true);
                     break;
                 case 'insert_into_sync_queue':
