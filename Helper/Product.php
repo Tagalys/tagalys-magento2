@@ -404,8 +404,13 @@ class Product extends \Magento\Framework\App\Helper\AbstractHelper
             ->addStoreFilter($storeId)
             ->addAttributeToFilter('status', 1)
             ->addAttributeToFilter('entity_id', array('in' => $ids))
-            // ->addFinalPrice()
             ->addAttributeToSelect('*');
+
+        if($this->tagalysConfiguration->getConfig("sync:add_price_data_to_product_collection", true, true)) {
+            // we are able to retrieve the correct product prices even without calling this function
+            // adding this configuration just in case if we face any side effects by removing this
+            $associatedProducts->addFinalPrice();
+        }
 
         $tagItems = array();
         $hash = array();
