@@ -404,7 +404,7 @@ class Product extends \Magento\Framework\App\Helper\AbstractHelper
             ->addStoreFilter($storeId)
             ->addAttributeToFilter('status', 1)
             ->addAttributeToFilter('entity_id', array('in' => $ids))
-            ->addFinalPrice()
+            // ->addFinalPrice()
             ->addAttributeToSelect('*');
 
         $tagItems = array();

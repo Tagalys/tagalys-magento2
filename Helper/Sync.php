@@ -103,11 +103,12 @@ class Sync extends \Magento\Framework\App\Helper\AbstractHelper
     public function _getCollection($storeId, $type = 'feed', $productIdsFromUpdatesQueueForCronInstance = array()) {
         $websiteId = $this->storeManager->getStore($storeId)->getWebsiteId();
         $collection = $this->productFactory->create()->getCollection()
+            ->setFlag('has_stock_status_filter', false)
             ->setStoreId($storeId)
             ->addStoreFilter($storeId)
             ->addAttributeToFilter('status', 1)
             ->addAttributeToFilter('visibility', array("neq" => 1))
-            ->addPriceData(null, $websiteId) // reset website context - changed when using addFinalPrice() in addAssociatedProductDetails() and affects subsequent website store collection queries
+            // ->addPriceData(null, $websiteId) // reset website context - changed when using addFinalPrice() in addAssociatedProductDetails() and affects subsequent website store collection queries
             ->addAttributeToSelect('*');
         if ($type == 'updates') {
             $collection = $collection->addAttributeToFilter('entity_id', array('in' => $productIdsFromUpdatesQueueForCronInstance));
