@@ -103,6 +103,7 @@ class Sync extends \Magento\Framework\App\Helper\AbstractHelper
     public function _getCollection($storeId, $type = 'feed', $productIdsFromUpdatesQueueForCronInstance = array()) {
         $websiteId = $this->storeManager->getStore($storeId)->getWebsiteId();
         $collection = $this->productFactory->create()->getCollection()
+            // setting flag to include out of stock products: https://magento.stackexchange.com/questions/241709/how-to-get-product-collection-with-both-in-stock-and-out-of-stock-products-in-ma
             ->setFlag('has_stock_status_filter', false)
             ->setStoreId($storeId)
             ->addStoreFilter($storeId)

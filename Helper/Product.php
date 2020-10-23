@@ -400,6 +400,8 @@ class Product extends \Magento\Framework\App\Helper\AbstractHelper
         }
         // potential optimization: why are we querying the products again through a collection if linkManagement already returns product objects.
         $associatedProducts = $this->productFactory->create()->getCollection()
+            // setting flag to include out of stock products: https://magento.stackexchange.com/questions/241709/how-to-get-product-collection-with-both-in-stock-and-out-of-stock-products-in-ma
+            ->setFlag('has_stock_status_filter', false)
             ->setStoreId($storeId)
             ->addStoreFilter($storeId)
             ->addAttributeToFilter('status', 1)
