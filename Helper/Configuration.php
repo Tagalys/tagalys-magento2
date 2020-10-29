@@ -831,7 +831,8 @@ class Configuration extends \Magento\Framework\App\Helper\AbstractHelper
                 'is_white_listed' => in_array($attributeCode, $whitelistedAttributes),
                 'should_sync_attribute' => $this->shouldSyncAttribute($attribute, $whitelistedAttributes),
                 'front_end_input' => $attribute->getFrontendInput(),
-                'has_predefined_values' => $attribute->usesSource()
+                'has_predefined_values' => $attribute->usesSource(),
+                'front_end_class' => $attribute->getFrontendClass(),
             ];
         }
         return $attributeData;
