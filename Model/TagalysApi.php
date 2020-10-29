@@ -344,7 +344,7 @@ class TagalysApi implements TagalysManagementInterface
                     $response = ['status' => 'OK', 'updated' => $res];
                     break;
                 case 'get_visible_attributes':
-                    // was previously "get_visible_attribute"
+                case 'get_visible_attribute':
                     $response = [
                         'status' => 'OK',
                         'attributes' => $this->tagalysConfiguration->getAllVisibleAttributesForAPI()
