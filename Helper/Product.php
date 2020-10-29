@@ -650,14 +650,14 @@ class Product extends \Magento\Framework\App\Helper\AbstractHelper
         });
     }
 
-    public function isInStock($product) {
+    public function isInStock($product, $scopeId = null) {
         // does not consider MSI. Ok for now.
         $useIsSaleable = $this->tagalysConfiguration->getConfig("sync:use_is_saleable_for_in_stock", true, true);
         $inStock = $useIsSaleable ? $product->isSaleable() : $product->isAvailable();
         if(Utils::isConfigurableProduct($product)) {
             $considerParenStockValue = $this->tagalysConfiguration->getConfig("sync:consider_parent_in_stock_value", true, true);
             if($considerParenStockValue) {
-                $inStock = ($inStock && $this->stockRegistry->getStockItem($product->getId())->getIsInStock());
+                $inStock = ($inStock && $this->stockRegistry->getStockItem($product->getId(), $scopeId)->getIsInStock());
             }
         }
         return $inStock;
