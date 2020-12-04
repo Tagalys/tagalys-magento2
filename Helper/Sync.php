@@ -46,8 +46,9 @@ class Sync extends \Magento\Framework\App\Helper\AbstractHelper
         $this->filesystem = $filesystem;
         $this->directory = $filesystem->getDirectoryWrite(\Magento\Framework\App\Filesystem\DirectoryList::MEDIA);
 
-        $this->perPage = 50;
-        $this->maxProducts = 500;
+        $this->maxProducts = (int) $this->tagalysConfiguration->getConfig("sync:max_products_per_cron");
+        $this->perPage = (int) $this->tagalysConfiguration->getConfig("sync:feed_per_page");
+        $this->perPage = min($this->maxProducts, $this->perPage);
     }
 
     public function triggerFeedForStore($storeId, $forceRegenerateThumbnails = false, $productsCount = false, $abandonIfExisting = false) {
@@ -137,12 +138,7 @@ class Sync extends \Magento\Framework\App\Helper\AbstractHelper
         $this->tagalysCategory->maintenanceSync();
     }
 
-    public function sync($maxProducts = 500, $max_categories = 50) {
-        // Don't use $this->maxProducts. Write to file for 4 min 45 sec instead
-        $this->maxProducts = $maxProducts;
-        if ($this->perPage > $maxProducts) {
-            $this->perPage = $maxProducts;
-        }
+    public function sync($max_categories = 50) {
         $stores = $this->tagalysConfiguration->getStoresForTagalys();
         if ($stores != NULL) {
 
@@ -186,7 +182,12 @@ class Sync extends \Magento\Framework\App\Helper\AbstractHelper
             // 7. perform feed, updates sync (updates only if feed sync is finished)
             $updatesPerformed = array();
             foreach($stores as $i => $storeId) {
-                $updatesPerformed[$storeId] = $this->_syncForStore($storeId, $productIdsFromUpdatesQueueForCronInstance);
+                if($this->isSyncPausedForStore($storeId)) {
+                    $this->markFeedAsFinishedForStore($storeId);
+                    $updatesPerformed[$storeId] = true;
+                } else {
+                    $updatesPerformed[$storeId] = $this->_syncForStore($storeId, $productIdsFromUpdatesQueueForCronInstance);
+                }
             }
             $updatesPerformedForAllStores = true;
             foreach ($stores as $i => $storeId) {
@@ -233,6 +234,9 @@ class Sync extends \Magento\Framework\App\Helper\AbstractHelper
     public function _syncForStore($storeId, $productIdsFromUpdatesQueueForCronInstance) {
         $updatesPerformed = false;
         $feedResponse = $this->_generateFilePart($storeId, 'feed');
+        if($feedResponse == false) {
+            return true;
+        }
         $syncFileStatus = $feedResponse['syncFileStatus'];
         if (!$this->_isFeedGenerationInProgress($storeId, $syncFileStatus)) {
             if (count($productIdsFromUpdatesQueueForCronInstance) > -1) {
@@ -407,6 +411,10 @@ class Sync extends \Magento\Framework\App\Helper\AbstractHelper
                     $cronCurrentlyCompleted = 0;
                     try {
                         while ($cronCurrentlyCompleted < $this->maxProducts) {
+                            if($this->isSyncPausedForStore($storeId)) {
+                                $this->markFeedAsFinishedForStore($storeId);
+                                return false;
+                            }
                             if (isset($syncFileStatus['completed_count']) && $syncFileStatus['completed_count'] > 0) {
                                 $currentPage = (int) (($syncFileStatus['completed_count'] / $this->perPage) + 1);
                             } else {
@@ -1069,8 +1077,9 @@ class Sync extends \Magento\Framework\App\Helper\AbstractHelper
     }
 
     public function truncateQueueAndTriggerSyncIfRequired($stores, $updatesCount) {
+        $maxAllowedUpdatesCount = (int) $this->tagalysConfiguration->getConfig("sync:max_allowed_updates_count");
         $clearQueueAndTriggerResync = false;
-        if($updatesCount > 1000) {
+        if($updatesCount > $maxAllowedUpdatesCount) {
             foreach($stores as $i => $storeId) {
                 $totalProducts = $this->getProductsCount($storeId);
                 $cutoff = 0.33 * $totalProducts;
@@ -1088,5 +1097,15 @@ class Sync extends \Magento\Framework\App\Helper\AbstractHelper
             }
         }
         return $clearQueueAndTriggerResync;
+    }
+
+    public function isSyncPausedForStore($storeId) {
+        return !!$this->tagalysConfiguration->getConfig("store:$storeId:pause_product_sync");
+    }
+
+    public function markFeedAsFinishedForStore($storeId) {
+        $this->tagalysConfiguration->updateJsonConfig("store:$storeId:feed_status", [
+            'status' => 'finished'
+        ]);
     }
 }

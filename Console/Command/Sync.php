@@ -60,7 +60,7 @@ class Sync extends Command
         $maxP = $input->getOption(self::MAX_PRODUCTS);
         $maxC = $input->getOption(self::MAX_CATEGORIES);
 
-        $this->syncHelper->sync(intval($maxP), intval($maxC));
+        $this->syncHelper->sync(intval($maxC));
 
         $output->writeln("Done");
     }

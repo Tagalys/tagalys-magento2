@@ -65,6 +65,9 @@ class Configuration extends \Magento\Framework\App\Helper\AbstractHelper
         'cron_status' => '[]',
         "sync:consider_parent_in_stock_value" => 'true',
         'sync:include_deleted_products_in_insert_primary' => 'true',
+        'sync:max_products_per_cron' => '500',
+        'sync:feed_per_page' => '50',
+        'sync:max_allowed_updates_count' => '1000',
     ];
 
     /**
