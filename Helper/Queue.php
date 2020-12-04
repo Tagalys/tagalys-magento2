@@ -3,6 +3,11 @@ namespace Tagalys\Sync\Helper;
 
 class Queue extends \Magento\Framework\App\Helper\AbstractHelper
 {
+
+    private $tableName;
+    private $visibilityAttrId = null;
+    private $sqlBulkBatchSize = 1000;
+
     public function __construct(
         \Tagalys\Sync\Model\QueueFactory $queueFactory,
         \Tagalys\Sync\Helper\Configuration $tagalysConfiguration,
@@ -26,9 +31,20 @@ class Queue extends \Magento\Framework\App\Helper\AbstractHelper
         $writer = new \Zend\Log\Writer\Stream(BP . '/var/log/tagalys_core.log');
         $this->tagalysLogger = new \Zend\Log\Logger();
         $this->tagalysLogger->addWriter($writer);
+
+        $this->tableName = $this->resourceConnection->getTableName('tagalys_queue');
     }
 
-    public function insertUnique($productIds, $priority = 0) {
+    public function insertUnique($productIds, $priority = 0, $insertPrimary = null, $includeDeleted = null) {
+        $useOldInsertUnique = $this->tagalysConfiguration->getConfig('fallback:use_old_insert_unique', true);
+        if ($useOldInsertUnique) {
+            return $this->oldInsertUnique($productIds, $priority);
+        } else {
+            return $this->newInsertUnique($productIds, $priority, $insertPrimary, $includeDeleted);
+        }
+    }
+
+    public function oldInsertUnique($productIds, $priority = 0) {
         try {
             if (!is_array($productIds)) {
                 $productIds = array($productIds);
@@ -62,7 +78,163 @@ class Queue extends \Magento\Framework\App\Helper\AbstractHelper
         }
     }
 
-    public function insertIfRequired($productIds){
+    public function newInsertUnique($productIds, $priority = 0, $insertPrimary = null, $includeDeleted = null) {
+        $productIds = is_array($productIds) ? $productIds : [$productIds];
+
+        $response = [
+            'input_count' => count($productIds),
+            'insert_primary' => $insertPrimary,
+            'include_deleted' => $includeDeleted,
+            'count_after_filter' => null,
+            'inserted' => 0,
+            'updated' => 0,
+            'ignored' => 0,
+            'errors' => false
+        ];
+
+        try {
+            // remove null values - this will cause a crash when used in the replace command below
+            $productIds = array_filter($productIds);
+
+            $logInsert = $this->tagalysConfiguration->getConfig('sync:log_product_ids_during_insert_to_queue', true);
+            if($logInsert){
+                $this->tagalysLogger->info("insertUnique: ProductIds: ". json_encode($productIds));
+            }
+
+            if (is_null($insertPrimary)){
+                $insertPrimary = $this->tagalysConfiguration->getConfig('sync:insert_primary_products_in_insert_unique', true);
+                $response['insert_primary'] = $insertPrimary;
+            }
+            if (is_null($includeDeleted)){
+                $includeDeleted = $this->tagalysConfiguration->getConfig('sync:include_deleted_products_in_insert_primary', true);
+                $response['include_deleted'] = $includeDeleted;
+            }
+
+            $relevantProductIds = $this->getRelevantProductIds($productIds, $insertPrimary, $includeDeleted);
+            $response['count_after_filter'] = count($relevantProductIds);
+            if(count($relevantProductIds) == 0) {
+                return $response;
+            }
+
+            $idsByOperation = $this->splitProductIdsByOperations($relevantProductIds, $priority);
+            $response['ignored'] += count($idsByOperation['ignore']);
+
+            $this->paginateSqlInsert($idsByOperation['insert'], $priority);
+            $response['inserted'] += count($idsByOperation['insert']);
+
+            $this->paginateSqlUpdate($idsByOperation['update'], $priority);
+            $response['updated'] += count($idsByOperation['update']);
+
+            return $response;
+        } catch (\Exception $e){
+            $response['errors'] = true;
+            $this->tagalysLogger->warn("insertUnique exception: " . json_encode(['message' => $e->getMessage(), 'product_ids' => $productIds, 'response' => $response, 'backtrace' => $e->getTrace()]));
+            return $response;
+        }
+    }
+
+    public function splitProductIdsByOperations($productIds, $priority) {
+        $idsByOperation = [ 'insert' => [], 'update' => [], 'ignore' => [] ];
+        Utils::forEachChunk($productIds, $this->sqlBulkBatchSize, function($idsChunk) use ($priority, &$idsByOperation) {
+            $values = implode(',', $idsChunk);
+            $sql = "SELECT product_id, priority FROM {$this->tableName} WHERE product_id IN ($values)";
+            $rows = $this->runSqlSelect($sql);
+            $productIdsToIgnore = [];
+            $productIdsToUpdate = [];
+            foreach($rows as $row) {
+                if ($row['priority'] >= $priority) {
+                    $productIdsToIgnore[] = $row['product_id'];
+                } else {
+                    $productIdsToUpdate[] = $row['product_id'];
+                }
+            }
+            $productIdsToInsert = array_diff($idsChunk, $productIdsToIgnore, $productIdsToUpdate);
+
+            $idsByOperation['insert'] = array_merge($idsByOperation['insert'], $productIdsToInsert);
+            $idsByOperation['update'] = array_merge($idsByOperation['update'], $productIdsToUpdate);
+            $idsByOperation['ignore'] = array_merge($idsByOperation['ignore'], $productIdsToIgnore);
+        });
+        return $idsByOperation;
+    }
+
+    public function getRelevantProductIds($productIds, $filterPrimary = false, $includeDeletedInPrimaryFilter = true) {
+        if($filterPrimary) {
+            $productIdsToInsert = [];
+            Utils::forEachChunk($productIds, $this->sqlBulkBatchSize, function($idsChunk) use (&$productIdsToInsert, $includeDeletedInPrimaryFilter) {
+                $primaryProductIds = $this->getPrimaryProductIds($idsChunk);
+                $productIdsToInsert = array_merge($productIdsToInsert, $primaryProductIds);
+                if($includeDeletedInPrimaryFilter) {
+                    $deletedIds = $this->getDeletedProductIds($idsChunk);
+                    $productIdsToInsert = array_merge($productIdsToInsert, $deletedIds);
+                }
+            });
+        } else {
+            $productIdsToInsert = $productIds;
+        }
+        return array_unique($productIdsToInsert);
+    }
+
+    /*
+        Note:
+            1. Call this function only through pagination. Will lead to SQL error if count($productIds) in large.
+            2. Will not return deleted product ids
+    */
+    public function getPrimaryProductIds($productIds) {
+        $parentProductIds = $this->getParentProductIds($productIds);
+        return $this->getProductsVisibleInStores(array_merge($productIds, $parentProductIds));
+    }
+
+    public function getParentProductIds($productIds) {
+        $parentIds = [];
+
+        $cpr = $this->resourceConnection->getTableName('catalog_product_relation');
+        $values = implode(',', $productIds);
+
+        // select parent products of associated child products in the given array
+        $sql = "SELECT DISTINCT cpr.parent_id as product_id FROM $cpr as cpr WHERE cpr.child_id IN ($values);";
+        $rows = $this->runSqlSelect($sql);
+        foreach($rows as $row) {
+            $parentIds[] = $row['product_id'];
+        }
+        return $parentIds;
+    }
+
+    public function getProductsVisibleInStores($productIds, $stores = null) {
+        $visibleProductIds = [];
+
+        if(is_null($stores)) {
+            $stores = $this->tagalysConfiguration->getStoresForTagalys(true);
+            $stores = implode(',', $stores);
+        }
+
+        $cpe = $this->resourceConnection->getTableName('catalog_product_entity');
+        $cpei = $this->resourceConnection->getTableName('catalog_product_entity_int');
+        $columnToJoin = $this->getResourceColumnToJoin();
+        $visibilityAttr = $this->getProductVisibilityAttrId();
+        $values = implode(',', $productIds);
+
+        $sql = "SELECT DISTINCT cpe.entity_id as product_id FROM $cpe as cpe INNER JOIN $cpei as cpei ON cpe.{$columnToJoin} = cpei.{$columnToJoin} WHERE cpe.entity_id IN ($values) AND cpei.attribute_id = $visibilityAttr AND cpei.value IN (2,3,4) AND cpei.store_id IN ($stores);";
+        $rows = $this->runSqlSelect($sql);
+        foreach($rows as $row) {
+            $visibleProductIds[] = $row['product_id'];
+        }
+        return $visibleProductIds;
+    }
+
+    public function getDeletedProductIds($productIds) {
+        $values = implode(',', $productIds);
+        $cpe = $this->resourceConnection->getTableName('catalog_product_entity');
+        $sql = "SELECT entity_id FROM $cpe WHERE entity_id IN ($values)";
+        $rows = $this->runSqlSelect($sql);
+        $productsInSystem = [];
+        foreach($rows as $row) {
+            $productsInSystem[] = $row['entity_id'];
+        }
+        return array_diff($productIds, $productsInSystem);
+    }
+
+    // To avoid using direct SQL from observers. Just in case.
+    public function insertIfRequiredWithoutSql($productIds){
         if (!is_array($productIds)) {
             $productIds = [$productIds];
         }
@@ -75,6 +247,7 @@ class Queue extends \Magento\Framework\App\Helper\AbstractHelper
         }
     }
 
+    // rename to insertRecentlyUpdatedProductsToSync
     public function importProductsToSync() {
         // force UTC timezone
         $conn = $this->resourceConnection->getConnection();
@@ -139,7 +312,7 @@ class Queue extends \Magento\Framework\App\Helper\AbstractHelper
         $tableName = $queue->getResource()->getMainTable();
         $connection->truncateTable($tableName);
         if ($preserve_priority_items) {
-            $this->insertRows($priorityRows);
+            $this->paginateAndInsertRows($priorityRows);
         }
     }
 
@@ -153,9 +326,9 @@ class Queue extends \Magento\Framework\App\Helper\AbstractHelper
         return $productIds;
     }
 
-    public function insertRows($rows) {
+    public function paginateAndInsertRows($rows) {
         $queueTable = $this->resourceConnection->getTableName('tagalys_queue');
-        Utils::forEachChunk($rows, 500, function($rowsToInsert) use ($queueTable){
+        Utils::forEachChunk($rows, $this->sqlBulkBatchSize, function($rowsToInsert) use ($queueTable){
             $values = implode(',', $rowsToInsert);
             $sql = "REPLACE $queueTable (product_id, priority) VALUES $values;";
             $this->runSql($sql);
@@ -272,10 +445,30 @@ class Queue extends \Magento\Framework\App\Helper\AbstractHelper
     }
 
     public function getProductVisibilityAttrId(){
-        $ea = $this->resourceConnection->getTableName('eav_attribute');
-        $eet = $this->resourceConnection->getTableName('eav_entity_type');
-        $sql = "SELECT ea.attribute_id FROM $ea as ea INNER JOIN $eet as eet ON ea.entity_type_id = eet.entity_type_id WHERE eet.entity_table = 'catalog_product_entity' AND ea.attribute_code = 'visibility'";
-        $rows = $this->runSqlSelect($sql);
-        return $rows[0]['attribute_id'];
+        if(is_null($this->visibilityAttrId)) {
+            $ea = $this->resourceConnection->getTableName('eav_attribute');
+            $eet = $this->resourceConnection->getTableName('eav_entity_type');
+            $sql = "SELECT ea.attribute_id FROM $ea as ea INNER JOIN $eet as eet ON ea.entity_type_id = eet.entity_type_id WHERE eet.entity_table = 'catalog_product_entity' AND ea.attribute_code = 'visibility'";
+            $rows = $this->runSqlSelect($sql);
+
+            $this->visibilityAttrId = $rows[0]['attribute_id'];
+        }
+        return $this->visibilityAttrId;
     }
+
+    public function paginateSqlInsert($productIds, $priority) {
+        $rows = array_map(function($productId) use ($priority) {
+            return "($productId, $priority)";
+        }, $productIds);
+        $this->paginateAndInsertRows($rows);
+    }
+
+    public function paginateSqlUpdate($productIds, $priority) {
+        Utils::forEachChunk($productIds, $this->sqlBulkBatchSize, function($idsChunk) use ($priority){
+            $values = implode(',', $idsChunk);
+            $sql = "UPDATE {$this->tableName} SET priority=$priority WHERE product_id IN ($values);";
+            $this->runSql($sql);
+        });
+    }
+
 }
