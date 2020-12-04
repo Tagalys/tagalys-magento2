@@ -154,6 +154,7 @@ class Configuration extends \Magento\Framework\App\Helper\AbstractHelper
         }
     }
 
+    // Note: Returns cached value when $useCache is true
     public function getConfig($configPath, $jsonDecode = false, $useCache = false) {
         if($useCache and array_key_exists($configPath, $this->cachedConfig)) {
             return $this->cachedConfig[$configPath];
@@ -975,10 +976,10 @@ class Configuration extends \Magento\Framework\App\Helper\AbstractHelper
     public function isCacheClearAllowed($categoryType = Category::PLATFORM_CREATED) {
         switch($categoryType) {
             case Category::PLATFORM_CREATED:
-                return $this->getConfig('listing_pages:allow_cache_clear_for_mcc', true);
+                return $this->getConfig('listing_pages:allow_cache_clear_for_mcc', true, true);
             break;
             case Category::TAGALYS_CREATED:
-                return $this->getConfig('listing_pages:allow_cache_clear_for_tcc', true);
+                return $this->getConfig('listing_pages:allow_cache_clear_for_tcc', true, true);
             break;
         }
         return false;

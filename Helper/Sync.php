@@ -157,10 +157,12 @@ class Sync extends \Magento\Framework\App\Helper\AbstractHelper
 
             // perform priority updates and mini feed sync
             $cronUnlocked = $this->lockedCronOperation(function() use ($stores) {
+                $this->runQuickFeedIfRequired($stores); // run the faster one first
                 $this->runPriorityUpdatesIfRequired($stores);
-                $this->runQuickFeedIfRequired($stores);
             });
             if(!$cronUnlocked) {
+                $cronStatus = $this->tagalysConfiguration->getConfig('cron_status', true);
+                $this->tagalysApi->log('warn', 'lockedCronOperation could not acquire lock. Locked by pid: ', ['cron_status' => $cronStatus]);
                 return false;
             }
 
