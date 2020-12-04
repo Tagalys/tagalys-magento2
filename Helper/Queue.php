@@ -420,24 +420,6 @@ class Queue extends \Magento\Framework\App\Helper\AbstractHelper
         return $this->runSqlSelect($sql);
     }
 
-    public function removeProductIdsIn($productIds, $priority = null){
-        if(!is_array($productIds)){
-            $productIds = [$productIds];
-        }
-        if(count($productIds) > 0){
-            $productIds = implode(',', $productIds);
-            $queueTable = $this->resourceConnection->getTableName('tagalys_queue');
-            $where = "product_id IN ($productIds)";
-            if ($priority != null) {
-                $where .= " AND priority=$priority";
-            }
-            $sql = "DELETE FROM $queueTable WHERE $where;";
-            $this->runSql($sql);
-            return true;
-        }
-        return false;
-    }
-
     public function getResourceColumnToJoin(){
         $edition = $this->productMetadataInterface->getEdition();
         if ($edition == "Community") {
@@ -475,8 +457,39 @@ class Queue extends \Magento\Framework\App\Helper\AbstractHelper
         });
     }
 
+    public function paginateSqlDelete($productIds, $priority = null) {
+        Utils::forEachChunk($productIds, $this->sqlBulkBatchSize, function($idsChunk) use($priority) {
+            $values = implode(',', $idsChunk);
+            $where = "product_id IN ($values)";
+            if ($priority != null) {
+                $where .= " AND priority=$priority";
+            }
+            $sql = "DELETE FROM {$this->tableName} WHERE $where;";
+            $this->runSql($sql);
+        });
+        return true;
+    }
+
     public function deleteWithPriority($priority) {
         $sql = "DELETE FROM {$this->tableName} WHERE priority=$priority";
         return $this->runSql($sql);
+    }
+
+    public function removeDuplicatesFromQueue() {
+        $sql = "SELECT * FROM {$this->tableName} ORDER BY priority DESC;";
+        $rows = $this->runSqlSelect($sql);
+        $productIdsHash = [];
+        $validRows = [];
+        foreach($rows as $row) {
+            $productId = $row['product_id'];
+            $priority = $row['priority'];
+            if(!array_key_exists($productId, $productIdsHash)) {
+                $validRows[] = "($productId, $priority)";
+                $productIdsHash[$productId] = true;
+            }
+        }
+        $this->paginateSqlDelete(array_keys($productIdsHash));
+        $this->paginateAndInsertRows($validRows);
+        return ['before' => count($rows), 'after' => count($validRows)];
     }
 }
