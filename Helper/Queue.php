@@ -105,12 +105,16 @@ class Queue extends \Magento\Framework\App\Helper\AbstractHelper
                 $insertPrimary = $this->tagalysConfiguration->getConfig('sync:insert_primary_products_in_insert_unique', true);
                 $response['insert_primary'] = $insertPrimary;
             }
-            if (is_null($includeDeleted)){
-                $includeDeleted = $this->tagalysConfiguration->getConfig('sync:include_deleted_products_in_insert_primary', true);
-                $response['include_deleted'] = $includeDeleted;
+            if($insertPrimary) {
+                if (is_null($includeDeleted)){
+                    $includeDeleted = $this->tagalysConfiguration->getConfig('sync:include_deleted_products_in_insert_primary', true);
+                    $response['include_deleted'] = $includeDeleted;
+                }
+                $relevantProductIds = $this->getRelevantProductIds($productIds, $insertPrimary, $includeDeleted);
+            } else {
+                $relevantProductIds = array_unique($productIds);
             }
 
-            $relevantProductIds = $this->getRelevantProductIds($productIds, $insertPrimary, $includeDeleted);
             $response['count_after_filter'] = count($relevantProductIds);
             if(count($relevantProductIds) == 0) {
                 return $response;
@@ -157,20 +161,16 @@ class Queue extends \Magento\Framework\App\Helper\AbstractHelper
         return $idsByOperation;
     }
 
-    public function getRelevantProductIds($productIds, $filterPrimary = false, $includeDeletedInPrimaryFilter = true) {
-        if($filterPrimary) {
-            $productIdsToInsert = [];
-            Utils::forEachChunk($productIds, $this->sqlBulkBatchSize, function($idsChunk) use (&$productIdsToInsert, $includeDeletedInPrimaryFilter) {
-                $primaryProductIds = $this->getPrimaryProductIds($idsChunk);
-                $productIdsToInsert = array_merge($productIdsToInsert, $primaryProductIds);
-                if($includeDeletedInPrimaryFilter) {
-                    $deletedIds = $this->getDeletedProductIds($idsChunk);
-                    $productIdsToInsert = array_merge($productIdsToInsert, $deletedIds);
-                }
-            });
-        } else {
-            $productIdsToInsert = $productIds;
-        }
+    public function getRelevantProductIds($productIds, $includeDeleted = true) {
+        $productIdsToInsert = [];
+        Utils::forEachChunk($productIds, $this->sqlBulkBatchSize, function($idsChunk) use (&$productIdsToInsert, $includeDeleted) {
+            $primaryProductIds = $this->getPrimaryProductIds($idsChunk);
+            $productIdsToInsert = array_merge($productIdsToInsert, $primaryProductIds);
+            if($includeDeleted) {
+                $deletedIds = $this->getDeletedProductIds($idsChunk);
+                $productIdsToInsert = array_merge($productIdsToInsert, $deletedIds);
+            }
+        });
         return array_unique($productIdsToInsert);
     }
 

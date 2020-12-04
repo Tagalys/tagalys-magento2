@@ -335,6 +335,10 @@ class TagalysApi implements TagalysManagementInterface
                 case 'remove_duplicates_from_tagalys_queue':
                     $response = $this->queueHelper->removeDuplicatesFromQueue();
                     break;
+                case 'get_relevant_product_ids':
+                    $includeDeleted = array_key_exists('include_deleted', $params) ? $params['include_deleted'] : false;
+                    $response = $this->queueHelper->getRelevantProductIds($params['product_ids'], $includeDeleted);
+                    break;
                 case 'delete_from_tagalys_queue_with_priority':
                     if (array_key_exists('priority', $params)){
                         $priority = $params['priority'];
