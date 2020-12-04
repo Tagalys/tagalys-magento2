@@ -203,6 +203,9 @@ class Configuration extends \Magento\Framework\App\Helper\AbstractHelper
     }
 
     public function setConfig($configPath, $configValue, $jsonEncode = false) {
+        if(array_key_exists($configPath, $this->cachedConfig)) {
+            $this->cachedConfig[$configPath] = $configValue;
+        }
         if ($jsonEncode) {
             $configValue = json_encode($configValue);
         }
