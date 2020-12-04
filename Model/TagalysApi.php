@@ -325,13 +325,21 @@ class TagalysApi implements TagalysManagementInterface
                     break;
                 case 'remove_from_tagalys_queue':
                     if (array_key_exists('product_ids', $params)){
-                        $res = $this->queueHelper->removeProductIdsIn($params['product_ids']);
-                    } else if (array_key_exists('priority', $params)) {
-                        $res = $this->queueHelper->removeProductIdsWithPriority($params['priority']);
+                        $priority = array_key_exists('priority', $params) ? $params['priority'] : null;
+                        $res = $this->queueHelper->removeProductIdsIn($params['product_ids'], $priority);
                     } else {
                         $res = false;
                     }
                     $response = array('status' => 'OK', 'removed' => $res);
+                    break;
+                case 'delete_from_tagalys_queue_with_priority':
+                    if (array_key_exists('priority', $params)){
+                        $priority = $params['priority'];
+                        $this->queueHelper->deleteWithPriority($priority);
+                        $response = ['deleted' => true, 'message' => "deleted rows with priority $priority"];
+                    } else {
+                        $response = ['message' => 'required param `priority` is missing'];
+                    }
                     break;
                 case 'get_positions':
                     $positions = $this->tagalysCategoryHelper->getProductPosition($params['category_id']);

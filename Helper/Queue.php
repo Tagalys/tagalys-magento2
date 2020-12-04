@@ -420,14 +420,18 @@ class Queue extends \Magento\Framework\App\Helper\AbstractHelper
         return $this->runSqlSelect($sql);
     }
 
-    public function removeProductIdsIn($productIds){
+    public function removeProductIdsIn($productIds, $priority = null){
         if(!is_array($productIds)){
             $productIds = [$productIds];
         }
         if(count($productIds) > 0){
             $productIds = implode(',', $productIds);
             $queueTable = $this->resourceConnection->getTableName('tagalys_queue');
-            $sql = "DELETE FROM $queueTable WHERE product_id IN ($productIds);";
+            $where = "product_id IN ($productIds)";
+            if ($priority != null) {
+                $where .= " AND priority=$priority";
+            }
+            $sql = "DELETE FROM $queueTable WHERE $where;";
             $this->runSql($sql);
             return true;
         }
@@ -471,4 +475,8 @@ class Queue extends \Magento\Framework\App\Helper\AbstractHelper
         });
     }
 
+    public function deleteWithPriority($priority) {
+        $sql = "DELETE FROM {$this->tableName} WHERE priority=$priority";
+        return $this->runSql($sql);
+    }
 }
