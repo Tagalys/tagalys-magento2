@@ -913,13 +913,13 @@ class Sync extends \Magento\Framework\App\Helper\AbstractHelper
             $quickFeedStatus = $this->tagalysConfiguration->getConfig($statusPath, true);
             if($quickFeedStatus['status'] == 'scheduled') {
                 $fileName = $this->_getNewSyncFileName($storeId, self::QUICK_FEED);
-                $quickFeedStatus = [
+                $this->tagalysConfiguration->setConfig($statusPath, [
                     'status' => 'processing',
                     'filename' => $fileName,
                     'triggered_at' => $this->now(),
                     'products_count' => $this->getProductsCount($storeId),
-                ];
-                $this->tagalysConfiguration->setConfig($statusPath, $quickFeedStatus, true);
+                    'completed_count' => 0
+                ], true);
                 $collection = $this->_getCollection($storeId);
                 $this->syncToFile($storeId, $fileName, $collection, function($storeId, $product) {
                     try {
@@ -944,24 +944,30 @@ class Sync extends \Magento\Framework\App\Helper\AbstractHelper
 
     public function syncToFile($storeId, $fileName, $collection, $getProductDetails, $statusPath) {
         $rowsToWrite = [];
-        $productCount = 0;
+        $completedCount = 0;
         foreach($collection as $product) {
             $productDetails = $getProductDetails($storeId, $product);
             $rowsToWrite[] = json_encode($productDetails);
 
-            $productCount++;
-            if($productCount % 50 == 0) {
+            $completedCount++;
+            if($completedCount % 50 == 0) {
                 $this->touchLock();
                 $this->writeToFile($fileName, $rowsToWrite);
-                $this->tagalysConfiguration->updateJsonConfig($statusPath, ['completed_count' => $productCount]);
+                $this->updateCompletedCount($statusPath, $completedCount);
                 $rowsToWrite = [];
             }
-            $this->sleepIfRequired($productCount);
+            $this->sleepIfRequired($completedCount);
         }
         if(count($rowsToWrite) > 0) {
             $this->writeToFile($fileName, $rowsToWrite);
-            $this->tagalysConfiguration->updateJsonConfig($statusPath, ['completed_count' => $productCount]);
+            $this->updateCompletedCount($statusPath, $completedCount);
         }
+    }
+
+    public function updateCompletedCount($statusPath, $completedCount) {
+        $status = $this->tagalysConfiguration->getConfig($statusPath, true);
+        $status['completed_count'] += $completedCount;
+        $this->tagalysConfiguration->setConfig($statusPath, $status, true);
     }
 
     public function writeToFile($fileName, $rows) {
@@ -1023,14 +1029,14 @@ class Sync extends \Magento\Framework\App\Helper\AbstractHelper
         if($updatesCount > 0) {
             foreach($stores as $storeId) {
                 $fileName = $this->_getNewSyncFileName($storeId, self::PRIORITY_UPDATES);
-                $updateStatus = [
+                $statusPath = "store:$storeId:priority_updates_status";
+                $this->tagalysConfiguration->setConfig($statusPath, [
                     'status' => 'processing',
                     'filename' => $fileName,
                     'triggered_at' => $this->now(),
                     'products_count' => $updatesCount,
-                ];
-                $statusPath = "store:$storeId:priority_updates_status";
-                $this->tagalysConfiguration->setConfig($statusPath, $updateStatus, true);
+                    'completed_count' => 0
+                ], true);
                 $processedProductIds = [];
                 Utils::forEachChunk($productIds, 500, function($productIdsForThisBatch) use ($storeId, $fileName, &$processedProductIds, $statusPath) {
                     $collection = $this->_getCollection($storeId, 'updates', $productIdsForThisBatch);
