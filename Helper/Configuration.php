@@ -923,7 +923,9 @@ class Configuration extends \Magento\Framework\App\Helper\AbstractHelper
                 'slug' => $category->getUrlKey(),
                 'path' => $category->getPath(),
                 'label' => $processAncestry ? $this->getCategoryName($category) : false,
-                'static_block_only' => ($category->getDisplayMode()=='PAGE')
+                'static_block_only' => ($category->getDisplayMode()=='PAGE'),
+                'include_in_menu' => ($category->getIncludeInMenu() === '1'),
+                'is_active' => ($category->getIsActive() === '1'),
             );
             if (array_key_exists($id, $tagalysPoweredCategories)) {
                 $categoryDetails['powered_by_tagalys'] = true;
