@@ -46,9 +46,8 @@ class Sync extends \Magento\Framework\App\Helper\AbstractHelper
         $this->filesystem = $filesystem;
         $this->directory = $filesystem->getDirectoryWrite(\Magento\Framework\App\Filesystem\DirectoryList::MEDIA);
 
-        $this->maxProducts = (int) $this->tagalysConfiguration->getConfig("sync:max_products_per_cron");
-        $this->perPage = (int) $this->tagalysConfiguration->getConfig("sync:feed_per_page");
-        $this->perPage = min($this->maxProducts, $this->perPage);
+        $this->maxProducts = 500;
+        $this->perPage = 50;
     }
 
     public function triggerFeedForStore($storeId, $forceRegenerateThumbnails = false, $productsCount = false, $abandonIfExisting = false) {
@@ -139,6 +138,9 @@ class Sync extends \Magento\Framework\App\Helper\AbstractHelper
     }
 
     public function sync($max_categories = 50) {
+        $this->maxProducts = (int) $this->tagalysConfiguration->getConfig("sync:max_products_per_cron");
+        $this->perPage = (int) $this->tagalysConfiguration->getConfig("sync:feed_per_page");
+        $this->perPage = min($this->maxProducts, $this->perPage);
         $stores = $this->tagalysConfiguration->getStoresForTagalys();
         if ($stores != NULL) {
 
