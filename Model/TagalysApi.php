@@ -188,9 +188,9 @@ class TagalysApi implements TagalysManagementInterface
                     $this->tagalysApi->log('warn', 'Inserting into sync queue via API', array('product_ids' => $params['product_ids']));
                     $priority = array_key_exists('priority', $params) ? $params['priority'] : 0;
                     $insertPrimary = array_key_exists('insert_primary', $params) ? $params['insert_primary'] : null;
-                    $includeDeleted = array_key_exists('consider_deleted_products_as_primary', $params) ? $params['consider_deleted_products_as_primary'] : null;
-                    $this->queueHelper->insertUnique($params['product_ids'], $priority, $insertPrimary, $includeDeleted);
-                    $response = array('inserted' => true);
+                    $includeDeleted = array_key_exists('include_deleted', $params) ? $params['include_deleted'] : null;
+                    $res = $this->queueHelper->insertUnique($params['product_ids'], $priority, $insertPrimary, $includeDeleted);
+                    $response = array('inserted' => true, 'info' => $res);
                     break;
                 case 'truncate_sync_queue':
                     $this->tagalysApi->log('warn', 'Truncating sync queue via API');
@@ -339,7 +339,7 @@ class TagalysApi implements TagalysManagementInterface
                     $includeDeleted = array_key_exists('include_deleted', $params) ? $params['include_deleted'] : false;
                     $response = $this->queueHelper->getRelevantProductIds($params['product_ids'], $includeDeleted);
                     break;
-                case 'delete_from_tagalys_queue_with_priority':
+                case 'delete_from_tagalys_queue_by_priority':
                     if (array_key_exists('priority', $params)){
                         $priority = $params['priority'];
                         $this->queueHelper->deleteByPriority($priority);

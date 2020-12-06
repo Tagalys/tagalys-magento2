@@ -110,7 +110,7 @@ class Queue extends \Magento\Framework\App\Helper\AbstractHelper
                     $includeDeleted = $this->tagalysConfiguration->getConfig('sync:include_deleted_products_in_insert_primary', true);
                     $response['include_deleted'] = $includeDeleted;
                 }
-                $relevantProductIds = $this->getRelevantProductIds($productIds, $insertPrimary, $includeDeleted);
+                $relevantProductIds = $this->getRelevantProductIds($productIds, $includeDeleted);
             } else {
                 $relevantProductIds = array_unique($productIds);
             }
