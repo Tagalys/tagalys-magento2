@@ -32,6 +32,8 @@ class TagalysApi implements TagalysManagementInterface
      */
     private $tagalysSync;
 
+    private $haveSetTagalysContext = false;
+
     public function __construct(
         \Tagalys\Sync\Helper\Configuration $tagalysConfiguration,
         \Tagalys\Sync\Helper\Api $tagalysApi,
@@ -79,9 +81,16 @@ class TagalysApi implements TagalysManagementInterface
         return json_encode($response);
     }
 
+    private function setTagalysContext() {
+        if (!$this->haveSetTagalysContext) {
+            $this->_registry->register("tagalys_context", true);
+            $this->haveSetTagalysContext=true;
+        }
+    }
+
     public function info($params)
     {
-        $this->_registry->register("tagalys_context", true);
+        $this->setTagalysContext();
         $response = array('status' => 'error', 'message' => 'invalid info_type');
         try {
             switch ($params['info_type']) {
@@ -421,7 +430,17 @@ class TagalysApi implements TagalysManagementInterface
                     }
                     $response = ['status' => 'OK', 'deleted' => $res];
                     break;
-
+                case 'bulk_ops':
+                    $response = ['results' => [] ];
+                    foreach($params['ops'] as $opParams) {
+                        if($opParams['info_type'] == 'bulk_ops') {
+                            $response = ['results' => false, 'message' => "info_type: bulk_ops not permitted as part of ops."];
+                            break;
+                        }
+                        $opResponse = json_decode($this->info($opParams));
+                        $response['results'][] = $opResponse;
+                    }
+                    break;
             }
         } catch (\Exception $e) {
             $response = ['status' => 'error', 'message' => $e->getMessage(), 'trace' => $e->getTrace()];
