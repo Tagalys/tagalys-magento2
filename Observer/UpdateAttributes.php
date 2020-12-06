@@ -15,7 +15,7 @@ class UpdateAttributes implements \Magento\Framework\Event\ObserverInterface
     {
         try {
             $updatedProductIds = $observer->getEvent()->getProductIds();
-            $this->queueHelper->insertIfRequiredWithoutSql($updatedProductIds);
+            $this->queueHelper->insertIfRequired($updatedProductIds);
         } catch (\Throwable $e) { }
     }
 }

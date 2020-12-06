@@ -234,7 +234,8 @@ class Queue extends \Magento\Framework\App\Helper\AbstractHelper
     }
 
     // To avoid using direct SQL from observers. Just in case.
-    public function insertIfRequiredWithoutSql($productIds){
+    // Todo: rename to insertIfRequiredWithoutSql
+    public function insertIfRequired($productIds){
         if (!is_array($productIds)) {
             $productIds = [$productIds];
         }
