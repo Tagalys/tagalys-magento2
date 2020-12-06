@@ -160,7 +160,8 @@ class Sync extends \Magento\Framework\App\Helper\AbstractHelper
             });
             if(!$cronUnlocked) {
                 $cronStatus = $this->tagalysConfiguration->getConfig('cron_status', true);
-                $this->tagalysApi->log('warn', 'lockedCronOperation could not acquire lock. Locked by pid: ', ['cron_status' => $cronStatus]);
+                $lockedBy = $cronStatus['locked_by'];
+                $this->tagalysApi->log('warn', "lockedCronOperation could not acquire lock. Locked by pid: $lockedBy", ['cron_status' => $cronStatus]);
                 return false;
             }
 
@@ -171,8 +172,7 @@ class Sync extends \Magento\Framework\App\Helper\AbstractHelper
             }
 
             // 5. check queue size and (clear_queue, trigger_feed) if required
-            $remainingProductUpdates = $this->queueFactory->create()->getCollection()->addFieldToFilter('priority', 0)->getSize();
-            $this->truncateQueueAndTriggerSyncIfRequired($stores, $remainingProductUpdates);
+            $this->truncateQueueAndTriggerSyncIfRequired($stores);
 
             // 6. get product ids from update queue to be processed in this cron instance
             $productIdsFromUpdatesQueueForCronInstance = $this->_productIdsFromUpdatesQueueForCronInstance();
@@ -184,7 +184,7 @@ class Sync extends \Magento\Framework\App\Helper\AbstractHelper
             // 7. perform feed, updates sync (updates only if feed sync is finished)
             $updatesPerformed = array();
             foreach($stores as $i => $storeId) {
-                if($this->abandonSyncForStore($storeId)) {
+                if($this->shouldAbandonFeedAndUpdatesForStore($storeId)) {
                     $this->markFeedAsFinishedForStore($storeId);
                     $updatesPerformed[$storeId] = true;
                 } else {
@@ -237,7 +237,7 @@ class Sync extends \Magento\Framework\App\Helper\AbstractHelper
         $updatesPerformed = false;
         $feedResponse = $this->_generateFilePart($storeId, 'feed');
         if($feedResponse == false) {
-            // feedResponse will be false when abandonSyncForStore becomes true for this store, while the sync is running.
+            // feedResponse will be false when shouldAbandonFeedAndUpdatesForStore becomes true for this store, while the sync is running.
             return true;
         }
         $syncFileStatus = $feedResponse['syncFileStatus'];
@@ -414,7 +414,7 @@ class Sync extends \Magento\Framework\App\Helper\AbstractHelper
                     $cronCurrentlyCompleted = 0;
                     try {
                         while ($cronCurrentlyCompleted < $this->maxProducts) {
-                            if($this->abandonSyncForStore($storeId)) {
+                            if($this->shouldAbandonFeedAndUpdatesForStore($storeId)) {
                                 $this->markFeedAsFinishedForStore($storeId);
                                 return false;
                             }
@@ -1079,7 +1079,8 @@ class Sync extends \Magento\Framework\App\Helper\AbstractHelper
         }
     }
 
-    public function truncateQueueAndTriggerSyncIfRequired($stores, $updatesCount) {
+    public function truncateQueueAndTriggerSyncIfRequired($stores) {
+        $updatesCount = $this->queueFactory->create()->getCollection()->addFieldToFilter('priority', 0)->getSize();
         $maxAllowedUpdatesCount = (int) $this->tagalysConfiguration->getConfig("sync:threshold_to_abandon_updates_and_trigger_feed");
         $clearQueueAndTriggerResync = false;
         if($updatesCount > $maxAllowedUpdatesCount) {
@@ -1102,13 +1103,17 @@ class Sync extends \Magento\Framework\App\Helper\AbstractHelper
         return $clearQueueAndTriggerResync;
     }
 
-    public function abandonSyncForStore($storeId) {
-        return !!$this->tagalysConfiguration->getConfig("store:$storeId:pause_product_sync");
+    public function shouldAbandonFeedAndUpdatesForStore($storeId) {
+        return !!$this->tagalysConfiguration->getConfig("store:$storeId:abandon_feed_and_updates", true);
     }
 
     public function markFeedAsFinishedForStore($storeId) {
-        $this->tagalysConfiguration->updateJsonConfig("store:$storeId:feed_status", [
-            'status' => 'finished'
-        ]);
+        $feedStatus = $this->tagalysConfiguration->getConfig("store:$storeId:feed_status", true);
+        if($feedStatus && ($feedStatus['status'] !== 'finished')) {
+            $this->tagalysConfiguration->updateJsonConfig("store:$storeId:feed_status", [
+                'status' => 'finished'
+            ]);
+            $this->tagalysApi->log('warn', "Feed as been abandoned and marked as finished for store: $storeId");
+        }
     }
 }
