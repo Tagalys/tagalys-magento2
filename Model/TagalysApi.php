@@ -342,7 +342,7 @@ class TagalysApi implements TagalysManagementInterface
                 case 'delete_from_tagalys_queue_with_priority':
                     if (array_key_exists('priority', $params)){
                         $priority = $params['priority'];
-                        $this->queueHelper->deleteWithPriority($priority);
+                        $this->queueHelper->deleteByPriority($priority);
                         $response = ['deleted' => true, 'message' => "deleted rows with priority $priority"];
                     } else {
                         $response = ['message' => 'required param `priority` is missing'];

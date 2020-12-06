@@ -67,7 +67,7 @@ class Configuration extends \Magento\Framework\App\Helper\AbstractHelper
         'sync:include_deleted_products_in_insert_primary' => 'true',
         'sync:max_products_per_cron' => '500',
         'sync:feed_per_page' => '50',
-        'sync:max_allowed_updates_count' => '1000',
+        'sync:threshold_to_abandon_updates_and_trigger_feed' => '1000',
     ];
 
     /**

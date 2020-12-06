@@ -471,7 +471,7 @@ class Queue extends \Magento\Framework\App\Helper\AbstractHelper
         return true;
     }
 
-    public function deleteWithPriority($priority) {
+    public function deleteByPriority($priority) {
         $sql = "DELETE FROM {$this->tableName} WHERE priority=$priority";
         return $this->runSql($sql);
     }
