@@ -907,7 +907,7 @@ class Sync extends \Magento\Framework\App\Helper\AbstractHelper
     public function sleepIfRequired($productCount) {
         $cronConfig = $this->tagalysConfiguration->getCronConfig();
         if(array_key_exists('sleep', $cronConfig)) {
-            if($productCount % $cronConfig['sleep_every'] == 0) {
+            if(($productCount > 0)  && ($productCount % $cronConfig['sleep_every'] == 0)) {
                 // don't sleep for more than 5 min
                 sleep(min($cronConfig['sleep'], 300));
             }
@@ -967,6 +967,7 @@ class Sync extends \Magento\Framework\App\Helper\AbstractHelper
                 $this->touchLock();
                 $this->writeToFile($fileName, $rowsToWrite);
                 $this->updateCompletedCount($statusPath, $completedCount);
+                $completedCount = 0;
                 $rowsToWrite = [];
             }
             $this->sleepIfRequired($completedCount);
@@ -1069,6 +1070,7 @@ class Sync extends \Magento\Framework\App\Helper\AbstractHelper
                     return json_encode(["perform" => "delete", "payload" => ['__id' => $deletedId]]);
                 }, $deletedIds);
                 $this->writeToFile($fileName, $deleteRows);
+                $this->updateCompletedCount($statusPath, count($deletedIds));
 
                 $updateStatus = $this->tagalysConfiguration->getConfig($statusPath, true);
                 $updateStatus['status'] = 'generated_file';
