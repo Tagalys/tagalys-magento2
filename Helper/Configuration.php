@@ -737,8 +737,9 @@ class Configuration extends \Magento\Framework\App\Helper\AbstractHelper
         return ($attribute->usesSource() && $attribute->getFrontendInput() != 'boolean');
     }
 
+    // Note: returns cached value from $cachedConfig
     public function isProductSortingReverse(){
-        return $this->getConfig('listing_pages:position_sort_direction') != 'asc';
+        return $this->getConfig('listing_pages:position_sort_direction', false, true) != 'asc';
     }
 
     public function isPrimaryStore($storeId){

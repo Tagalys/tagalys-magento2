@@ -671,15 +671,18 @@ class Category extends \Magento\Framework\App\Helper\AbstractHelper
         return true;
     }
 
-    public function _updatePositions($storeId, $categoryId, $newPositions, $pushDown) {
+    public function _updatePositions($storeId, $categoryId, $newPositions, $canPushDown) {
+        echo "update via spp";
         $category = $this->categoryFactory->create()->setStoreId($storeId)->load($categoryId);
         $positions = $category->getProductsPosition();
         $productCount = count($positions);
         foreach ($positions as $productId => $position) {
             if (array_key_exists($productId, $newPositions)) {
                 $positions[$productId] = $newPositions[$productId];
-            } else {
-                if ($pushDown) {
+            } else if($canPushDown) {
+                if ($this->tagalysConfiguration->isProductSortingReverse()) {
+                    $positions[$productId] = 0;
+                } else {
                     $positions[$productId] = $productCount + 1;
                 }
             }
