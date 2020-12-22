@@ -232,31 +232,45 @@ class TagalysApi implements TagalysManagementInterface
                     break;
                 case 'assign_products_to_category_and_remove':
                     $this->logger->info("assign_products_to_category_and_remove: params: " . json_encode($params));
-                    $async = $this->tagalysConfiguration->getConfig('listing_pages:update_position_async', true);
-                    $res = $this->tagalysCategoryHelper->updateWithData($params['store_id'], $params['category_id'], ['positions_sync_required' => 1]);
-                    if (!$async) {
+                    $listingPagesEnabled = $this->tagalysConfiguration->isListingPagesEnabled();
+                    $updatePositionAsync = $this->tagalysConfiguration->getConfig('listing_pages:update_position_async', true);
+                    $this->tagalysCategoryHelper->markAsPositionSyncRequired($params['store_id'], $params['category_id']);
+                    if ($listingPagesEnabled && !$updatePositionAsync) {
                         if ($params['product_positions'] == -1) {
                             $params['product_positions'] = [];
                         }
-                        $res = $this->tagalysCategoryHelper->bulkAssignProductsToCategoryAndRemove($params['store_id'], $params['category_id'], $params['product_positions']);
-                    }
-                    if ($res) {
-                        $response = ['status' => 'OK', 'message' => $res, 'async' => $async];
+                        $this->tagalysCategoryHelper->bulkAssignProductsToCategoryAndRemove($params['store_id'], $params['category_id'], $params['product_positions']);
+                        $async = false;
                     } else {
-                        $response = ['status' => 'error', 'message' => 'Unknown error occurred'];
+                        $async = true;
                     }
+                    $response = [
+                        'status' => 'OK',
+                        'async' => $async,
+                        'update_position_async' => $updatePositionAsync,
+                        'listing_pages_enabled' => $listingPagesEnabled,
+                    ];
                     break;
                 case 'update_product_positions':
                     $this->logger->info("update_product_positions: params: " . json_encode($params));
-                    $async = $this->tagalysConfiguration->getConfig('listing_pages:update_position_async', true);
-                    $this->tagalysCategoryHelper->updateWithData($params['store_id'], $params['category_id'], ['positions_sync_required' => 1]);
-                    if(!$async){
+                    $listingPagesEnabled = $this->tagalysConfiguration->isListingPagesEnabled();
+                    $updatePositionAsync = $this->tagalysConfiguration->getConfig('listing_pages:update_position_async', true);
+                    $this->tagalysCategoryHelper->markAsPositionSyncRequired($params['store_id'], $params['category_id']);
+                    if($listingPagesEnabled && !$updatePositionAsync){
                         if ($params['product_positions'] == -1) {
                             $params['product_positions'] = [];
                         }
                         $this->tagalysCategoryHelper->performCategoryPositionUpdate($params['store_id'], $params['category_id'], $params['product_positions']);
+                        $async = false;
+                    } else {
+                        $async = true;
                     }
-                    $response = ['status' => 'OK', 'message' => 'updated', 'async' => $async];
+                    $response = [
+                        'status' => 'OK',
+                        'async' => $async,
+                        'update_position_async' => $updatePositionAsync,
+                        'listing_pages_enabled' => $listingPagesEnabled,
+                    ];
                     break;
                 case 'clear_category_caches':
                     $this->logger->info("clear_category_caches: params: " . json_encode($params));

@@ -1016,4 +1016,8 @@ class Configuration extends \Magento\Framework\App\Helper\AbstractHelper
     public function isTagalysHealthy() {
         return ($this->getConfig("tagalys:health") === '1');
     }
+
+    public function isListingPagesEnabled() {
+        return ($this->getConfig("module:listingpages:enabled") != '0');
+    }
 }

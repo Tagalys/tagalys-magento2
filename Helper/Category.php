@@ -1284,4 +1284,8 @@ class Category extends \Magento\Framework\App\Helper\AbstractHelper
             $this->createOrUpdateWithData($row['store_id'], $row['category_id'], $row['data'], $updateData);
         }
     }
+
+    public function markAsPositionSyncRequired($storeId, $categoryId) {
+        $this->updateWithData($storeId, $categoryId, ['positions_sync_required' => 1]);
+    }
 }
