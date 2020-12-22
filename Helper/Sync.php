@@ -1118,4 +1118,18 @@ class Sync extends \Magento\Framework\App\Helper\AbstractHelper
             $this->tagalysApi->log('warn', "Feed as been abandoned and marked as finished for store: $storeId");
         }
     }
+
+    public function getProductIdsToRemove($storeId, $productIds) {
+        $idsToRemove = [];
+        Utils::forEachChunk($productIds, 1000, function($idsChunk) use ($storeId, &$idsToRemove) {
+            $collection = $this->_getCollection($storeId, 'updates', $idsChunk);
+            $idsToKeep = [];
+            foreach($collection as $product) {
+                $idsToKeep[] = $product->getId();
+            }
+            $idsToRemoveInThisBatch = array_diff($idsChunk, $idsToKeep);
+            $idsToRemove = array_merge($idsToRemove, $idsToRemoveInThisBatch);
+        });
+        return $idsToRemove;
+    }
 }

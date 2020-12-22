@@ -420,7 +420,6 @@ class TagalysApi implements TagalysManagementInterface
                         'ids' => $this->tagalysProduct->getIdsBySku($params['skus'])
                     ];
                     break;
-
                 case 'delete_sync_files':
                     $deletedAllFiles = (array_key_exists('delete_all', $params) && !!$params['delete_all']);
                     if($deletedAllFiles) {
@@ -440,6 +439,12 @@ class TagalysApi implements TagalysManagementInterface
                         $opResponse = json_decode($this->info($opParams));
                         $response['results'][] = $opResponse;
                     }
+                    break;
+                case 'get_products_to_remove':
+                    $productIds = $params['product_ids'];
+                    $storeId = $params['store_id'];
+                    $idsToRemove = $this->tagalysSync->getProductIdsToRemove($storeId, $productIds);
+                    $response = ['status' => 'OK', 'to_remove' => $idsToRemove];
                     break;
             }
         } catch (\Exception $e) {
