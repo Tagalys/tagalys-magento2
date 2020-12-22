@@ -558,6 +558,10 @@ class Category extends \Magento\Framework\App\Helper\AbstractHelper
         $this->categoryLinkRepositoryInterface->save($categoryProductLink);
     }
     public function assignProductToCategoryViaDb($categoryId, $product){
+        $allowed = $this->tagalysConfiguration->getConfig("sync:allow_parent_category_assignment_during_sync", true, true);
+        if (!$allowed) {
+            return false;
+        }
         try {
             $this->logger->info("assignProductToCategoryViaDb: {$categoryId}");
             $conn = $this->resourceConnection->getConnection();

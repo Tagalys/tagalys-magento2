@@ -68,6 +68,7 @@ class Configuration extends \Magento\Framework\App\Helper\AbstractHelper
         'sync:max_products_per_cron' => '500',
         'sync:feed_per_page' => '50',
         'sync:threshold_to_abandon_updates_and_trigger_feed' => '1000',
+        'sync:allow_parent_category_assignment_during_sync' => 'true',
     ];
 
     /**
