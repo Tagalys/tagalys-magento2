@@ -137,7 +137,8 @@
 
     document.addEventListener("DOMContentLoaded", function(e) {
         require([
-            "jquery"
+            "jquery",
+            "domReady!"
         ], function(tgls_jq) {
             if (isTagalysEnabled(tgls_jq)) {
                 tagalysStatusUpdateInterval = new tagalysInterval(tagalysGetAndUpdateSyncStatus, 5000);
@@ -151,7 +152,7 @@
                 tgls_jq.each(tgls_jq('#stores_for_tagalys').val(), function(i, store_id) {
                     tagalysRenderJsTree('category', store_id);
                 });
-                <?php if ($this->moduleManager->isEnabled('Tagalys_Frontend')): ?>
+                <?php if ($this->moduleManager->isEnabled('Tagalys_Frontend')) : ?>
                     tagalysRenderJsTree('stores-for-search');
                 <?php endif; ?>
             }
@@ -420,7 +421,8 @@
 
 <script>
     require([
-        "jquery"
+        "jquery",
+        "domReady!"
     ], function(tgls_jq) {
         var storesVisibilityTimer = false;
         tgls_jq(function() {
