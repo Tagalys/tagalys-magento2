@@ -1022,4 +1022,20 @@ class Configuration extends \Magento\Framework\App\Helper\AbstractHelper
     public function isListingPagesEnabled() {
         return ($this->getConfig("module:listingpages:enabled") != '0');
     }
+
+    public function getPriorityUpdatesStatus($storeId) {
+        $status = $this->getConfig("store:$storeId:priority_updates_status", true);
+        if($status === NULL) {
+            $status = ['status' => 'sent_to_tagalys'];
+        }
+        return $status;
+    }
+
+    public function getQuickFeedStatus($storeId) {
+        $status = $this->getConfig("store:$storeId:quick_feed_status", true);
+        if($status === NULL) {
+            $status = ['status' => 'sent_to_tagalys'];
+        }
+        return $status;
+    }
 }
