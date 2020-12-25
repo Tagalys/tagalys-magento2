@@ -6,13 +6,13 @@
                 <value id="cdnjs-js" type="host">https://cdnjs.cloudflare.com</value>
             </values>
             <values>
-                <value id="frontend-js" type="host">https://d3htxdwqp62ai4.cloudfront.net</value>
+                <value id="tagalys-frontend-js-common" type="host">https://d3htxdwqp62ai4.cloudfront.net</value>
             </values>
             <values>
-                <value id="client-specific-frontend-js" type="host">http://d2r9py2hfy5mgp.cloudfront.net</value>
+                <value id="tagalys-frontend-js-client-specific" type="host">http://d2r9py2hfy5mgp.cloudfront.net</value>
             </values>
             <values>
-                <value id="client-specific-frontend-js-dev" type="host">http://d3fzz8zsf83ont.cloudfront.net</value>
+                <value id="tagalys-dev-frontend-js-client-specific" type="host">http://d3fzz8zsf83ont.cloudfront.net</value>
             </values>
         </policy>
         <policy id="style-src">
@@ -23,7 +23,7 @@
                 <value id="tagalys-s3-css" type="host">https://tagalys-assets.s3-ap-southeast-1.amazonaws.com</value>
             </values>
             <values>
-                <value id="client-specific-s3-css" type="host">https://d3htxdwqp62ai4.cloudfront.net</value>
+                <value id="tagalys-s3-cdn-client-specific-css" type="host">https://d3htxdwqp62ai4.cloudfront.net</value>
             </values>
             <values>
                 <value id="bootstrapcdn-css" type="host">https://stackpath.bootstrapcdn.com</value>
@@ -39,13 +39,16 @@
                 <value id="tagalys-api-r1" type="host">https://api-r1.tagalys.com</value>
             </values>
             <values>
-                <value id="tagalys-api-server-r2" type="host">https://staging-api-r2.tagalys.com</value>
+                <value id="tagalys-api-r2" type="host">https://api-r2.tagalys.com</value>
             </values>
             <values>
-                <value id="tagalys-api-server-r3" type="host">https://api-r3.tagalys.com</value>
+                <value id="tagalys-api-r3" type="host">https://api-r3.tagalys.com</value>
             </values>
             <values>
-                <value id="tagalys-api-server-r4" type="host">https://api-r4.tagalys.com</value>
+                <value id="tagalys-api-r4" type="host">https://api-r4.tagalys.com</value>
+            </values>
+            <values>
+                <value id="tagalys-staging-api-r2" type="host">https://staging-api-r2.tagalys.com</value>
             </values>
         </policy>
     </policies>

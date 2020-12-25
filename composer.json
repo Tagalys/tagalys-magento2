@@ -2,7 +2,7 @@
   "name": "tagalys/tagalys-magento2",
   "description": "Integrate Tagalys Merchandising and Analytics features with your Magento 2 store",
   "type": "magento2-module",
-  "version": "2.2.6",
+  "version": "2.2.7",
   "license": [
     "OSL-3.0",
     "AFL-3.0"
@@ -14,7 +14,7 @@
       }
   ],
   "require": {
-    "magento/framework": "~100.1.0|~101.0|~102.0"
+    "magento/framework": "~100.1.0|~101.0|~102.0|~103.0"
   },
   "authors": [
     {
