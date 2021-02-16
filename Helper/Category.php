@@ -347,7 +347,7 @@ class Category extends \Magento\Framework\App\Helper\AbstractHelper
                                     $categoryToSync->addData(['positions_sync_required' => 0, 'marked_for_deletion' => 1])->save();
                                 }
                             } else {
-                                // send client log?
+                                $this->updateWithData($storeId, $categoryId, ['positions_sync_required' => 0]);
                             }
                         } catch (\Throwable $e) {
                             $categoryToSync->setPositionsSyncRequired(0)->save();
