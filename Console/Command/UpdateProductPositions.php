@@ -12,7 +12,7 @@ class UpdateProductPositions extends Command
 {
     const MAX_PRODUCTS = 'max_products';
     const MAX_CATEGORIES = 'max_categories';
-    
+
     public function __construct(
         \Magento\Framework\App\State $appState,
         \Tagalys\Sync\Helper\Category $tagalysCategoryHelper,
@@ -23,7 +23,7 @@ class UpdateProductPositions extends Command
         $this->tagalysConfiguration = $tagalysConfiguration;
         parent::__construct();
     }
-    
+
     protected function configure()
     {
         $options = [
@@ -50,10 +50,8 @@ class UpdateProductPositions extends Command
         $utcNow = new \DateTime("now", new \DateTimeZone('UTC'));
         $timeNow = $utcNow->format(\DateTime::ATOM);
         $this->tagalysConfiguration->setConfig('heartbeat:command:update_product_positions', $timeNow);
-        
-        $maxC = $input->getOption(self::MAX_CATEGORIES);
 
-        $this->tagalysCategoryHelper->updatePositionsIfRequired(intval($maxC));
+        $this->tagalysCategoryHelper->updatePositionsIfRequired();
 
         $output->writeln("Done");
     }

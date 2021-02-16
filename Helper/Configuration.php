@@ -71,6 +71,8 @@ class Configuration extends \Magento\Framework\App\Helper\AbstractHelper
         'sync:allow_parent_category_assignment_during_sync' => 'true',
         'sync:use_min_total_prices_for_bundles' => 'true',
         'fallback:use_old_method_to_get_bundle_prices' => 'false',
+        'sync:max_categories_per_cron' => '50',
+        'sync:categories_per_page' => '50',
     ];
 
     /**

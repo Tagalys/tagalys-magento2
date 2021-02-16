@@ -1,6 +1,8 @@
 <?php
 namespace Tagalys\Sync\Helper;
 
+use Monolog\Handler\Curl\Util;
+
 class Category extends \Magento\Framework\App\Helper\AbstractHelper
 {
     /**
@@ -290,16 +292,19 @@ class Category extends \Magento\Framework\App\Helper\AbstractHelper
             ->addFieldToFilter('marked_for_deletion', 0)
             ->count();
     }
-    public function getRequiresPositionsSyncCollection()
+    public function getRequiresPositionsSyncCollection($idsFilter = false)
     {
         $categoriesToSync = $this->tagalysCategoryFactory->create()->getCollection()
             ->addFieldToFilter('status', 'powered_by_tagalys')
             ->addFieldToFilter('positions_sync_required', 1)
             ->addFieldToFilter('marked_for_deletion', 0);
+        if($idsFilter != false) {
+            $categoriesToSync->addFieldToFilter('id', [$idsFilter]);
+        }
         return $categoriesToSync;
     }
 
-    public function updatePositionsIfRequired($maxProductsPerCronRun = 50, $perPage = 5, $force = false) {
+    public function updatePositionsIfRequired($force = false) {
         $this->_registry->register("tagalys_context", true);
         $listingPagesEnabled = ($this->tagalysConfiguration->getConfig("module:listingpages:enabled") != '0');
         if ($listingPagesEnabled || $force) {
@@ -314,14 +319,13 @@ class Category extends \Magento\Framework\App\Helper\AbstractHelper
                     'locked_by' => $pid
                 );
                 $this->tagalysConfiguration->setConfig('categories_sync_status', $syncStatus, true);
-                $collection = $this->getRequiresPositionsSyncCollection();
-                $remainingCount = $collection->count();
-                $countToSyncInCronRun = min($remainingCount, $maxProductsPerCronRun);
-                $numberCompleted = 0;
-                $circuitBreaker = 0;
-                while ($numberCompleted < $countToSyncInCronRun && $circuitBreaker < 26) {
-                    $circuitBreaker += 1;
-                    $categoriesToSync = $this->getRequiresPositionsSyncCollection()->setPageSize($perPage);
+                $maxProductsPerCronRun = $this->tagalysConfiguration->getConfig('sync:max_categories_per_cron');
+                $collection = $this->getRequiresPositionsSyncCollection()->setPageSize($maxProductsPerCronRun);
+                $collectionIds = Utils::getAllIds($collection);
+                $perPage = $this->tagalysConfiguration->getConfig('sync:categories_per_page');
+                $perPage = min($perPage, $maxProductsPerCronRun);
+                Utils::forEachChunk($collectionIds, $perPage, function ($idsChunk) {
+                    $categoriesToSync = $this->getRequiresPositionsSyncCollection($idsChunk);
                     $utcNow = new \DateTime("now", new \DateTimeZone('UTC'));
                     $timeNow = $utcNow->format(\DateTime::ATOM);
                     $syncStatus['updated_at'] = $timeNow;
@@ -342,6 +346,8 @@ class Category extends \Magento\Framework\App\Helper\AbstractHelper
                                 } else {
                                     $categoryToSync->addData(['positions_sync_required' => 0, 'marked_for_deletion' => 1])->save();
                                 }
+                            } else {
+                                // send client log?
                             }
                         } catch (\Throwable $e) {
                             $categoryToSync->setPositionsSyncRequired(0)->save();
@@ -355,8 +361,7 @@ class Category extends \Magento\Framework\App\Helper\AbstractHelper
                             $this->tagalysApi->log('error', "Exception in updatePositionsIfRequired: category: $categoryId", $errorData);
                         }
                     }
-                    $numberCompleted += $categoriesToSync->count();
-                }
+                });
                 $syncStatus['locked_by'] = null;
                 $this->tagalysConfiguration->setConfig('categories_sync_status', $syncStatus, true);
             }
