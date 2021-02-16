@@ -299,7 +299,7 @@ class Category extends \Magento\Framework\App\Helper\AbstractHelper
             ->addFieldToFilter('positions_sync_required', 1)
             ->addFieldToFilter('marked_for_deletion', 0);
         if($idsFilter != false) {
-            $categoriesToSync->addFieldToFilter('id', [$idsFilter]);
+            $categoriesToSync->addFieldToFilter('id', $idsFilter);
         }
         return $categoriesToSync;
     }
