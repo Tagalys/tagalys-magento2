@@ -1294,4 +1294,14 @@ class Category extends \Magento\Framework\App\Helper\AbstractHelper
     public function markAsPositionSyncRequired($storeId, $categoryId) {
         $this->updateWithData($storeId, $categoryId, ['positions_sync_required' => 1]);
     }
+
+    public function isPoweredByTagalys($categoryId) {
+        $categories = $this->tagalysCategoryFactory->create()->getCollection()->addFieldToFilter('category_id', $categoryId);
+        foreach($categories as $category) {
+            if($category->getStatus()== 'powered_by_tagalys'){
+                return true;
+            }
+        }
+        return false;
+    }
 }
