@@ -476,11 +476,10 @@ class Product extends \Magento\Framework\App\Helper\AbstractHelper
             $useMinTotalPricesForBundles = $this->tagalysConfiguration->getConfig('sync:use_min_total_prices_for_bundles', true, true);
             if($useMinTotalPricesForBundles){
                 $productDetails['price'] = $product->getPriceModel()->getTotalPrices($product, 'min', 1);
-                $productDetails['sale_price'] = $product->getPriceModel()->getTotalPrices($product, 'min', 1);
             } else {
                 $productDetails['price'] = $product->getPriceModel()->getTotalPrices($product, 'max', 1);
-                $productDetails['sale_price'] = $product->getPriceModel()->getTotalPrices($product, 'max', 1);
             }
+            $productDetails['sale_price'] = $productDetails['price'];
         } else {
             $useNewMethodToGetPriceValues = $this->tagalysConfiguration->getConfig('sync:use_get_final_price_for_sale_price', true, true);
             if($useNewMethodToGetPriceValues){
