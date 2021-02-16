@@ -52,12 +52,15 @@ class UpdateCategory implements \Magento\Framework\Event\ObserverInterface
     }
 
     private function updateTagalysCategoryStatus($category){
+        $categoryId = $category->getId();
         $powerAllCategories = ($this->tagalysConfiguration->getConfig('module:listingpages:enabled') == '2');
         if($powerAllCategories){
-            $alreadyPoweredByTagalys = $this->tagalysCategory->isPoweredByTagalys($category->getId());
+            $isPresentInTagalysCategoriesTable = $this->tagalysCategory->isPresentInTagalysCategoriesTable($categoryId);
             $isActive = $category->getIsActive();
-            if($isActive || $alreadyPoweredByTagalys) {
+            if($isActive) {
                 $this->tagalysCategory->powerCategoryForAllStores($category);
+            } else if ($isPresentInTagalysCategoriesTable) {
+                $this->tagalysCategory->markCategoryForDisable($categoryId);
             }
         } else {
             $categories = $this->tagalysCategoryFactory->create()->getCollection()->addFieldToFilter('category_id', $category->getId());

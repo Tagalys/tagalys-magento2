@@ -347,7 +347,7 @@ class Category extends \Magento\Framework\App\Helper\AbstractHelper
                                     $categoryToSync->addData(['positions_sync_required' => 0, 'marked_for_deletion' => 1])->save();
                                 }
                             } else {
-                                $this->updateWithData($storeId, $categoryId, ['positions_sync_required' => 0]);
+                                $categoryToSync->setPositionsSyncRequired(0)->save();
                             }
                         } catch (\Throwable $e) {
                             $categoryToSync->setPositionsSyncRequired(0)->save();
@@ -1300,13 +1300,15 @@ class Category extends \Magento\Framework\App\Helper\AbstractHelper
         $this->updateWithData($storeId, $categoryId, ['positions_sync_required' => 1]);
     }
 
-    public function isPoweredByTagalys($categoryId) {
+    public function markCategoryForDisable($categoryId) {
         $categories = $this->tagalysCategoryFactory->create()->getCollection()->addFieldToFilter('category_id', $categoryId);
         foreach($categories as $category) {
-            if($category->getStatus()== 'powered_by_tagalys'){
-                return true;
-            }
+            $category->setStatus('pending_disable')->save();
         }
-        return false;
+    }
+
+    public function isPresentInTagalysCategoriesTable($categoryId) {
+        $categories = $this->tagalysCategoryFactory->create()->getCollection()->addFieldToFilter('category_id', $categoryId);
+        return ($categories->getSize() > 0);
     }
 }
