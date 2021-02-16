@@ -70,6 +70,7 @@ class Configuration extends \Magento\Framework\App\Helper\AbstractHelper
         'sync:threshold_to_abandon_updates_and_trigger_feed' => '1000',
         'sync:allow_parent_category_assignment_during_sync' => 'true',
         'sync:use_min_total_prices_for_bundles' => 'true',
+        'fallback:use_old_method_to_get_bundle_prices' => 'false',
     ];
 
     /**
