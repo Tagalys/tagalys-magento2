@@ -1,8 +1,6 @@
 <?php
 namespace Tagalys\Sync\Helper;
 
-use Monolog\Handler\Curl\Util;
-
 class Category extends \Magento\Framework\App\Helper\AbstractHelper
 {
     /**
