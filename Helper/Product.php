@@ -424,7 +424,7 @@ class Product extends \Magento\Framework\App\Helper\AbstractHelper
                 $totalInventory += $inventoryDetails['qty'];
                 foreach($configurableAttributes as $configurableAttribute) {
                     $id = $associatedProduct->getData($configurableAttribute);
-                    if(!isset($hash[$id])) {
+                    if($id !== NULL && !isset($hash[$id])) {
                         $hash[$id] = true;
                         $thisItem = array('id' => $id, 'label' => $associatedProduct->setStoreId($storeId)->getAttributeText($configurableAttribute));
                         $attr = $this->productAttributeRepository->get($configurableAttribute);
