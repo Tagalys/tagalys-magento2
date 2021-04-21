@@ -12,18 +12,19 @@ class Sync extends Command
 {
     const MAX_PRODUCTS = 'max_products';
     const MAX_CATEGORIES = 'max_categories';
-    
+
+    /**
+     * @param \Tagalys\Sync\Cron\Sync
+     */
+    private $syncCron;
+
     public function __construct(
-        \Magento\Framework\App\State $appState,
-        \Tagalys\Sync\Helper\Sync $syncHelper,
-        \Tagalys\Sync\Helper\Configuration $tagalysConfiguration
+        \Tagalys\Sync\Cron\Sync $syncCron
     ){
-        $this->appState = $appState;
-        $this->syncHelper = $syncHelper;
-        $this->tagalysConfiguration = $tagalysConfiguration;
+        $this->syncCron = $syncCron;
         parent::__construct();
     }
-    
+
     protected function configure()
     {
         $options = [
@@ -48,20 +49,7 @@ class Sync extends Command
     }
     protected function execute(InputInterface $input, OutputInterface $output)
     {
-        try {
-            $this->appState->setAreaCode('adminhtml');
-        } catch (\Magento\Framework\Exception\LocalizedException $exception) {
-            // do nothing
-        }
-        $utcNow = new \DateTime("now", new \DateTimeZone('UTC'));
-        $timeNow = $utcNow->format(\DateTime::ATOM);
-        $this->tagalysConfiguration->setConfig('heartbeat:command:sync', $timeNow);
-        
-        $maxP = $input->getOption(self::MAX_PRODUCTS);
-        $maxC = $input->getOption(self::MAX_CATEGORIES);
-
-        $this->syncHelper->sync(intval($maxC));
-
+        $this->syncCron->execute();
         $output->writeln("Done");
     }
 }

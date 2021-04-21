@@ -10,14 +10,15 @@ use Symfony\Component\Console\Formatter\OutputFormatterStyle;
 
 class RunMaintenance extends Command
 {
+    /**
+     * @param \Tagalys\Sync\Cron\RunMaintenance
+     */
+    private $runMaintenanceCron;
+
     public function __construct(
-        \Magento\Framework\App\State $appState,
-        \Tagalys\Sync\Helper\Sync $syncHelper,
-        \Tagalys\Sync\Helper\Configuration $tagalysConfiguration
+        \Tagalys\Sync\Cron\RunMaintenance $runMaintenanceCron
     ) {
-        $this->appState = $appState;
-        $this->syncHelper = $syncHelper;
-        $this->tagalysConfiguration = $tagalysConfiguration;
+        $this->runMaintenanceCron = $runMaintenanceCron;
         parent::__construct();
     }
 
@@ -30,17 +31,7 @@ class RunMaintenance extends Command
     }
     protected function execute(InputInterface $input, OutputInterface $output)
     {
-        try {
-            $this->appState->setAreaCode('adminhtml');
-        } catch (\Magento\Framework\Exception\LocalizedException $exception) {
-            // do nothing
-        }
-        $utcNow = new \DateTime("now", new \DateTimeZone('UTC'));
-        $timeNow = $utcNow->format(\DateTime::ATOM);
-        $this->tagalysConfiguration->setConfig('heartbeat:command:run_maintenance', $timeNow);
-
-        $this->syncHelper->runMaintenance();
-
+        $this->runMaintenanceCron->execute();
         $output->writeln("Done");
     }
 }
