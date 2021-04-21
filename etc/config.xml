@@ -1,0 +1,19 @@
+<?xml version="1.0"?>
+<config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="urn:magento:module:Magento_Store:etc/config.xsd">
+    <default>
+        <tagalys_cron>
+            <maintenance>
+                <frequency>D</frequency>
+                <start_time>02,00,00</start_time>
+            </maintenance>
+
+            <sync>
+                <frequency><![CDATA[*/5]]></frequency>
+            </sync>
+
+            <position_update>
+                <frequency><![CDATA[*/5]]></frequency>
+            </position_update>
+        </tagalys_cron>
+    </default>
+</config>
