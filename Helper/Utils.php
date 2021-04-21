@@ -49,10 +49,6 @@ class Utils
         return ($product->getTypeId() == 'giftcard');
     }
 
-    public static function dj($array) {
-        echo json_encode($array);
-    }
-
     public static function getAllIds($collection) {
         return array_map(function($item) {
             return $item['id'];
