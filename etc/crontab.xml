@@ -2,13 +2,13 @@
 <config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="urn:magento:module:Magento_Cron:etc/crontab.xsd">
   <group id="tagalys">
     <job instance="Tagalys\Sync\Cron\RunMaintenance" method="tryExecute" name="TagalysMaintenance">
-      <config_path>crontab/tagalys/jobs/maintenance/schedule/cron_expr</config_path>
+      <config_path>tagalys_cron/maintenance/cron_expr</config_path>
     </job>
     <job instance="Tagalys\Sync\Cron\Sync" method="tryExecute" name="TagalysSync">
-      <config_path>crontab/tagalys/jobs/sync/schedule/cron_expr</config_path>
+      <config_path>tagalys_cron/sync/cron_expr</config_path>
     </job>
     <job instance="Tagalys\Sync\Cron\PositionUpdate" method="tryExecute" name="TagalysPositionUpdate">
-      <config_path>crontab/tagalys/jobs/position_update/schedule/cron_expr</config_path>
+      <config_path>tagalys_cron/position_update/cron_expr</config_path>
     </job>
   </group>
 </config>

@@ -5,11 +5,11 @@ use Tagalys\Sync\Helper\Utils;
 
 class CronConfig extends \Magento\Framework\App\Config\Value
 {
-    const MAINTENANCE_CRON_EXP_PATH = 'crontab/tagalys/jobs/maintenance/schedule/cron_expr';
+    const MAINTENANCE_CRON_EXP_PATH = 'tagalys_cron/maintenance/cron_expr';
 
-    const SYNC_CRON_EXP_PATH = 'crontab/tagalys/jobs/sync/schedule/cron_expr';
+    const SYNC_CRON_EXP_PATH = 'tagalys_cron/sync/cron_expr';
 
-    const POSITION_UPDATE_CRON_EXP_PATH = 'crontab/tagalys/jobs/position_update/schedule/cron_expr';
+    const POSITION_UPDATE_CRON_EXP_PATH = 'tagalys_cron/position_update/cron_expr';
 
     /**
      * @var \Magento\Framework\App\Config\ValueFactory
