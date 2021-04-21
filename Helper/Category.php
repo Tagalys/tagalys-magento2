@@ -576,9 +576,11 @@ class Category extends \Magento\Framework\App\Helper\AbstractHelper
             $positionToAssign = ($sortDirection == 'desc' ? 1 : 9999);
             $assignData = array('category_id'=>(int)$categoryId, 'product_id'=>(int)($product->getId()), 'position' => $positionToAssign);
             $conn->insert($table, $assignData);
+            return true;
         } catch (\Throwable $e) {
             $this->logger->err("assignProductToCategoryViaDb failed for: {$categoryId} message: {$e->getMessage()}");
         }
+        return false;
     }
 
     public function uiPoweredByTagalys($storeId, $categoryId) {

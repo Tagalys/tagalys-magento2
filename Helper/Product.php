@@ -14,6 +14,11 @@ class Product extends \Magento\Framework\App\Helper\AbstractHelper
      */
     private $tagalysConfiguration;
 
+    /**
+     * @param \Tagalys\Sync\Helper\Category
+     */
+    private $tagalysCategory;
+
     public function __construct(
         \Magento\Catalog\Model\ProductFactory $productFactory,
         \Magento\ConfigurableProduct\Api\LinkManagementInterface $linkManagement,
@@ -303,7 +308,9 @@ class Product extends \Magento\Framework\App\Helper\AbstractHelper
                 $idsToAssign = array_diff($relevantCategories, $categoryIds);
                 foreach ($idsToAssign as $key => $categoryId) {
                     if (!in_array($categoryId, $categoriesAssigned)) {
-                        $this->tagalysCategory->assignProductToCategoryViaDb($categoryId, $product);
+                        if ($this->tagalysCategory->assignProductToCategoryViaDb($categoryId, $product)){
+                            $this->tagalysCategory->markPositionsSyncRequired($storeId, $categoryId);
+                        }
                         array_push($categoriesAssigned, $categoryId);
                     }
                 }
