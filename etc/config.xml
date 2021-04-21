@@ -5,17 +5,17 @@
             <maintenance>
                 <frequency>D</frequency>
                 <start_time>02,00,00</start_time>
-                <cron_expr><![CDATA[0 2 * * *]]></cron_expr>
+                <!-- <cron_expr><![CDATA[0 2 * * *]]></cron_expr> -->
             </maintenance>
 
             <sync>
                 <frequency><![CDATA[*/5]]></frequency>
-                <cron_expr><![CDATA[*/5 * * * *]]></cron_expr>
+                <!-- <cron_expr><![CDATA[*/5 * * * *]]></cron_expr> -->
             </sync>
 
             <position_update>
                 <frequency><![CDATA[*/5]]></frequency>
-                <cron_expr><![CDATA[*/5 * * * *]]></cron_expr>
+                <!-- <cron_expr><![CDATA[*/5 * * * *]]></cron_expr> -->
             </position_update>
         </tagalys_cron>
     </default>
