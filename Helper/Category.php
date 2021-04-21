@@ -207,7 +207,7 @@ class Category extends \Magento\Framework\App\Helper\AbstractHelper
 
     public function _checkSyncLock($syncStatus)
     {
-        if ($syncStatus['locked_by'] == null) {
+        if (empty($syncStatus) || !array_key_exists('locked_by', $syncStatus) || $syncStatus['locked_by'] == null) {
             return true;
         } else {
             // some other process has claimed the thread. if a crash occours, check last updated at < 15 minutes ago and try again.
