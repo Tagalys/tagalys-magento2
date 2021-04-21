@@ -137,8 +137,10 @@ class Category extends \Magento\Framework\App\Helper\AbstractHelper
     public function markStoreCategoryIdsToDisableExcept($storeId, $categoryIds){
         $collection = $this->tagalysCategoryFactory->create()
             ->getCollection()
-            ->addFieldToFilter('store_id', $storeId)
-            ->addFieldToFilter('category_id', ['nin' => $categoryIds]);
+            ->addFieldToFilter('store_id', $storeId);
+        if(count($categoryIds) > 0) {
+            $collection->addFieldToFilter('category_id', ['nin' => $categoryIds]);
+        }
         foreach ($collection as $collectionItem) {
             if (!$this->isTagalysCreated($collectionItem->getCategoryId())) {
                 $collectionItem->setStatus('pending_disable')->save();

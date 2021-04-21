@@ -354,7 +354,7 @@ class Configuration extends \Magento\Framework\App\Helper\AbstractHelper
                 $selectedCategoryDetails[$id] = [
                     'id' => $id,
                     'status' => $tagalysCategory->getStatus(),
-                    'positions_synced_at' => $tagalysCategory->getPositionSyncedAt(),
+                    'positions_synced_at' => $tagalysCategory->getPositionsSyncedAt(),
                     'path' => $details['value']
                 ];
             }
@@ -912,7 +912,7 @@ class Configuration extends \Magento\Framework\App\Helper\AbstractHelper
             ->addAttributeToSelect('*');
         if (!$includeTagalysCreated) {
             $tagalysParentId = Utils::getInstanceOf('Tagalys\Sync\Helper\Category')->getTagalysParentCategory($storeId);
-            $categories->addAttributeToFilter('path', array('nlike' => "1/{$rootCategoryId}/{$tagalysParentId}/%"));
+            $categories->addAttributeToFilter('path', array('nlike' => "1/{$rootCategoryId}/{$tagalysParentId}%"));
         }
         return $categories;
     }
