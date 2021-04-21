@@ -1090,6 +1090,19 @@ class Category extends \Magento\Framework\App\Helper\AbstractHelper
         return $categoryId;
     }
 
+    public function getTagalysParentCategoryDetails($storeId){
+        $categoryId = $this->getTagalysParentCategory($storeId);
+        if(empty($categoryId)) {
+            return null;
+        }
+        $category = $this->categoryFactory->create()->setStoreId($storeId)->load($categoryId);
+        return [
+            'parent_category_id' => $categoryId,
+            'parent_category_name' => $category->getName(),
+            'parent_category_url_key' => $category->getUrlKey(),
+        ];
+    }
+
     public function getAllTagalysParentCategories(){
         $categoryId = [];
         $stores = $this->tagalysConfiguration->getStoresForTagalys();

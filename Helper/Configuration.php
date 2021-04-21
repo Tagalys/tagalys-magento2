@@ -81,6 +81,11 @@ class Configuration extends \Magento\Framework\App\Helper\AbstractHelper
      */
     private $productMetadataInterface;
 
+    /**
+     * @param \Tagalys\Sync\Helper\Category
+     */
+    private $_tagalysCategoryHelper;
+
     public function __construct(
         \Magento\Framework\Stdlib\DateTime\DateTime $datetime,
         \Magento\Framework\Stdlib\DateTime\TimezoneInterface $timezoneInterface,
@@ -528,8 +533,13 @@ class Configuration extends \Magento\Framework\App\Helper\AbstractHelper
                 'plugin_version' => $this->tagalysApi->getPluginVersion(),
                 'access_token' => $this->getAccessToken(),
                 'url_suffix' => $urlSuffix,
+                'platform_pages_rendering_method' => 'platform'
             ]
         );
+        $parentCategoryDetails = $this->tagalysCategoryHelper()->getTagalysParentCategoryDetails($storeId);
+        if($parentCategoryDetails) {
+            $configuration['platform_details'] = array_merge($configuration['platform_details'], $parentCategoryDetails);
+        }
 
         $configurationObj = new \Magento\Framework\DataObject(array('configuration' => $configuration, 'store_id' => $storeId));
         $this->eventManager->dispatch('tagalys_read_store_configuration', ['tgls_data' => $configurationObj]);
@@ -1042,5 +1052,12 @@ class Configuration extends \Magento\Framework\App\Helper\AbstractHelper
             $status = ['status' => 'sent_to_tagalys'];
         }
         return $status;
+    }
+
+    public function tagalysCategoryHelper() {
+        if($this->_tagalysCategoryHelper == null) {
+            $this->_tagalysCategoryHelper = Utils::getInstanceOf('Tagalys\Sync\Helper\Category');
+        }
+        return $this->_tagalysCategoryHelper;
     }
 }
