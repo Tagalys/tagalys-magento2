@@ -137,7 +137,7 @@ class Sync extends \Magento\Framework\App\Helper\AbstractHelper
         $this->tagalysCategory->maintenanceSync();
     }
 
-    public function sync($max_categories = 50) {
+    public function sync() {
         $this->maxProducts = (int) $this->tagalysConfiguration->getConfig("sync:max_products_per_cron");
         $this->perPage = (int) $this->tagalysConfiguration->getConfig("sync:feed_per_page");
         $this->perPage = min($this->maxProducts, $this->perPage);
@@ -151,7 +151,7 @@ class Sync extends \Magento\Framework\App\Helper\AbstractHelper
             $this->_checkAndSyncConfig();
 
             // 3. sync pending categories
-            $this->tagalysCategory->sync($max_categories);
+            $this->tagalysCategory->sync();
 
             // perform priority updates and mini feed sync
             $cronUnlocked = $this->lockedCronOperation(function() use ($stores) {

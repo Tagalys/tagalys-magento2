@@ -73,7 +73,8 @@ class Configuration extends \Magento\Framework\App\Helper\AbstractHelper
         'sync:use_min_total_prices_for_bundles' => 'true',
         'fallback:use_old_method_to_get_bundle_prices' => 'false',
         'sync:max_categories_per_cron' => '50',
-        'sync:categories_per_page' => '50',
+        'listing_pages:max_categories_per_cron' => '50',
+        'listing_pages:categories_per_page' => '50',
     ];
 
     /**
