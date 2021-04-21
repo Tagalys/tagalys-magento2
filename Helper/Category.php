@@ -329,9 +329,9 @@ class Category extends \Magento\Framework\App\Helper\AbstractHelper
                     $syncStatus['updated_at'] = $timeNow;
                     $this->tagalysConfiguration->setConfig('categories_sync_status', $syncStatus, true);
                     foreach ($categoriesToSync as $categoryToSync) {
+                        $storeId = $categoryToSync->getStoreId();
+                        $categoryId = $categoryToSync->getCategoryId();
                         try {
-                            $storeId = $categoryToSync->getStoreId();
-                            $categoryId = $categoryToSync->getCategoryId();
                             $response = $this->tagalysApi->storeApiCall($storeId . '', "/v1/mpages/_product_positions", ['id_at_platform' => $categoryId]);
                             if ($response != false) {
                                 $category = $this->categoryFactory->create()->load($categoryId);
