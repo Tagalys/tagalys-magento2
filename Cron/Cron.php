@@ -30,7 +30,7 @@ abstract class Cron
 
     protected abstract function perform();
 
-    public function beforeEach($updateMagentoCronHeartbeat) {
+    private function beforeEach($calledThroughMagentoCron) {
         try {
             $this->appState->setAreaCode('adminhtml');
         } catch (\Magento\Framework\Exception\LocalizedException $ignored) {
@@ -38,8 +38,10 @@ abstract class Cron
         $now = Utils::now();
         $name = $this->heartbeatName();
         $this->tagalysConfiguration->setConfig("heartbeat:command:$name", $now);
-        if($updateMagentoCronHeartbeat){
+        if($calledThroughMagentoCron){
             $this->tagalysConfiguration->setConfig("heartbeat:magento_cron:$name", $now);
+        } else {
+            $this->tagalysConfiguration->setConfig("heartbeat:system_cron:$name", $now);
         }
     }
 

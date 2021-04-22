@@ -22,6 +22,6 @@ class PositionUpdate extends Cron
     }
 
     protected function perform() {
-        $this->tagalysCategoryHelper->updatePositionsIfRequired();
+        $this->tagalysCategory->updatePositionsIfRequired();
     }
 }
