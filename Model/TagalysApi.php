@@ -523,11 +523,12 @@ class TagalysApi implements TagalysManagementInterface
 
     private function getCronSchedule($params) {
         $response = ['configuration' => []];
+        $response['magento_cron_enabled'] = $this->tagalysConfiguration->getConfig('magento_cron_enabled', true);
         $response['configuration']['sync'] = $this->scopeConfig->getValue('tagalys_cron/sync/cron_expr');
         $response['configuration']['position_update'] = $this->scopeConfig->getValue('tagalys_cron/position_update/cron_expr');
         $response['configuration']['maintenance'] = $this->scopeConfig->getValue('tagalys_cron/maintenance/cron_expr');
         $cronScheduleTable = $this->tagalysSql->getTableName("cron_schedule");
-        $response['entries'] = $this->tagalysSql->runSqlSelect("SELECT * FROM $cronScheduleTable WHERE job_code LIKE 'Tagalys%' ORDER BY created_at DESC LIMIT 1000;");
+        $response['entries'] = $this->tagalysSql->runSqlSelect("SELECT * FROM $cronScheduleTable WHERE job_code LIKE 'Tagalys%' ORDER BY scheduled_at DESC LIMIT 1000;");
         return $response;
     }
 }
