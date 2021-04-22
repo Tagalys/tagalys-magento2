@@ -34,6 +34,16 @@ class TagalysApi implements TagalysManagementInterface
 
     private $haveSetTagalysContext = false;
 
+    /**
+     * @param \Magento\Framework\App\Config\ScopeConfigInterface
+     */
+    private $scopeConfig;
+
+    /**
+     * @param \Tagalys\Sync\Helper\TagalysSql
+     */
+    private $tagalysSql;
+
     public function __construct(
         \Tagalys\Sync\Helper\Configuration $tagalysConfiguration,
         \Tagalys\Sync\Helper\Api $tagalysApi,
@@ -45,7 +55,9 @@ class TagalysApi implements TagalysManagementInterface
         \Magento\Framework\Filesystem $filesystem,
         \Tagalys\Sync\Helper\Product $tagalysProduct,
         \Magento\Framework\Registry $_registry,
-        \Magento\Catalog\Model\ProductFactory $productFactory
+        \Magento\Catalog\Model\ProductFactory $productFactory,
+        \Magento\Framework\App\Config\ScopeConfigInterface $scopeConfig,
+        \Tagalys\Sync\Helper\TagalysSql $tagalysSql
     ) {
         $this->tagalysConfiguration = $tagalysConfiguration;
         $this->tagalysApi = $tagalysApi;
@@ -58,6 +70,8 @@ class TagalysApi implements TagalysManagementInterface
         $this->tagalysProduct = $tagalysProduct;
         $this->_registry = $_registry;
         $this->productFactory = $productFactory;
+        $this->scopeConfig = $scopeConfig;
+        $this->tagalysSql = $tagalysSql;
 
         $writer = new \Zend\Log\Writer\Stream(BP . '/var/log/tagalys_rest_api.log');
         $this->logger = new \Zend\Log\Logger();
@@ -450,6 +464,9 @@ class TagalysApi implements TagalysManagementInterface
                     $idsToRemove = $this->tagalysSync->getProductIdsToRemove($storeId, $productIds);
                     $response = ['status' => 'OK', 'to_remove' => $idsToRemove];
                     break;
+                case 'get_cron_schedule':
+                    $response = $this->getCronSchedule($params);
+                    break;
             }
         } catch (\Exception $e) {
             $response = ['status' => 'error', 'message' => $e->getMessage(), 'trace' => $e->getTrace()];
@@ -502,5 +519,15 @@ class TagalysApi implements TagalysManagementInterface
             $response = ['status' => 'error', 'message' => $e->getMessage(), 'trace' => $e->getTrace()];
         }
         return json_encode($response);
+    }
+
+    private function getCronSchedule($params) {
+        $response = ['configuration' => []];
+        $response['configuration']['sync'] = $this->scopeConfig->getValue('tagalys_cron/sync/cron_expr');
+        $response['configuration']['position_update'] = $this->scopeConfig->getValue('tagalys_cron/position_update/cron_expr');
+        $response['configuration']['maintenance'] = $this->scopeConfig->getValue('tagalys_cron/maintenance/cron_expr');
+        $cronScheduleTable = $this->tagalysSql->getTableName("cron_schedule");
+        $response['entries'] = $this->tagalysSql->runSqlSelect("SELECT * FROM $cronScheduleTable WHERE job_code LIKE 'Tagalys%' ORDER BY created_at DESC LIMIT 1000;");
+        return $response;
     }
 }
