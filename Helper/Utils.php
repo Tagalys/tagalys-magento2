@@ -58,4 +58,21 @@ class Utils
             return $item['id'];
         }, $collection->toArray()['items']);
     }
+
+    public static function getLogger($fileName) {
+        $writer = new \Zend\Log\Writer\Stream(BP . "/var/log/$fileName");
+        $logger = new \Zend\Log\Logger();
+        $logger->addWriter($writer);
+        return $logger;
+    }
+
+    public static function now() {
+        $utcNow = new \DateTime("now", new \DateTimeZone('UTC'));
+        return $utcNow->format(\DateTime::ATOM);
+    }
+
+    // dev helpers
+    public static function dj($data) {
+        echo json_encode($data);
+    }
 }

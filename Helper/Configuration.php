@@ -922,7 +922,8 @@ class Configuration extends \Magento\Framework\App\Helper\AbstractHelper
             ->addAttributeToSelect('*');
         if (!$includeTagalysCreated) {
             $tagalysParentId = Utils::getInstanceOf('Tagalys\Sync\Helper\Category')->getTagalysParentCategory($storeId);
-            $categories->addAttributeToFilter('path', array('nlike' => "1/{$rootCategoryId}/{$tagalysParentId}%"));
+            $categories->addAttributeToFilter('path', array('nlike' => "1/{$rootCategoryId}/{$tagalysParentId}/%"));
+            $categories->addAttributeToFilter('entity_id', array('neq' => $tagalysParentId));
         }
         return $categories;
     }
