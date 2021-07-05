@@ -416,14 +416,25 @@ class Product extends \Magento\Framework\App\Helper\AbstractHelper
 
         $tagItems = array();
         $hash = array();
+        $productDetails['__variants'] = array();
         foreach($associatedProducts as $associatedProduct){
+            $variantDetails = array();
+            $variantTagItems = array();
+            $variantDetails['__id'] = $associatedProduct->getId();
+            $variantDetails['sku'] = $associatedProduct->getSku();
+            $variantDetails['image_url'] = $this->getProductImageUrl($storeId, $this->tagalysConfiguration->getConfig('product_image_attribute'), true, $associatedProduct, false);
             $totalAssociatedProducts += 1;
             $inventoryDetails = $this->getSimpleProductInventoryDetails($associatedProduct);
+            $variantDetails['__inventory'] = $inventoryDetails['qty'];
 
             // Getting tag sets
             if ($inventoryDetails['in_stock']) {
+                $variantDetails['in_stock'] = true;
                 $anyAssociatedProductInStock = true;
                 $salePrice = $associatedProduct->getPriceInfo()->getPrice('final_price')->getAmount()->getValue();
+                $price = $associatedProduct->getPriceInfo()->getPrice('regular_price')->getAmount()->getValue();
+                $variantDetails['sale_price'] = $salePrice;
+                $variantDetails['price'] = $price;
                 if($minSalePrice > $salePrice) {
                     $minSalePrice = $salePrice;
                     $productForPrice = $associatedProduct;
@@ -431,8 +442,7 @@ class Product extends \Magento\Framework\App\Helper\AbstractHelper
                 $totalInventory += $inventoryDetails['qty'];
                 foreach($configurableAttributes as $configurableAttribute) {
                     $id = $associatedProduct->getData($configurableAttribute);
-                    if($id !== NULL && !isset($hash[$id])) {
-                        $hash[$id] = true;
+                    if($id !== NULL) {
                         $thisItem = array('id' => $id, 'label' => $associatedProduct->setStoreId($storeId)->getAttributeText($configurableAttribute));
                         $attr = $this->productAttributeRepository->get($configurableAttribute);
                         try {
@@ -446,17 +456,29 @@ class Product extends \Magento\Framework\App\Helper\AbstractHelper
                                 }
                             }
                         } catch (\Exception $e) { }
-                        $tagItems[$configurableAttribute][] = $thisItem;
+                        if (!isset($hash[$id])) {
+                            $hash[$id] = true;
+                            // $tagItems[$configurableAttribute][] = $thisItem;
+                        }
+                        $variantTagItems[$configurableAttribute][] = $thisItem;
                     }
                 }
+                // Reformat tag sets
+                $variantDetails['__tags'] = array();
+                foreach($variantTagItems as $configurableAttribute => $items){
+                    array_push($variantDetails['__tags'], array("tag_set" => array("id" => $configurableAttribute, "label" => $product->getResource()->getAttribute($configurableAttribute)->getStoreLabel($storeId)), "items" => $items));
+                }
+            } else {
+                $variantDetails['in_stock'] = false;
             }
+            array_push($productDetails['__variants'], $variantDetails);
         }
-        $productDetails['__inventory_total'] = $totalInventory;
-        if ($totalAssociatedProducts > 0) {
-            $productDetails['__inventory_average'] = round($totalInventory / $totalAssociatedProducts, 2);
-        } else {
-            $productDetails['__inventory_average'] = 0;
-        }
+        // $productDetails['__inventory_total'] = $totalInventory;
+        // if ($totalAssociatedProducts > 0) {
+        //     $productDetails['__inventory_average'] = round($totalInventory / $totalAssociatedProducts, 2);
+        // } else {
+        //     $productDetails['__inventory_average'] = 0;
+        // }
 
         $considerParenStockValue = $this->tagalysConfiguration->getConfig("sync:consider_parent_in_stock_value", true, true);
         if($considerParenStockValue) {
