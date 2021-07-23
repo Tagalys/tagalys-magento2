@@ -67,6 +67,17 @@ class Utils
         return $utcNow->format(\DateTime::ATOM);
     }
 
+    public static function getIntervalInSeconds($from, $to)
+    {
+        if (is_string($from)) {
+            $from = new \DateTime($from);
+        }
+        if (is_string($to)) {
+            $to = new \DateTime($to);
+        }
+        return $to->getTimestamp() - $from->getTimestamp();
+    }
+
     // dev helpers
     public static function dj($data) {
         echo json_encode($data);

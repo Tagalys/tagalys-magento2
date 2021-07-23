@@ -76,6 +76,7 @@ class Configuration extends \Magento\Framework\App\Helper\AbstractHelper
         'listing_pages:max_categories_per_cron' => '50',
         'listing_pages:categories_per_page' => '50',
         'magento_cron_enabled' => 'false',
+        'sync:avoid_parallel_sync_crons' => 'false',
     ];
 
     /**
@@ -240,6 +241,14 @@ class Configuration extends \Magento\Framework\App\Helper\AbstractHelper
             }
         } catch (\Exception $e){
             $this->tagalysApi->log('error', 'Exception in setConfig', array('exception_message' => $e->getMessage()));
+        }
+    }
+
+    public function clearConfig($path)
+    {
+        $config = $this->configFactory->create()->load($path);
+        if ($config->getId() != null) {
+            $config->delete();
         }
     }
 

@@ -12,6 +12,11 @@ class Sync extends \Magento\Framework\App\Helper\AbstractHelper
     const PRIORITY_UPDATES = 'priority_updates';
     const QUICK_FEED = 'quick_feed';
 
+    /**
+     * @param \Tagalys\Sync\Helper\RestrictedAction
+     */
+    private $restrictedAction;
+
     public function __construct(
         \Magento\Framework\Filesystem $filesystem,
         \Tagalys\Sync\Helper\Configuration $tagalysConfiguration,
@@ -26,7 +31,8 @@ class Sync extends \Magento\Framework\App\Helper\AbstractHelper
         \Tagalys\Sync\Model\QueueFactory $queueFactory,
         \Tagalys\Sync\Helper\Queue $queueHelper,
         \Magento\Framework\App\ResourceConnection $resourceConnection,
-        \Magento\Indexer\Model\IndexerFactory $indexerFactory
+        \Magento\Indexer\Model\IndexerFactory $indexerFactory,
+        \Tagalys\Sync\Helper\RestrictedAction $restrictedAction
     )
     {
         $this->tagalysConfiguration = $tagalysConfiguration;
@@ -42,9 +48,12 @@ class Sync extends \Magento\Framework\App\Helper\AbstractHelper
         $this->queueHelper = $queueHelper;
         $this->resourceConnection = $resourceConnection;
         $this->indexerFactory = $indexerFactory;
+        $this->syncRestrictedAction = $restrictedAction;
 
         $this->filesystem = $filesystem;
         $this->directory = $filesystem->getDirectoryWrite(\Magento\Framework\App\Filesystem\DirectoryList::MEDIA);
+
+        $this->syncRestrictedAction->setNamespace("sync_cron");
 
         $this->maxProducts = 500;
         $this->perPage = 50;
@@ -142,6 +151,10 @@ class Sync extends \Magento\Framework\App\Helper\AbstractHelper
         $this->perPage = (int) $this->tagalysConfiguration->getConfig("sync:feed_per_page");
         $this->perPage = min($this->maxProducts, $this->perPage);
         $stores = $this->tagalysConfiguration->getStoresForTagalys();
+        $avoidParallelSyncCrons = $this->tagalysConfiguration->getConfig("sync:avoid_parallel_sync_crons", true);
+        if ($avoidParallelSyncCrons && !$this->syncRestrictedAction->lock()) {
+            return false;
+        }
         if ($stores != NULL) {
 
             // 1. update health
@@ -202,6 +215,9 @@ class Sync extends \Magento\Framework\App\Helper\AbstractHelper
                 $this->_deleteProductIdsFromUpdatesQueueForCronInstance($productIdsFromUpdatesQueueForCronInstance);
                 $this->queueHelper->truncateIfEmpty();
             }
+        }
+        if ($avoidParallelSyncCrons) {
+            $this->syncRestrictedAction->unlock();
         }
         return true;
     }
