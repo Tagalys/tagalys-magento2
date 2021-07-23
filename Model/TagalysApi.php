@@ -171,12 +171,13 @@ class TagalysApi implements TagalysManagementInterface
                     break;
                 case 'reset_sync_statuses':
                     $this->queueHelper->truncate();
-                    foreach ($this->tagalysConfiguration->getStoresForTagalys() as $storeId) {
+                    if (!array_key_exists('stores', $params)) {
+                        $params['stores'] = $this->tagalysConfiguration->getStoresForTagalys();
+                    }
+                    foreach ($params['stores'] as $storeId) {
                         $sync_types = array('updates', 'feed');
                         foreach ($sync_types as $sync_type) {
-                            $syncTypeStatus = $this->tagalysConfiguration->getConfig("store:$storeId:" . $sync_type . "_status", true);
-                            $syncTypeStatus['status'] = 'finished';
-                            $feed_status = $this->tagalysConfiguration->setConfig("store:$storeId:" . $sync_type . "_status", json_encode($syncTypeStatus));
+                            $this->tagalysConfiguration->updateJsonConfig("store:$storeId:" . $sync_type . "_status", ['status' => 'finished', 'locked_by' => null]);
                         }
                     }
                     $response = array('reset' => true);
