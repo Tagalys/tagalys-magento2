@@ -189,8 +189,11 @@ class TagalysApi implements TagalysManagementInterface
                     if (!array_key_exists('products_count', $params)) {
                         $params['products_count'] = false;
                     }
+                    if (!array_key_exists('stores', $params)) {
+                        $params['stores'] = $this->tagalysConfiguration->getStoresForTagalys();
+                    }
                     $this->tagalysApi->log('warn', 'Triggering full products resync via API', array('force_regenerate_thumbnails' => ($params['force_regenerate_thumbnails'] == 'true')));
-                    foreach ($this->tagalysConfiguration->getStoresForTagalys() as $storeId) {
+                    foreach ($params['stores'] as $storeId) {
                         if (isset($params['products_count'])) {
                             $this->tagalysSync->triggerFeedForStore($storeId, ($params['force_regenerate_thumbnails'] == 'true'), $params['products_count'], true);
                         } else {
