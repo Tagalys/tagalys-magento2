@@ -294,7 +294,7 @@ class Queue extends \Magento\Framework\App\Helper\AbstractHelper
     }
 
     private function queuePrimaryProductIdFor($storeId, $productId) {
-        $primaryProductId = $this->getPrimaryProductId($productId, $storeId);
+        $primaryProductId = $this->getPrimaryProductId($storeId, $productId);
         if ($primaryProductId === false) {
             // no related product id
         } elseif ($productId == $primaryProductId) {
