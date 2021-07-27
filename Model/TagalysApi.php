@@ -170,7 +170,7 @@ class TagalysApi implements TagalysManagementInterface
                     $response = $productDetails;
                     break;
                 case 'reset_sync_statuses':
-                    $this->queueHelper->truncate();
+                    $this->queueHelper->deleteByPriority(0);
                     if (!array_key_exists('stores', $params)) {
                         $params['stores'] = $this->tagalysConfiguration->getStoresForTagalys();
                     }
@@ -200,7 +200,7 @@ class TagalysApi implements TagalysManagementInterface
                             $this->tagalysSync->triggerFeedForStore($storeId, ($params['force_regenerate_thumbnails'] == 'true'), false, true);
                         }
                     }
-                    $this->queueHelper->truncate();
+                    $this->queueHelper->deleteByPriority(0);
                     $response = array('triggered' => true);
                     break;
                 case 'trigger_quick_feed':

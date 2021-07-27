@@ -66,7 +66,7 @@ class Sync extends \Magento\Framework\App\Helper\AbstractHelper
     public function triggerFeedForStore($storeId, $forceRegenerateThumbnails = false, $productsCount = false, $abandonIfExisting = false) {
         $feedStatus = $this->tagalysConfiguration->getConfig("store:$storeId:feed_status", true);
         if ($feedStatus == NULL || in_array($feedStatus['status'], array('finished')) || $abandonIfExisting) {
-            $this->queueHelper->truncate();
+            $this->queueHelper->deleteByPriority(0);
             $utcNow = new \DateTime("now", new \DateTimeZone('UTC'));
             $timeNow = $utcNow->format(\DateTime::ATOM);
             if ($productsCount == false) {
@@ -134,7 +134,7 @@ class Sync extends \Magento\Framework\App\Helper\AbstractHelper
             $periodic_full_sync = $this->tagalysConfiguration->getConfig("periodic_full_sync");
             $resync_required = $this->tagalysConfiguration->getConfig("store:$storeId:resync_required");
             if ($periodic_full_sync == '1' || $resync_required == '1' || $force) {
-                $this->queueHelper->truncate();
+                $this->queueHelper->deleteByPriority(0);
                 $this->deleteAllSyncFiles();
                 $syncTypes = array('updates', 'feed');
                 foreach ($syncTypes as $syncType) {
@@ -251,7 +251,7 @@ class Sync extends \Magento\Framework\App\Helper\AbstractHelper
                 if (count($productIdsForUpdate) > -1) {
                     $updatesResponse = $this->_generateFilePart($storeId, 'updates', $productIdsForUpdate);
                     if (isset($updatesResponse['updatesPerformed']) and $updatesResponse['updatesPerformed']) {
-                        $this->queueHelper->delete($storeId, $productIdsForUpdate);
+                        $this->queueHelper->paginateSqlDelete($productIdsForUpdate, 0, [$storeId]);
                     }
                 }
             }

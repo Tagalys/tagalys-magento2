@@ -267,18 +267,11 @@ class Queue extends \Magento\Framework\App\Helper\AbstractHelper
         }
     }
 
-    // Todo: rename this function, it's not just truncating anymore
-    public function truncate($preserve_priority_items = true) {
-        if ($preserve_priority_items) {
-            $priorityRows = $this->getPriorityRows();
-        }
+    public function truncate() {
         $queue = $this->queueFactory->create();
         $connection = $queue->getResource()->getConnection();
         $tableName = $queue->getResource()->getMainTable();
         $connection->truncateTable($tableName);
-        if ($preserve_priority_items) {
-            $this->paginateAndInsertRows($priorityRows);
-        }
     }
 
     public function getPriorityRows() {
@@ -432,7 +425,9 @@ class Queue extends \Magento\Framework\App\Helper\AbstractHelper
 
     public function deleteByPriority($priority) {
         $sql = "DELETE FROM {$this->tableName} WHERE priority=$priority";
-        return $this->runSql($sql);
+        $this->runSql($sql);
+        $this->truncateIfEmpty();
+        return true;
     }
 
     public function removeDuplicatesFromQueue() {
@@ -442,7 +437,7 @@ class Queue extends \Magento\Framework\App\Helper\AbstractHelper
             $rows = $this->runSqlSelect($sql);
             $productIdsHash = [];
             $validRows = [];
-        foreach($rows as $row) {
+            foreach($rows as $row) {
                 $productId = $row['product_id'];
                 $priority = $row['priority'];
                 if(!array_key_exists($productId, $productIdsHash)) {
@@ -463,10 +458,5 @@ class Queue extends \Magento\Framework\App\Helper\AbstractHelper
             $productId = $row['product_id'];
             $this->queuePrimaryProductIdFor($storeId, $productId);
         }
-    }
-
-    public function delete($storeId, $productIds) {
-        $sql = "DELETE FROM {$this->tableName} WHERE store_id=$storeId AND product_id IN (" .implode(',', $productIds). ")";
-        return $this->runSql($sql);
     }
 }
