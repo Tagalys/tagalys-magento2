@@ -358,7 +358,7 @@ class Sync extends \Magento\Framework\App\Helper\AbstractHelper
         $this->tagalysApi->log('local', '2. Read / Initialized syncFileStatus', array('pid' => $pid, 'storeId' => $storeId, 'type' => $type, 'syncFileStatus' => $syncFileStatus));
 
         if ($syncFileStatus != NULL) {
-            if ($type == 'updates' && in_array($syncFileStatus['status'], array('finished'))) {
+            if ($type == 'updates' && in_array($syncFileStatus['status'], array('finished', 'sent_to_tagalys'))) {
                 // if updates are finished, reset config
                 $this->_reinitializeUpdatesConfig($storeId, $productIdsFromUpdatesQueueForCronInstance);
                 $syncFileStatus = $this->tagalysConfiguration->getConfig("store:$storeId:{$type}_status", true);
@@ -595,9 +595,16 @@ class Sync extends \Magento\Framework\App\Helper\AbstractHelper
         } elseif (strpos($filename, '-updates-') !== false) {
             $type = 'updates';
         }
-        $syncFileStatus = $this->tagalysConfiguration->getConfig("store:$storeId:{$type}_status", true);
-        if ($syncFileStatus != null) {
-            if ($syncFileStatus['status'] == 'sent_to_tagalys') {
+        if ($type == 'updates') {
+            $response = $this->deleteSyncFiles([$filename]);
+            if($response['errors']) {
+                $this->tagalysApi->log('warn', 'Unable to delete file in receivedCallback', array('filename' => $filename));
+            }
+            $this->tagalysApi->log('info', 'Updates sync completed.', array('store_id' => $storeId));
+            return true;
+        } else {
+            $syncFileStatus = $this->tagalysConfiguration->getConfig("store:$storeId:{$type}_status", true);
+            if ($syncFileStatus && $syncFileStatus['status'] == 'sent_to_tagalys') {
                 if ($syncFileStatus['filename'] == $filename) {
                     $filePath = $this->filesystem->getDirectoryRead('media')->getAbsolutePath() . 'tagalys/' . $filename;
                     if (!file_exists($filePath) || !unlink($filePath)) {
@@ -621,8 +628,6 @@ class Sync extends \Magento\Framework\App\Helper\AbstractHelper
             } else {
                 $this->tagalysApi->log('warn', 'Unexpected receivedCallback trigger', array('syncFileStatus' => $syncFileStatus, 'filename' => $filename));
             }
-        } else {
-            // TODO handle error
         }
     }
 
@@ -829,14 +834,20 @@ class Sync extends \Magento\Framework\App\Helper\AbstractHelper
     }
 
     public function deleteSyncFiles($filesToDelete) {
-        $this->forEachSyncFile(function($fullPath, $fileName) use ($filesToDelete) {
+        $response = ['failed_to_delete' => [], 'errors' => false];
+        $this->forEachSyncFile(function($fullPath, $fileName) use ($filesToDelete, &$response) {
             if (in_array($fileName, $filesToDelete)) {
+                $deleted = false;
                 try {
-                    unlink($fullPath);
-                } catch (\Exception $e) { }
+                    $deleted = unlink($fullPath);
+                } catch (\Exception $e) {}
+                if(!$deleted) {
+                    $response['errors'] = true;
+                    $response['failed_to_delete'][] = $fileName;
+                }
             }
         });
-        return true;
+        return $response;
     }
 
     public function deleteAllSyncFiles() {

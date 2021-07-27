@@ -110,6 +110,7 @@ class TagalysApi implements TagalysManagementInterface
             switch ($params['info_type']) {
                 case 'status':
                     $info = array(
+                        'plugin_version' => $this->tagalysApi->getPluginVersion(),
                         'config' => [],
                         'files_in_media_folder' => array(),
                         'sync_status' => $this->tagalysSync->status()
