@@ -338,9 +338,10 @@ class Category extends \Magento\Framework\App\Helper\AbstractHelper
                             if ($response != false) {
                                 $category = $this->categoryFactory->create()->load($categoryId);
                                 if($this->categoryExist($category)) {
-                                    if($this->isTagalysCreated($category)){
+                                    if($response['mode'] == 'assign_or_update_product_positions'){
                                         $this->bulkAssignProductsToCategoryAndRemove($storeId, $categoryId, $response['positions']);
                                     } else {
+                                        // $response['update_mode'] will be 'update_product_positions'
                                         $this->performCategoryPositionUpdate($storeId, $categoryId, $response['positions']);
                                     }
                                 } else {
@@ -832,7 +833,7 @@ class Category extends \Magento\Framework\App\Helper\AbstractHelper
 
     public function bulkAssignProductsToCategoryAndRemove($storeId, $categoryId, $productPositions) {
         $this->logger->info("bulkAssignProductsToCategoryAndRemove: store_id: $storeId, category_id: $categoryId, productPositions count: " . count($productPositions));
-        if($this->isTagalysCreated($categoryId)){
+        if($this->isTagalysPowered($storeId, $categoryId)){
             if ($this->tagalysConfiguration->isProductSortingReverse()) {
                 $productPositions = $this->reverseProductPositionsHash($productPositions);
             }
@@ -1069,6 +1070,19 @@ class Category extends \Magento\Framework\App\Helper\AbstractHelper
             return true;
         }
         return false;
+    }
+
+    public function isTagalysPowered($storeId, $categoryId) {
+        if (is_object($categoryId)) {
+            $categoryId = $categoryId->getId();
+        }
+        if (empty($categoryId)) {
+            return false;
+        }
+        $collection = $this->tagalysCategoryFactory->create()->getCollection()
+            ->addFieldToFilter('store_id', $storeId)
+            ->addFieldToFilter('category_id', $categoryId);
+        return ($collection->getSize() > 0);
     }
 
     public function getTagalysCreatedCategories() {
