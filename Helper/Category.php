@@ -422,18 +422,20 @@ class Category extends \Magento\Framework\App\Helper\AbstractHelper
                 "id" => "__categories-$categoryId",
                 "slug" => $this->getCategoryUrl($category),
                 "path" => $category->getUrlPath(),
-                "enabled" => $categoryActive,
+                'ancestry' => $category->getPath(),
+                "is_active" => $categoryActive,
                 "name" => implode(' / ', array_slice(explode(' |>| ', $this->tagalysConfiguration->getCategoryName($category)), 1)),
                 "filters" => array(
-                array(
-                    "field" => "__categories",
-                    "value" => $categoryId
-                ),
-                array(
-                    "field" => "visibility",
-                    "tag_jsons" => array("{\"id\":\"2\",\"name\":\"Catalog\"}", "{\"id\":\"4\",\"name\":\"Catalog, Search\"}")
+                    array(
+                        "field" => "__categories",
+                        "value" => $categoryId
+                    ),
+                    array(
+                        "field" => "visibility",
+                        "tag_jsons" => array("{\"id\":\"2\",\"name\":\"Catalog\"}", "{\"id\":\"4\",\"name\":\"Catalog, Search\"}")
+                    )
                 )
-            ));
+            );
             $this->storeManagerInterface->setCurrentStore($originalStoreId);
             return $output;
         } catch (\Exception $e) {
