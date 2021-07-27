@@ -89,7 +89,7 @@ class Queue extends \Magento\Framework\App\Helper\AbstractHelper
                 $this->paginateSqlInsert($idsByOperation['insert'], $priority, $storeId);
                 $response['stores'][$storeId]['inserted'] += count($idsByOperation['insert']);
 
-                $this->paginateSqlUpdate($idsByOperation['update'], $priority, $storeId);
+                $this->paginateSqlUpdatePriority($storeId, $idsByOperation['update'], $priority);
                 $response['stores'][$storeId]['updated'] += count($idsByOperation['update']);
             }
 
@@ -399,7 +399,7 @@ class Queue extends \Magento\Framework\App\Helper\AbstractHelper
         $this->paginateAndInsertRows($rows);
     }
 
-    public function paginateSqlUpdate($productIds, $priority, $storeId) {
+    private function paginateSqlUpdatePriority($storeId, $productIds, $priority) {
         Utils::forEachChunk($productIds, $this->sqlBulkBatchSize, function($idsChunk) use ($priority, $storeId){
             $values = implode(',', $idsChunk);
             $sql = "UPDATE {$this->tableName} SET priority=$priority WHERE product_id IN ($values) AND store_id=$storeId;";
@@ -458,5 +458,27 @@ class Queue extends \Magento\Framework\App\Helper\AbstractHelper
             $productId = $row['product_id'];
             $this->queuePrimaryProductIdFor($storeId, $productId);
         }
+    }
+
+    public function migrateUpdatesQueueIfRequired() {
+        $stores = $this->tagalysConfiguration->getStoresForTagalys();
+        $sql = "SELECT * FROM {$this->tableName} WHERE store_id IS NULL;";
+        $rows = $this->runSqlSelect($sql);
+        if(count($rows) == 0) {
+            return false;
+        }
+        $validRows = [];
+        foreach($stores as $storeId) {
+            foreach ($rows as $row) {
+                $row['store_id'] = $storeId;
+                $validRows[] = "({$row['product_id']}, {$row['priority']}, {$row['store_id']})";
+            }
+        }
+        $this->paginateAndInsertRows($validRows);
+
+        $sql = "DELETE FROM {$this->tableName} WHERE store_id IS NULL;";
+        $this->runSql($sql);
+
+        return true;
     }
 }

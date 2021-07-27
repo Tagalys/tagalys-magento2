@@ -19,6 +19,11 @@ class Sync extends \Magento\Framework\App\Helper\AbstractHelper
      */
     private $restrictedAction;
 
+    /**
+     * @param \Tagalys\Sync\Helper\Queue
+     */
+    private $queueHelper;
+
     public function __construct(
         \Magento\Framework\Filesystem $filesystem,
         \Tagalys\Sync\Helper\Configuration $tagalysConfiguration,
@@ -185,16 +190,18 @@ class Sync extends \Magento\Framework\App\Helper\AbstractHelper
             // 4. check updated_at if enabled
             $productUpdateDetectionMethods = $this->tagalysConfiguration->getConfig('product_update_detection_methods', true);
             if (in_array('db.catalog_product_entity.updated_at', $productUpdateDetectionMethods)) {
+                // ! FIXME: creates entries with store_id as null, use insert unique internally to avoid that
+                // NOT used for RAG, for later
                 $this->queueHelper->importProductsToSync();
             }
+
+            // migration step, set store_id value from entries in updates queue
+            $this->queueHelper->migrateUpdatesQueueIfRequired();
 
             // 5. check queue size and (clear_queue, trigger_feed) if required
             $this->truncateQueueAndTriggerSyncIfRequired($stores);
 
-            // 6. queue the parent products of any of the child products in the queue
-            $this->queueHelper->queuePrimaryProductIdForStore();
-
-            // 7. perform feed, updates sync (updates only if feed sync is finished)
+            // 6. perform feed, updates sync (updates only if feed sync is finished)
             foreach($stores as $i => $storeId) {
                 if($this->shouldAbandonFeedAndUpdatesForStore($storeId)) {
                     $this->markFeedAsFinishedForStore($storeId);
@@ -247,6 +254,7 @@ class Sync extends \Magento\Framework\App\Helper\AbstractHelper
             }
             $syncFileStatus = $feedResponse['syncFileStatus'];
             if (!$this->_isFeedGenerationInProgress($storeId, $syncFileStatus)) {
+                $this->queueHelper->queuePrimaryProductIdForStore($storeId);
                 $productIdsForUpdate = $this->getProductIdsForUpdate($storeId);
                 if (count($productIdsForUpdate) > -1) {
                     $updatesResponse = $this->_generateFilePart($storeId, 'updates', $productIdsForUpdate);
