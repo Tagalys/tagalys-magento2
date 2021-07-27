@@ -191,34 +191,18 @@ class Sync extends \Magento\Framework\App\Helper\AbstractHelper
             // 5. check queue size and (clear_queue, trigger_feed) if required
             $this->truncateQueueAndTriggerSyncIfRequired($stores);
 
-            // 6. get product ids from update queue to be processed in this cron instance
-            $productIdsFromUpdatesQueueForCronInstance = $this->_productIdsFromUpdatesQueueForCronInstance();
-            // products from obervers are added to queue without any checks. so add related configurable products if necessary
-            foreach($productIdsFromUpdatesQueueForCronInstance as $productId) {
-                $this->queueHelper->queuePrimaryProductIdFor($productId);
-            }
+            // 6. queue the parent products of any of the child products in the queue
+            $this->queueHelper->queuePrimaryProductIdForStore();
 
             // 7. perform feed, updates sync (updates only if feed sync is finished)
-            $updatesPerformed = array();
             foreach($stores as $i => $storeId) {
                 if($this->shouldAbandonFeedAndUpdatesForStore($storeId)) {
                     $this->markFeedAsFinishedForStore($storeId);
-                    $updatesPerformed[$storeId] = true;
                 } else {
-                    $updatesPerformed[$storeId] = $this->_syncForStore($storeId, $productIdsFromUpdatesQueueForCronInstance);
+                    $this->_syncForStore($storeId);
                 }
             }
-            $updatesPerformedForAllStores = true;
-            foreach ($stores as $i => $storeId) {
-                if ($updatesPerformed[$storeId] == false) {
-                    $updatesPerformedForAllStores = false;
-                    break;
-                }
-            }
-            if ($updatesPerformedForAllStores) {
-                $this->_deleteProductIdsFromUpdatesQueueForCronInstance($productIdsFromUpdatesQueueForCronInstance);
-                $this->queueHelper->truncateIfEmpty();
-            }
+            $this->queueHelper->truncateIfEmpty();
         }
         if ($avoidParallelSyncCrons) {
             $this->syncRestrictedAction->unlock();
@@ -253,7 +237,7 @@ class Sync extends \Magento\Framework\App\Helper\AbstractHelper
         }
     }
 
-    public function _syncForStore($storeId, $productIdsFromUpdatesQueueForCronInstance) {
+    public function _syncForStore($storeId) {
         $updatesPerformed = false;
         try {
             $feedResponse = $this->_generateFilePart($storeId, 'feed');
@@ -263,10 +247,11 @@ class Sync extends \Magento\Framework\App\Helper\AbstractHelper
             }
             $syncFileStatus = $feedResponse['syncFileStatus'];
             if (!$this->_isFeedGenerationInProgress($storeId, $syncFileStatus)) {
-                if (count($productIdsFromUpdatesQueueForCronInstance) > -1) {
-                    $updatesResponse = $this->_generateFilePart($storeId, 'updates', $productIdsFromUpdatesQueueForCronInstance);
+                $productIdsForUpdate = $this->getProductIdsForUpdate($storeId);
+                if (count($productIdsForUpdate) > -1) {
+                    $updatesResponse = $this->_generateFilePart($storeId, 'updates', $productIdsForUpdate);
                     if (isset($updatesResponse['updatesPerformed']) and $updatesResponse['updatesPerformed']) {
-                        $updatesPerformed = true;
+                        $this->queueHelper->delete($storeId, $productIdsForUpdate);
                     }
                 }
             }
@@ -330,20 +315,18 @@ class Sync extends \Magento\Framework\App\Helper\AbstractHelper
         }
         return $productsCount;
     }
-    public function _productIdsFromUpdatesQueueForCronInstance() {
-        $queueCollection = $this->queueFactory->create()->getCollection()->setOrder('id', 'ASC')->setPageSize($this->maxProducts);
+    public function getProductIdsForUpdate($storeId) {
+        $queueCollection = $this->queueFactory->create()
+            ->getCollection()
+            ->addFieldToFilter('store_id', $storeId)
+            ->setOrder('id', 'ASC')
+            ->setPageSize($this->maxProducts);
         $productIdsFromUpdatesQueueForCronInstance = array();
         foreach ($queueCollection as $i => $queueItem) {
             $productId = $queueItem->getProductId();
             array_push($productIdsFromUpdatesQueueForCronInstance, $productId);
         }
         return $productIdsFromUpdatesQueueForCronInstance;
-    }
-    public function _deleteProductIdsFromUpdatesQueueForCronInstance($productIdsFromUpdatesQueueForCronInstance) {
-        $collection = $this->queueFactory->create()->getCollection()->addFieldToFilter('product_id', array('in' => $productIdsFromUpdatesQueueForCronInstance));
-        foreach($collection as $queueItem) {
-            $queueItem->delete();
-        }
     }
 
     public function _generateFilePart($storeId, $type, $productIdsFromUpdatesQueueForCronInstance = array()) {
@@ -1119,27 +1102,26 @@ class Sync extends \Magento\Framework\App\Helper\AbstractHelper
     }
 
     public function truncateQueueAndTriggerSyncIfRequired($stores) {
-        $updatesCount = $this->queueFactory->create()->getCollection()->addFieldToFilter('priority', 0)->getSize();
         $maxAllowedUpdatesCount = (int) $this->tagalysConfiguration->getConfig("sync:threshold_to_abandon_updates_and_trigger_feed");
-        $clearQueueAndTriggerResync = false;
-        if($updatesCount > $maxAllowedUpdatesCount) {
-            foreach($stores as $i => $storeId) {
+        $resyncTriggeredStores = [];
+        foreach ($stores as $storeId) {
+            $updatesCount = $this->queueFactory->create()
+                ->getCollection()
+                ->addFieldToFilter('priority', 0)
+                ->addFieldToFilter('store_id', $storeId)
+                ->getSize();
+            if($updatesCount > $maxAllowedUpdatesCount) {
                 $totalProducts = $this->getProductsCount($storeId);
                 $cutoff = 0.33 * $totalProducts;
                 if ($updatesCount > $cutoff) {
-                    $clearQueueAndTriggerResync = true;
-                    break;
-                }
-            }
-            if ($clearQueueAndTriggerResync) {
-                $this->queueHelper->truncate();
-                foreach ($stores as $storeId) {
+                    $resyncTriggeredStores[] = $storeId;
+                    $this->queueHelper->deleteByPriority(0);
                     $this->triggerFeedForStore($storeId, false, false, true);
+                    $this->tagalysApi->log('warn', 'Clearing updates queue and triggering full products sync', array('remainingProductUpdates' => $updatesCount));
                 }
-                $this->tagalysApi->log('warn', 'Clearing updates queue and triggering full products sync', array('remainingProductUpdates' => $updatesCount));
             }
         }
-        return $clearQueueAndTriggerResync;
+        return ['resyncTriggeredStores' => $resyncTriggeredStores];
     }
 
     public function shouldAbandonFeedAndUpdatesForStore($storeId) {

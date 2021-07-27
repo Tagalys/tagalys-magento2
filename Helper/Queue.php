@@ -300,8 +300,8 @@ class Queue extends \Magento\Framework\App\Helper\AbstractHelper
         });
     }
 
-    public function queuePrimaryProductIdFor($productId) {
-        $primaryProductId = $this->getPrimaryProductId($productId);
+    private function queuePrimaryProductIdFor($storeId, $productId) {
+        $primaryProductId = $this->getPrimaryProductId($productId, $storeId);
         if ($primaryProductId === false) {
             // no related product id
         } elseif ($productId == $primaryProductId) {
@@ -333,33 +333,25 @@ class Queue extends \Magento\Framework\App\Helper\AbstractHelper
         $this->runSql($sql);
     }
 
-    public function _visibleInAnyStore($product) {
-        $visible = false;
-        $storesForTagalys = $this->tagalysConfiguration->getStoresForTagalys();
-        foreach ($storesForTagalys as $storeId) {
-            $this->storeManager->setCurrentStore($storeId);
-            $productVisibility = $product->getVisibility();
-            if ($productVisibility != 1) {
-                $visible = true;
-                break;
-            }
-        }
-        return $visible;
+    private function visibleInStore($storeId, $product) {
+        $this->storeManager->setCurrentStore($storeId);
+        $productVisibility = $product->getVisibility();
+        return ($productVisibility != 1);
     }
 
-    public function getPrimaryProductId($productId) {
+    private function getPrimaryProductId($storeId, $productId) {
         $product = $this->productFactory->create()->load($productId);
         if ($product) {
             $productType = $product->getTypeId();
-            $visibleInAnyStore = $this->_visibleInAnyStore($product);
-            if (!$visibleInAnyStore) {
+            $visibleInStore = $this->visibleInStore($storeId, $product);
+            if (!$visibleInStore) {
                 // not visible individually
                 if ($productType == 'simple' || $productType == 'virtual') {
                     // coulbe be attached to configurable product
                     $parentIds = $this->configurableProduct->getParentIdsByChild($productId);
                     if (count($parentIds) > 0) {
                         // check and return configurable product id
-                        return $this->getPrimaryProductId($parentIds[0]);
+                        return $this->getPrimaryProductId($storeId, $parentIds[0]);
                     } else {
                         // simple product which is not visible / an orphan simple product
                         return false;
@@ -444,20 +436,37 @@ class Queue extends \Magento\Framework\App\Helper\AbstractHelper
     }
 
     public function removeDuplicatesFromQueue() {
-        $sql = "SELECT * FROM {$this->tableName} ORDER BY priority DESC;";
+        $stores = $this->tagalysConfiguration->getStoresForTagalys();
+        foreach ($stores as $storeId) {
+            $sql = "SELECT * FROM {$this->tableName} WHERE store_id=$storeId ORDER BY priority DESC;";
+            $rows = $this->runSqlSelect($sql);
+            $productIdsHash = [];
+            $validRows = [];
+        foreach($rows as $row) {
+                $productId = $row['product_id'];
+                $priority = $row['priority'];
+                if(!array_key_exists($productId, $productIdsHash)) {
+                    $validRows[] = "($productId, $priority, $storeId)";
+                    $productIdsHash[$productId] = true;
+                }
+            }
+            $this->paginateSqlDelete(array_keys($productIdsHash), null, [$storeId]);
+            $this->paginateAndInsertRows($validRows);
+        }
+        return true;
+    }
+
+    public function queuePrimaryProductIdForStore($storeId) {
+        $sql = "SELECT * FROM {$this->tableName} WHERE store_id=$storeId;";
         $rows = $this->runSqlSelect($sql);
-        $productIdsHash = [];
-        $validRows = [];
         foreach($rows as $row) {
             $productId = $row['product_id'];
-            $priority = $row['priority'];
-            if(!array_key_exists($productId, $productIdsHash)) {
-                $validRows[] = "($productId, $priority)";
-                $productIdsHash[$productId] = true;
-            }
+            $this->queuePrimaryProductIdFor($storeId, $productId);
         }
-        $this->paginateSqlDelete(array_keys($productIdsHash));
-        $this->paginateAndInsertRows($validRows);
-        return ['before' => count($rows), 'after' => count($validRows)];
+    }
+
+    public function delete($storeId, $productIds) {
+        $sql = "DELETE FROM {$this->tableName} WHERE store_id=$storeId AND product_id IN (" .implode(',', $productIds). ")";
+        return $this->runSql($sql);
     }
 }

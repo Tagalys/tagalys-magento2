@@ -371,7 +371,8 @@ class TagalysApi implements TagalysManagementInterface
                 case 'remove_from_tagalys_queue':
                     if (array_key_exists('product_ids', $params)){
                         $priority = array_key_exists('priority', $params) ? $params['priority'] : null;
-                        $res = $this->queueHelper->paginateSqlDelete($params['product_ids'], $priority);
+                        $stores = array_key_exists('stores', $params) ? $params['stores'] : null;
+                        $res = $this->queueHelper->paginateSqlDelete($params['product_ids'], $priority, $stores);
                     } else {
                         $res = false;
                     }
