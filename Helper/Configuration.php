@@ -1072,4 +1072,20 @@ class Configuration extends \Magento\Framework\App\Helper\AbstractHelper
         }
         return $this->_tagalysCategoryHelper;
     }
+
+    public function updateTagalysHealth() {
+        $storesForTagalys = $this->getStoresForTagalys();
+        if ($storesForTagalys != null) {
+            foreach ($storesForTagalys as $storeId) {
+                $response = $this->tagalysApi->storeApiCall($storeId . '', '/v1/mpages/_health', array('timeout' => 10));
+                if ($response != false && $response['total'] > 0) {
+                    $this->setConfig("tagalys:health", '1');
+                    return true;
+                } else {
+                    $this->setConfig("tagalys:health", '0');
+                    return false;
+                }
+            }
+        }
+    }
 }

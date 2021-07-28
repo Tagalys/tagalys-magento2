@@ -166,14 +166,8 @@ class Sync extends \Magento\Framework\App\Helper\AbstractHelper
         }
         if ($stores != NULL) {
 
-            // 1. update health
-            $this->updateTagalysHealth();
-
             // 2. update configuration if required
             $this->_checkAndSyncConfig();
-
-            // 3. sync pending categories
-            $this->tagalysCategory->sync();
 
             // perform priority updates and mini feed sync
             $cronUnlocked = $this->lockedCronOperation(function() use ($stores) {
@@ -215,22 +209,6 @@ class Sync extends \Magento\Framework\App\Helper\AbstractHelper
             $this->syncRestrictedAction->unlock();
         }
         return true;
-    }
-
-    public function updateTagalysHealth() {
-        $storesForTagalys = $this->tagalysConfiguration->getStoresForTagalys();
-        if ($storesForTagalys != null) {
-            foreach ($storesForTagalys as $storeId) {
-                $response = $this->tagalysApi->storeApiCall($storeId.'', '/v1/mpages/_health', array('timeout' => 10));
-                if ($response != false && $response['total'] > 0) {
-                    $this->tagalysConfiguration->setConfig("tagalys:health", '1');
-                    return true;
-                } else {
-                    $this->tagalysConfiguration->setConfig("tagalys:health", '0');
-                    return false;
-                }
-            }
-        }
     }
 
     public function _checkAndSyncConfig() {

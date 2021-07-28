@@ -14,12 +14,12 @@ class Sync extends Command
     const MAX_CATEGORIES = 'max_categories';
 
     /**
-     * @param \Tagalys\Sync\Cron\Sync
+     * @param \Tagalys\Sync\Cron\ProductSync
      */
     private $syncCron;
 
     public function __construct(
-        \Tagalys\Sync\Cron\Sync $syncCron
+        \Tagalys\Sync\Cron\ProductSync $syncCron
     ){
         $this->syncCron = $syncCron;
         parent::__construct();

@@ -444,6 +444,9 @@ class Category extends \Magento\Framework\App\Helper\AbstractHelper
     }
     public function sync($force = false)
     {
+
+        $this->tagalysConfiguration->updateTagalysHealth();
+
         $max = (int) $this->tagalysConfiguration->getConfig("sync:max_categories_per_cron");
         $listingPagesEnabled = ($this->tagalysConfiguration->getConfig("module:listingpages:enabled") == '1');
         $powerAllListingPages = ($this->tagalysConfiguration->getConfig("module:listingpages:enabled") == '2');
