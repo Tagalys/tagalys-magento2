@@ -392,15 +392,15 @@ class Category extends \Magento\Framework\App\Helper\AbstractHelper
     }
     public function syncAll($force = false)
     {
-        $remainingForSync = $this->getRemainingForSync();
-        $remainingForDelete = $this->getRemainingForDelete();
-        // echo('syncAll: ' . json_encode(compact('remainingForSync', 'remainingForDelete')));
-        while ($remainingForSync > 0 || $remainingForDelete > 0) {
-            $this->sync(50, $force);
-            $remainingForSync = $this->getRemainingForSync();
-            $remainingForDelete = $this->getRemainingForDelete();
-            // echo('syncAll: ' . json_encode(compact('remainingForSync', 'remainingForDelete')));
-        }
+        // $remainingForSync = $this->getRemainingForSync();
+        // $remainingForDelete = $this->getRemainingForDelete();
+        // // echo('syncAll: ' . json_encode(compact('remainingForSync', 'remainingForDelete')));
+        // while ($remainingForSync > 0 || $remainingForDelete > 0) {
+        //     $this->sync(50, $force);
+        //     $remainingForSync = $this->getRemainingForSync();
+        //     $remainingForDelete = $this->getRemainingForDelete();
+        //     // echo('syncAll: ' . json_encode(compact('remainingForSync', 'remainingForDelete')));
+        // }
     }
     public function getCategoryUrl($category) {
         $categoryUrl = $category->getUrl();
@@ -442,19 +442,21 @@ class Category extends \Magento\Framework\App\Helper\AbstractHelper
             return false;
         }
     }
-    public function sync($force = false)
+    public function sync($max = null)
     {
 
         $this->tagalysConfiguration->updateTagalysHealth();
 
-        $max = (int) $this->tagalysConfiguration->getConfig("sync:max_categories_per_cron");
+        if($max == null) {
+            $max = (int) $this->tagalysConfiguration->getConfig("sync:max_categories_per_cron");
+        }
         $listingPagesEnabled = ($this->tagalysConfiguration->getConfig("module:listingpages:enabled") == '1');
         $powerAllListingPages = ($this->tagalysConfiguration->getConfig("module:listingpages:enabled") == '2');
         if($powerAllListingPages){
             $this->powerAllCategories();
             $listingPagesEnabled = true;
         }
-        if ($listingPagesEnabled || $force) {
+        if ($listingPagesEnabled) {
             $detailsToSync = array();
 
             // save

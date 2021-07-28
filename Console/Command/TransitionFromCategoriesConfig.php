@@ -41,7 +41,7 @@ class TransitionFromCategoriesConfig extends Command
     $this->tagalysConfiguration->setConfig('heartbeat:command:transition_from_categories_config', $timeNow);
 
     $this->tagalysCategoryHelper->transitionFromCategoriesConfig();
-    $this->tagalysCategoryHelper->syncAll(true);
+    // $this->tagalysCategoryHelper->syncAll(true);
 
     $output->writeln("Done");
   }

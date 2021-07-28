@@ -473,6 +473,12 @@ class TagalysApi implements TagalysManagementInterface
                 case 'get_cron_schedule':
                     $response = $this->getCronSchedule($params);
                     break;
+                case 'sync_products':
+                    $this->syncProducts($params);
+                    break;
+                case 'sync_categories':
+                    $this->syncCategories($params);
+                    break;
             }
         } catch (\Exception $e) {
             $response = ['status' => 'error', 'message' => $e->getMessage(), 'trace' => $e->getTrace()];
@@ -536,5 +542,23 @@ class TagalysApi implements TagalysManagementInterface
         $cronScheduleTable = $this->tagalysSql->getTableName("cron_schedule");
         $response['entries'] = $this->tagalysSql->runSqlSelect("SELECT * FROM $cronScheduleTable WHERE job_code LIKE 'Tagalys%' ORDER BY scheduled_at DESC LIMIT 1000;");
         return $response;
+    }
+
+    private function syncProducts($params){
+        $count = (int) $params['count'];
+        if($count > 0) {
+            $this->tagalysSync->sync($count);
+            return true;
+        }
+        return false;
+    }
+
+    private function syncCategories($params){
+        $count = (int) $params['count'];
+        if($count > 0) {
+            $this->tagalysCategoryHelper->sync($count);
+            return true;
+        }
+        return false;
     }
 }
