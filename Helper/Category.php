@@ -338,10 +338,10 @@ class Category extends \Magento\Framework\App\Helper\AbstractHelper
                             if ($response != false) {
                                 $category = $this->categoryFactory->create()->load($categoryId);
                                 if($this->categoryExist($category)) {
-                                    if($response['mode'] == 'assign_or_update_product_positions'){
+                                    if($response['mode'] == 'assign_and_update'){
                                         $this->bulkAssignProductsToCategoryAndRemove($storeId, $categoryId, $response['positions']);
                                     } else {
-                                        // $response['update_mode'] will be 'update_product_positions'
+                                        // $response['mode'] will be 'update'
                                         $this->performCategoryPositionUpdate($storeId, $categoryId, $response['positions']);
                                     }
                                 } else {
@@ -418,11 +418,13 @@ class Category extends \Magento\Framework\App\Helper\AbstractHelper
             $category = null;
             $category = $this->categoryFactory->create()->load($categoryId);
             $categoryActive = ($category->getIsActive() == '1');
+            $path = explode('/', $category->getPath());
+            $ancestry = array_slice($path, 1, -1);
             $output = array(
                 "id" => "__categories-$categoryId",
                 "slug" => $this->getCategoryUrl($category),
                 "path" => $category->getUrlPath(),
-                'ancestry' => $category->getPath(),
+                'ancestry' => $ancestry,
                 "is_active" => $categoryActive,
                 "name" => implode(' / ', array_slice(explode(' |>| ', $this->tagalysConfiguration->getCategoryName($category)), 1)),
                 "filters" => array(
