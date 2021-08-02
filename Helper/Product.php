@@ -302,14 +302,16 @@ class Product extends \Magento\Framework\App\Helper\AbstractHelper
                 $activeCategoryPaths[] = $path;
 
                 // assign to parent categories
-                $relevantCategories = array_slice(explode('/', $path), 2); // ignore level 0 and 1
-                $idsToAssign = array_diff($relevantCategories, $categoryIds);
+                if($this->tagalysConfiguration->canPerformParentCategoryAssignment($storeId)) {
+                    $relevantCategories = array_slice(explode('/', $path), 2); // ignore level 0 and 1
+                    $idsToAssign = array_diff($relevantCategories, $categoryIds);
                     foreach ($idsToAssign as $key => $categoryId) {
                         if (!in_array($categoryId, $categoriesAssigned) && $this->tagalysCategory->canPerformParentCategoryAssignment($storeId, $categoryId)) {
                             if ($this->tagalysCategory->assignProductToCategoryViaDb($categoryId, $product)){
-                            $this->tagalysCategory->markPositionsSyncRequired($storeId, $categoryId);
+                                $this->tagalysCategory->markPositionsSyncRequired($storeId, $categoryId);
+                            }
+                            array_push($categoriesAssigned, $categoryId);
                         }
-                        array_push($categoriesAssigned, $categoryId);
                     }
                 }
             }

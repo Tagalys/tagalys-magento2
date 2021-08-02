@@ -77,6 +77,7 @@ class Configuration extends \Magento\Framework\App\Helper\AbstractHelper
         'listing_pages:categories_per_page' => '50',
         'magento_cron_enabled' => 'false',
         'sync:avoid_parallel_sync_crons' => 'false',
+        'sync:always_perform_parent_category_assignment' => 'false',
     ];
 
     /**
@@ -1087,5 +1088,9 @@ class Configuration extends \Magento\Framework\App\Helper\AbstractHelper
                 }
             }
         }
+    }
+
+    public function canPerformParentCategoryAssignment($storeId) {
+        return ($this->getConfig("sync:always_perform_parent_category_assignment", true) || $this->getConfig("store:$storeId:setup_complete") != '1');
     }
 }
