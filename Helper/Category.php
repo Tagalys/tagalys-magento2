@@ -1335,8 +1335,12 @@ class Category extends \Magento\Framework\App\Helper\AbstractHelper
         }
     }
 
-    public function markAsPositionSyncRequired($storeId, $categoryId) {
-        $this->updateWithData($storeId, $categoryId, ['positions_sync_required' => 1]);
+    public function markAsPositionSyncRequired($storeId, $categoryId, $manageProducts = null) {
+        $updateData = ['positions_sync_required' => 1];
+        if($manageProducts !== null) {
+            $updateData['tagalys_managed_products'] = $manageProducts;
+        }
+        $this->updateWithData($storeId, $categoryId, $updateData);
     }
 
     public function markCategoryForDisable($categoryId) {
@@ -1360,5 +1364,13 @@ class Category extends \Magento\Framework\App\Helper\AbstractHelper
             "is_active" => $categoryEnabled,
             "include_in_menu" => $categoryIncludedInMenu
         ];
+    }
+
+    public function canPerformParentCategoryAssignment($storeId, $categoryId) {
+        return ($this->tagalysCategoryFactory->create()->getCollection()
+            ->addFieldToFilter('store_id', $storeId)
+            ->addFieldToFilter('category_id', $categoryId)
+            ->addFieldToFilter('tagalys_managed_products', 1)
+            ->getSize() == 0);
     }
 }

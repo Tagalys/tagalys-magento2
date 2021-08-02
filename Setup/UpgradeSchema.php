@@ -29,13 +29,13 @@ class UpgradeSchema implements UpgradeSchemaInterface
             $setup->getConnection()->addColumn(
                 $setup->getTable('tagalys_queue'),
                 'store_id',
-                Table::TYPE_INTEGER,
-                null,
                 [
-                    'nullable' => false,
-                ],
-                'Store ID'
+                    'type' => Table::TYPE_INTEGER,
+                    'nullable' => true,
+                    'comment' => 'Store ID'
+                ]
             );
+
             $columnExist = $setup->getConnection()->tableColumnExists(
                 $setup->getTable('tagalys_config'),
                 'priority'
@@ -47,6 +47,19 @@ class UpgradeSchema implements UpgradeSchemaInterface
                     'priority'
                 );
             }
+        }
+
+        if (version_compare($context->getVersion(), '1.1.4', '<')) {
+            $setup->getConnection()->addColumn(
+                $setup->getTable('tagalys_category'),
+                'tagalys_managed_products',
+                [
+                    'type' => Table::TYPE_BOOLEAN,
+                    'nullable' => false,
+                    'default' => '0',
+                    'comment' => 'Tagalys Managed Products'
+                ]
+            );
         }
 
         $setup->endSetup();
