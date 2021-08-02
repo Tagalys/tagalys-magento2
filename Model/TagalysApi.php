@@ -487,7 +487,6 @@ class TagalysApi implements TagalysManagementInterface
     }
 
     public function categorySave($category) {
-        // ALERT: Test this in 2.0 - 2.1
         try {
             $this->logger->info("categorySave: params: " . json_encode($category));
             if ($category['id']){

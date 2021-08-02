@@ -1350,4 +1350,15 @@ class Category extends \Magento\Framework\App\Helper\AbstractHelper
         $categories = $this->tagalysCategoryFactory->create()->getCollection()->addFieldToFilter('category_id', $categoryId);
         return ($categories->getSize() > 0);
     }
+
+    public function getCategoryTag($category) {
+        $categoryEnabled = (($category->getIsActive() === true || $category->getIsActive() === '1') ? true : false);
+        $categoryIncludedInMenu = (($category->getIncludeInMenu() === true || $category->getIncludeInMenu() === '1') ? true : false);
+        return [
+            "id" => $category->getId(),
+            "label" => $category->getName(),
+            "is_active" => $categoryEnabled,
+            "include_in_menu" => $categoryIncludedInMenu
+        ];
+    }
 }

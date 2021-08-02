@@ -265,9 +265,7 @@ class Product extends \Magento\Framework\App\Helper\AbstractHelper
             } catch (\Exception $e) {
                 continue;
             }
-            $categoryEnabled = (($category->getIsActive() === true || $category->getIsActive() === '1') ? true : false);
-            $categoryIncludedInMenu = (($category->getIncludeInMenu() === true || $category->getIncludeInMenu() === '1') ? true : false);
-            $thisCategoryDetails = array("id" => $category->getId() , "label" => $category->getName(), "is_active" => $categoryEnabled, "include_in_menu" => $categoryIncludedInMenu);
+            $thisCategoryDetails = $this->tagalysCategory->getCategoryTag($category);
             $subCategoriesCount = count($subCategoriesTree);
             if ($subCategoriesCount > 0) {
                 $thisCategoryDetails['items'] = $this->detailsFromCategoryTree($subCategoriesTree, $storeId);
