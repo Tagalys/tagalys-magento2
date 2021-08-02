@@ -247,7 +247,7 @@ class TagalysApi implements TagalysManagementInterface
                     if (isset($params['value']) && in_array($params['value'], array('1', '0'))) {
                         $this->tagalysConfiguration->setConfig("tagalys:health", $params['value']);
                     } else {
-                        $this->tagalysSync->updateTagalysHealth();
+                        $this->tagalysConfiguration->updateTagalysHealth();
                     }
                     $response = array('health_status' => $this->tagalysConfiguration->getConfig("tagalys:health"));
                     break;
