@@ -419,7 +419,7 @@ class Category extends \Magento\Framework\App\Helper\AbstractHelper
             $category = $this->categoryFactory->create()->load($categoryId);
             $categoryActive = ($category->getIsActive() == '1');
             $path = explode('/', $category->getPath());
-            $ancestry = array_slice($path, 1, -1);
+            $ancestry = array_slice($path, 2, -1);
             $output = array(
                 "id" => "__categories-$categoryId",
                 "slug" => $this->getCategoryUrl($category),
