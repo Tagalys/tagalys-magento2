@@ -430,7 +430,7 @@ class Category extends \Magento\Framework\App\Helper\AbstractHelper
                 "filters" => array(
                     array(
                         "field" => "__categories",
-                        "value" => $categoryId
+                        "tag_jsons" => [json_encode(['id' => $category->getId(), 'name' => $category->getName(), 'ancestry' => $ancestry])]
                     ),
                     array(
                         "field" => "visibility",
