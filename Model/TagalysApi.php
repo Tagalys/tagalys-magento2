@@ -234,11 +234,7 @@ class TagalysApi implements TagalysManagementInterface
                     $categories = array();
                     $tagalysCategoryCollection = $this->tagalysCategoryFactory->create()->getCollection()->setOrder('id', 'ASC');
                     foreach ($tagalysCategoryCollection as $i) {
-                        $fields = array('id', 'category_id', 'store_id', 'positions_synced_at', 'positions_sync_required', 'marked_for_deletion', 'status');
-                        $categoryData = array();
-                        foreach ($fields as $field) {
-                            $categoryData[$field] = $i->getData($field);
-                        }
+                        $categoryData = $i->getData();
                         array_push($categories, $categoryData);
                     }
                     $response = array('categories' => $categories);
