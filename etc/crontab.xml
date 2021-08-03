@@ -1,7 +1,10 @@
 <?xml version="1.0" ?>
 <config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="urn:magento:module:Magento_Cron:etc/crontab.xsd">
   <group id="tagalys_sync">
-    <job instance="Tagalys\Sync\Cron\Sync" method="tryExecute" name="TagalysSync">
+    <job instance="Tagalys\Sync\Cron\ProductSync" method="tryExecute" name="TagalysProductSync">
+      <config_path>tagalys_cron/sync/cron_expr</config_path>
+    </job>
+    <job instance="Tagalys\Sync\Cron\CategorySync" method="tryExecute" name="TagalysCategorySync">
       <config_path>tagalys_cron/sync/cron_expr</config_path>
     </job>
     <job instance="Tagalys\Sync\Cron\PositionUpdate" method="tryExecute" name="TagalysPositionUpdate">

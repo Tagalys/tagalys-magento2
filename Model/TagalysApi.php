@@ -110,6 +110,7 @@ class TagalysApi implements TagalysManagementInterface
             switch ($params['info_type']) {
                 case 'status':
                     $info = array(
+                        'plugin_version' => $this->tagalysApi->getPluginVersion(),
                         'config' => [],
                         'files_in_media_folder' => array(),
                         'sync_status' => $this->tagalysSync->status()
@@ -170,13 +171,14 @@ class TagalysApi implements TagalysManagementInterface
                     $response = $productDetails;
                     break;
                 case 'reset_sync_statuses':
-                    $this->queueHelper->truncate();
-                    foreach ($this->tagalysConfiguration->getStoresForTagalys() as $storeId) {
+                    $this->queueHelper->deleteByPriority(0);
+                    if (!array_key_exists('stores', $params)) {
+                        $params['stores'] = $this->tagalysConfiguration->getStoresForTagalys();
+                    }
+                    foreach ($params['stores'] as $storeId) {
                         $sync_types = array('updates', 'feed');
                         foreach ($sync_types as $sync_type) {
-                            $syncTypeStatus = $this->tagalysConfiguration->getConfig("store:$storeId:" . $sync_type . "_status", true);
-                            $syncTypeStatus['status'] = 'finished';
-                            $feed_status = $this->tagalysConfiguration->setConfig("store:$storeId:" . $sync_type . "_status", json_encode($syncTypeStatus));
+                            $this->tagalysConfiguration->updateJsonConfig("store:$storeId:" . $sync_type . "_status", ['status' => 'finished', 'locked_by' => null]);
                         }
                     }
                     $response = array('reset' => true);
@@ -188,15 +190,18 @@ class TagalysApi implements TagalysManagementInterface
                     if (!array_key_exists('products_count', $params)) {
                         $params['products_count'] = false;
                     }
+                    if (!array_key_exists('stores', $params)) {
+                        $params['stores'] = $this->tagalysConfiguration->getStoresForTagalys();
+                    }
                     $this->tagalysApi->log('warn', 'Triggering full products resync via API', array('force_regenerate_thumbnails' => ($params['force_regenerate_thumbnails'] == 'true')));
-                    foreach ($this->tagalysConfiguration->getStoresForTagalys() as $storeId) {
+                    foreach ($params['stores'] as $storeId) {
                         if (isset($params['products_count'])) {
                             $this->tagalysSync->triggerFeedForStore($storeId, ($params['force_regenerate_thumbnails'] == 'true'), $params['products_count'], true);
                         } else {
                             $this->tagalysSync->triggerFeedForStore($storeId, ($params['force_regenerate_thumbnails'] == 'true'), false, true);
                         }
                     }
-                    $this->queueHelper->truncate();
+                    $this->queueHelper->deleteByPriority(0);
                     $response = array('triggered' => true);
                     break;
                 case 'trigger_quick_feed':
@@ -242,7 +247,7 @@ class TagalysApi implements TagalysManagementInterface
                     if (isset($params['value']) && in_array($params['value'], array('1', '0'))) {
                         $this->tagalysConfiguration->setConfig("tagalys:health", $params['value']);
                     } else {
-                        $this->tagalysSync->updateTagalysHealth();
+                        $this->tagalysConfiguration->updateTagalysHealth();
                     }
                     $response = array('health_status' => $this->tagalysConfiguration->getConfig("tagalys:health"));
                     break;
@@ -257,7 +262,7 @@ class TagalysApi implements TagalysManagementInterface
                     $this->logger->info("assign_products_to_category_and_remove: params: " . json_encode($params));
                     $listingPagesEnabled = $this->tagalysConfiguration->isListingPagesEnabled();
                     $updatePositionAsync = $this->tagalysConfiguration->getConfig('listing_pages:update_position_async', true);
-                    $this->tagalysCategoryHelper->markAsPositionSyncRequired($params['store_id'], $params['category_id']);
+                    $this->tagalysCategoryHelper->markAsPositionSyncRequired($params['store_id'], $params['category_id'], true);
                     if ($listingPagesEnabled && !$updatePositionAsync) {
                         if ($params['product_positions'] == -1) {
                             $params['product_positions'] = [];
@@ -278,7 +283,7 @@ class TagalysApi implements TagalysManagementInterface
                     $this->logger->info("update_product_positions: params: " . json_encode($params));
                     $listingPagesEnabled = $this->tagalysConfiguration->isListingPagesEnabled();
                     $updatePositionAsync = $this->tagalysConfiguration->getConfig('listing_pages:update_position_async', true);
-                    $this->tagalysCategoryHelper->markAsPositionSyncRequired($params['store_id'], $params['category_id']);
+                    $this->tagalysCategoryHelper->markAsPositionSyncRequired($params['store_id'], $params['category_id'], false);
                     if($listingPagesEnabled && !$updatePositionAsync){
                         if ($params['product_positions'] == -1) {
                             $params['product_positions'] = [];
@@ -367,7 +372,8 @@ class TagalysApi implements TagalysManagementInterface
                 case 'remove_from_tagalys_queue':
                     if (array_key_exists('product_ids', $params)){
                         $priority = array_key_exists('priority', $params) ? $params['priority'] : null;
-                        $res = $this->queueHelper->paginateSqlDelete($params['product_ids'], $priority);
+                        $stores = array_key_exists('stores', $params) ? $params['stores'] : null;
+                        $res = $this->queueHelper->paginateSqlDelete($params['product_ids'], $priority, $stores);
                     } else {
                         $res = false;
                     }
@@ -467,6 +473,12 @@ class TagalysApi implements TagalysManagementInterface
                 case 'get_cron_schedule':
                     $response = $this->getCronSchedule($params);
                     break;
+                case 'sync_products':
+                    $this->syncProducts($params);
+                    break;
+                case 'sync_categories':
+                    $this->syncCategories($params);
+                    break;
             }
         } catch (\Exception $e) {
             $response = ['status' => 'error', 'message' => $e->getMessage(), 'trace' => $e->getTrace()];
@@ -475,7 +487,6 @@ class TagalysApi implements TagalysManagementInterface
     }
 
     public function categorySave($category) {
-        // ALERT: Test this in 2.0 - 2.1
         try {
             $this->logger->info("categorySave: params: " . json_encode($category));
             if ($category['id']){
@@ -530,5 +541,23 @@ class TagalysApi implements TagalysManagementInterface
         $cronScheduleTable = $this->tagalysSql->getTableName("cron_schedule");
         $response['entries'] = $this->tagalysSql->runSqlSelect("SELECT * FROM $cronScheduleTable WHERE job_code LIKE 'Tagalys%' ORDER BY scheduled_at DESC LIMIT 1000;");
         return $response;
+    }
+
+    private function syncProducts($params){
+        $count = (int) $params['count'];
+        if($count > 0) {
+            $this->tagalysSync->sync($count);
+            return true;
+        }
+        return false;
+    }
+
+    private function syncCategories($params){
+        $count = (int) $params['count'];
+        if($count > 0) {
+            $this->tagalysCategoryHelper->sync($count);
+            return true;
+        }
+        return false;
     }
 }

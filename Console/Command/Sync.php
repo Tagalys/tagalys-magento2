@@ -14,14 +14,21 @@ class Sync extends Command
     const MAX_CATEGORIES = 'max_categories';
 
     /**
-     * @param \Tagalys\Sync\Cron\Sync
+     * @param \Tagalys\Sync\Cron\ProductSync
      */
     private $syncCron;
 
+    /**
+     * @param \Tagalys\Sync\Cron\CategorySync
+     */
+    private $categorySync;
+
     public function __construct(
-        \Tagalys\Sync\Cron\Sync $syncCron
+        \Tagalys\Sync\Cron\ProductSync $syncCron,
+        \Tagalys\Sync\Cron\CategorySync $categorySync
     ){
         $this->syncCron = $syncCron;
+        $this->categorySync = $categorySync;
         parent::__construct();
     }
 
@@ -49,6 +56,7 @@ class Sync extends Command
     }
     protected function execute(InputInterface $input, OutputInterface $output)
     {
+        $this->categorySync->execute();
         $this->syncCron->execute();
         $output->writeln("Done");
     }

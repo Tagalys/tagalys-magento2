@@ -338,7 +338,7 @@ class Category extends \Magento\Framework\App\Helper\AbstractHelper
                             if ($response != false) {
                                 $category = $this->categoryFactory->create()->load($categoryId);
                                 if($this->categoryExist($category)) {
-                                    if($this->isTagalysCreated($category)){
+                                    if($this->isTagalysManaged($storeId, $category)) {
                                         $this->bulkAssignProductsToCategoryAndRemove($storeId, $categoryId, $response['positions']);
                                     } else {
                                         $this->performCategoryPositionUpdate($storeId, $categoryId, $response['positions']);
@@ -391,15 +391,15 @@ class Category extends \Magento\Framework\App\Helper\AbstractHelper
     }
     public function syncAll($force = false)
     {
-        $remainingForSync = $this->getRemainingForSync();
-        $remainingForDelete = $this->getRemainingForDelete();
-        // echo('syncAll: ' . json_encode(compact('remainingForSync', 'remainingForDelete')));
-        while ($remainingForSync > 0 || $remainingForDelete > 0) {
-            $this->sync(50, $force);
-            $remainingForSync = $this->getRemainingForSync();
-            $remainingForDelete = $this->getRemainingForDelete();
-            // echo('syncAll: ' . json_encode(compact('remainingForSync', 'remainingForDelete')));
-        }
+        // $remainingForSync = $this->getRemainingForSync();
+        // $remainingForDelete = $this->getRemainingForDelete();
+        // // echo('syncAll: ' . json_encode(compact('remainingForSync', 'remainingForDelete')));
+        // while ($remainingForSync > 0 || $remainingForDelete > 0) {
+        //     $this->sync(50, $force);
+        //     $remainingForSync = $this->getRemainingForSync();
+        //     $remainingForDelete = $this->getRemainingForDelete();
+        //     // echo('syncAll: ' . json_encode(compact('remainingForSync', 'remainingForDelete')));
+        // }
     }
     public function getCategoryUrl($category) {
         $categoryUrl = $category->getUrl();
@@ -417,38 +417,47 @@ class Category extends \Magento\Framework\App\Helper\AbstractHelper
             $category = null;
             $category = $this->categoryFactory->create()->load($categoryId);
             $categoryActive = ($category->getIsActive() == '1');
+            $path = explode('/', $category->getPath());
+            $ancestry = array_slice($path, 2, -1);
             $output = array(
                 "id" => "__categories-$categoryId",
                 "slug" => $this->getCategoryUrl($category),
                 "path" => $category->getUrlPath(),
-                "enabled" => $categoryActive,
+                'ancestry' => $ancestry,
+                "is_active" => $categoryActive,
                 "name" => implode(' / ', array_slice(explode(' |>| ', $this->tagalysConfiguration->getCategoryName($category)), 1)),
                 "filters" => array(
-                array(
-                    "field" => "__categories",
-                    "value" => $categoryId
-                ),
-                array(
-                    "field" => "visibility",
-                    "tag_jsons" => array("{\"id\":\"2\",\"name\":\"Catalog\"}", "{\"id\":\"4\",\"name\":\"Catalog, Search\"}")
+                    array(
+                        "field" => "__categories",
+                        "tag_jsons" => [json_encode(['id' => $category->getId(), 'name' => $category->getName(), 'ancestry' => $ancestry])]
+                    ),
+                    array(
+                        "field" => "visibility",
+                        "tag_jsons" => array("{\"id\":\"2\",\"name\":\"Catalog\"}", "{\"id\":\"4\",\"name\":\"Catalog, Search\"}")
+                    )
                 )
-            ));
+            );
             $this->storeManagerInterface->setCurrentStore($originalStoreId);
             return $output;
         } catch (\Exception $e) {
             return false;
         }
     }
-    public function sync($force = false)
+    public function sync($max = null)
     {
-        $max = (int) $this->tagalysConfiguration->getConfig("sync:max_categories_per_cron");
+
+        $this->tagalysConfiguration->updateTagalysHealth();
+
+        if($max == null) {
+            $max = (int) $this->tagalysConfiguration->getConfig("sync:max_categories_per_cron");
+        }
         $listingPagesEnabled = ($this->tagalysConfiguration->getConfig("module:listingpages:enabled") == '1');
         $powerAllListingPages = ($this->tagalysConfiguration->getConfig("module:listingpages:enabled") == '2');
         if($powerAllListingPages){
             $this->powerAllCategories();
             $listingPagesEnabled = true;
         }
-        if ($listingPagesEnabled || $force) {
+        if ($listingPagesEnabled) {
             $detailsToSync = array();
 
             // save
@@ -832,7 +841,7 @@ class Category extends \Magento\Framework\App\Helper\AbstractHelper
 
     public function bulkAssignProductsToCategoryAndRemove($storeId, $categoryId, $productPositions) {
         $this->logger->info("bulkAssignProductsToCategoryAndRemove: store_id: $storeId, category_id: $categoryId, productPositions count: " . count($productPositions));
-        if($this->isTagalysCreated($categoryId)){
+        if($this->isTagalysManaged($storeId, $categoryId)){
             if ($this->tagalysConfiguration->isProductSortingReverse()) {
                 $productPositions = $this->reverseProductPositionsHash($productPositions);
             }
@@ -1069,6 +1078,20 @@ class Category extends \Magento\Framework\App\Helper\AbstractHelper
             return true;
         }
         return false;
+    }
+
+    public function isTagalysManaged($storeId, $categoryId) {
+        if (is_object($categoryId)) {
+            $categoryId = $categoryId->getId();
+        }
+        if (empty($categoryId)) {
+            return false;
+        }
+        $collection = $this->tagalysCategoryFactory->create()->getCollection()
+            ->addFieldToFilter('store_id', $storeId)
+            ->addFieldToFilter('category_id', $categoryId)
+            ->addFieldToFilter('tagalys_managed_products', 1);
+        return ($collection->getSize() > 0);
     }
 
     public function getTagalysCreatedCategories() {
@@ -1312,8 +1335,12 @@ class Category extends \Magento\Framework\App\Helper\AbstractHelper
         }
     }
 
-    public function markAsPositionSyncRequired($storeId, $categoryId) {
-        $this->updateWithData($storeId, $categoryId, ['positions_sync_required' => 1]);
+    public function markAsPositionSyncRequired($storeId, $categoryId, $manageProducts = null) {
+        $updateData = ['positions_sync_required' => 1];
+        if($manageProducts !== null) {
+            $updateData['tagalys_managed_products'] = $manageProducts;
+        }
+        $this->updateWithData($storeId, $categoryId, $updateData);
     }
 
     public function markCategoryForDisable($categoryId) {
@@ -1326,5 +1353,24 @@ class Category extends \Magento\Framework\App\Helper\AbstractHelper
     public function isPresentInTagalysCategoriesTable($categoryId) {
         $categories = $this->tagalysCategoryFactory->create()->getCollection()->addFieldToFilter('category_id', $categoryId);
         return ($categories->getSize() > 0);
+    }
+
+    public function getCategoryTag($category) {
+        $categoryEnabled = (($category->getIsActive() === true || $category->getIsActive() === '1') ? true : false);
+        $categoryIncludedInMenu = (($category->getIncludeInMenu() === true || $category->getIncludeInMenu() === '1') ? true : false);
+        return [
+            "id" => $category->getId(),
+            "label" => $category->getName(),
+            "is_active" => $categoryEnabled,
+            "include_in_menu" => $categoryIncludedInMenu
+        ];
+    }
+
+    public function canPerformParentCategoryAssignment($storeId, $categoryId) {
+        return ($this->tagalysCategoryFactory->create()->getCollection()
+            ->addFieldToFilter('store_id', $storeId)
+            ->addFieldToFilter('category_id', $categoryId)
+            ->addFieldToFilter('tagalys_managed_products', 1)
+            ->getSize() == 0);
     }
 }

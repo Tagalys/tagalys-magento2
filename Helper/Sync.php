@@ -2,6 +2,8 @@
 
 namespace Tagalys\Sync\Helper;
 
+use Tagalys\Sync\Exception\LockException;
+
 class Sync extends \Magento\Framework\App\Helper\AbstractHelper
 {
     /**
@@ -11,6 +13,16 @@ class Sync extends \Magento\Framework\App\Helper\AbstractHelper
 
     const PRIORITY_UPDATES = 'priority_updates';
     const QUICK_FEED = 'quick_feed';
+
+    /**
+     * @param \Tagalys\Sync\Helper\RestrictedAction
+     */
+    private $restrictedAction;
+
+    /**
+     * @param \Tagalys\Sync\Helper\Queue
+     */
+    private $queueHelper;
 
     public function __construct(
         \Magento\Framework\Filesystem $filesystem,
@@ -26,7 +38,8 @@ class Sync extends \Magento\Framework\App\Helper\AbstractHelper
         \Tagalys\Sync\Model\QueueFactory $queueFactory,
         \Tagalys\Sync\Helper\Queue $queueHelper,
         \Magento\Framework\App\ResourceConnection $resourceConnection,
-        \Magento\Indexer\Model\IndexerFactory $indexerFactory
+        \Magento\Indexer\Model\IndexerFactory $indexerFactory,
+        \Tagalys\Sync\Helper\RestrictedAction $restrictedAction
     )
     {
         $this->tagalysConfiguration = $tagalysConfiguration;
@@ -42,18 +55,23 @@ class Sync extends \Magento\Framework\App\Helper\AbstractHelper
         $this->queueHelper = $queueHelper;
         $this->resourceConnection = $resourceConnection;
         $this->indexerFactory = $indexerFactory;
+        $this->syncRestrictedAction = $restrictedAction;
 
         $this->filesystem = $filesystem;
         $this->directory = $filesystem->getDirectoryWrite(\Magento\Framework\App\Filesystem\DirectoryList::MEDIA);
 
+        $this->syncRestrictedAction->setNamespace("sync_cron");
+
         $this->maxProducts = 500;
         $this->perPage = 50;
+
+        $this->pid = $this->random->getRandomString(24);
     }
 
     public function triggerFeedForStore($storeId, $forceRegenerateThumbnails = false, $productsCount = false, $abandonIfExisting = false) {
         $feedStatus = $this->tagalysConfiguration->getConfig("store:$storeId:feed_status", true);
         if ($feedStatus == NULL || in_array($feedStatus['status'], array('finished')) || $abandonIfExisting) {
-            $this->queueHelper->truncate();
+            $this->queueHelper->deleteByPriority(0);
             $utcNow = new \DateTime("now", new \DateTimeZone('UTC'));
             $timeNow = $utcNow->format(\DateTime::ATOM);
             if ($productsCount == false) {
@@ -121,7 +139,7 @@ class Sync extends \Magento\Framework\App\Helper\AbstractHelper
             $periodic_full_sync = $this->tagalysConfiguration->getConfig("periodic_full_sync");
             $resync_required = $this->tagalysConfiguration->getConfig("store:$storeId:resync_required");
             if ($periodic_full_sync == '1' || $resync_required == '1' || $force) {
-                $this->queueHelper->truncate();
+                $this->queueHelper->deleteByPriority(0);
                 $this->deleteAllSyncFiles();
                 $syncTypes = array('updates', 'feed');
                 foreach ($syncTypes as $syncType) {
@@ -137,21 +155,21 @@ class Sync extends \Magento\Framework\App\Helper\AbstractHelper
         $this->tagalysCategory->maintenanceSync();
     }
 
-    public function sync() {
-        $this->maxProducts = (int) $this->tagalysConfiguration->getConfig("sync:max_products_per_cron");
+    public function sync($maxProducts = null) {
+        if($maxProducts == null) {
+            $this->maxProducts = (int) $this->tagalysConfiguration->getConfig("sync:max_products_per_cron");
+        }
         $this->perPage = (int) $this->tagalysConfiguration->getConfig("sync:feed_per_page");
         $this->perPage = min($this->maxProducts, $this->perPage);
         $stores = $this->tagalysConfiguration->getStoresForTagalys();
+        $avoidParallelSyncCrons = $this->tagalysConfiguration->getConfig("sync:avoid_parallel_sync_crons", true);
+        if ($avoidParallelSyncCrons && !$this->syncRestrictedAction->lock()) {
+            return false;
+        }
         if ($stores != NULL) {
-
-            // 1. update health
-            $this->updateTagalysHealth();
 
             // 2. update configuration if required
             $this->_checkAndSyncConfig();
-
-            // 3. sync pending categories
-            $this->tagalysCategory->sync();
 
             // perform priority updates and mini feed sync
             $cronUnlocked = $this->lockedCronOperation(function() use ($stores) {
@@ -168,58 +186,31 @@ class Sync extends \Magento\Framework\App\Helper\AbstractHelper
             // 4. check updated_at if enabled
             $productUpdateDetectionMethods = $this->tagalysConfiguration->getConfig('product_update_detection_methods', true);
             if (in_array('db.catalog_product_entity.updated_at', $productUpdateDetectionMethods)) {
+                // ! FIXME: creates entries with store_id as null, use insert unique internally to avoid that
+                // NOT used for RAG, for later
                 $this->queueHelper->importProductsToSync();
             }
+
+            // migration step, set store_id value from entries in updates queue
+            $this->queueHelper->migrateUpdatesQueueIfRequired();
 
             // 5. check queue size and (clear_queue, trigger_feed) if required
             $this->truncateQueueAndTriggerSyncIfRequired($stores);
 
-            // 6. get product ids from update queue to be processed in this cron instance
-            $productIdsFromUpdatesQueueForCronInstance = $this->_productIdsFromUpdatesQueueForCronInstance();
-            // products from obervers are added to queue without any checks. so add related configurable products if necessary
-            foreach($productIdsFromUpdatesQueueForCronInstance as $productId) {
-                $this->queueHelper->queuePrimaryProductIdFor($productId);
-            }
-
-            // 7. perform feed, updates sync (updates only if feed sync is finished)
-            $updatesPerformed = array();
+            // 6. perform feed, updates sync (updates only if feed sync is finished)
             foreach($stores as $i => $storeId) {
                 if($this->shouldAbandonFeedAndUpdatesForStore($storeId)) {
                     $this->markFeedAsFinishedForStore($storeId);
-                    $updatesPerformed[$storeId] = true;
                 } else {
-                    $updatesPerformed[$storeId] = $this->_syncForStore($storeId, $productIdsFromUpdatesQueueForCronInstance);
+                    $this->_syncForStore($storeId);
                 }
             }
-            $updatesPerformedForAllStores = true;
-            foreach ($stores as $i => $storeId) {
-                if ($updatesPerformed[$storeId] == false) {
-                    $updatesPerformedForAllStores = false;
-                    break;
-                }
-            }
-            if ($updatesPerformedForAllStores) {
-                $this->_deleteProductIdsFromUpdatesQueueForCronInstance($productIdsFromUpdatesQueueForCronInstance);
-                $this->queueHelper->truncateIfEmpty();
-            }
+            $this->queueHelper->truncateIfEmpty();
+        }
+        if ($avoidParallelSyncCrons) {
+            $this->syncRestrictedAction->unlock();
         }
         return true;
-    }
-
-    public function updateTagalysHealth() {
-        $storesForTagalys = $this->tagalysConfiguration->getStoresForTagalys();
-        if ($storesForTagalys != null) {
-            foreach ($storesForTagalys as $storeId) {
-                $response = $this->tagalysApi->storeApiCall($storeId.'', '/v1/mpages/_health', array('timeout' => 10));
-                if ($response != false && $response['total'] > 0) {
-                    $this->tagalysConfiguration->setConfig("tagalys:health", '1');
-                    return true;
-                } else {
-                    $this->tagalysConfiguration->setConfig("tagalys:health", '0');
-                    return false;
-                }
-            }
-        }
     }
 
     public function _checkAndSyncConfig() {
@@ -233,21 +224,27 @@ class Sync extends \Magento\Framework\App\Helper\AbstractHelper
         }
     }
 
-    public function _syncForStore($storeId, $productIdsFromUpdatesQueueForCronInstance) {
+    public function _syncForStore($storeId) {
         $updatesPerformed = false;
-        $feedResponse = $this->_generateFilePart($storeId, 'feed');
-        if($feedResponse == false) {
-            // feedResponse will be false when shouldAbandonFeedAndUpdatesForStore becomes true for this store, while the sync is running.
-            return true;
-        }
-        $syncFileStatus = $feedResponse['syncFileStatus'];
-        if (!$this->_isFeedGenerationInProgress($storeId, $syncFileStatus)) {
-            if (count($productIdsFromUpdatesQueueForCronInstance) > -1) {
-                $updatesResponse = $this->_generateFilePart($storeId, 'updates', $productIdsFromUpdatesQueueForCronInstance);
-                if (isset($updatesResponse['updatesPerformed']) and $updatesResponse['updatesPerformed']) {
-                    $updatesPerformed = true;
+        try {
+            $feedResponse = $this->_generateFilePart($storeId, 'feed');
+            if($feedResponse == false) {
+                // feedResponse will be false when shouldAbandonFeedAndUpdatesForStore becomes true for this store, while the sync is running.
+                return true;
+            }
+            $syncFileStatus = $feedResponse['syncFileStatus'];
+            if (!$this->_isFeedGenerationInProgress($storeId, $syncFileStatus)) {
+                $this->queueHelper->queuePrimaryProductIdForStore($storeId);
+                $productIdsForUpdate = $this->getProductIdsForUpdate($storeId);
+                if (count($productIdsForUpdate) > -1) {
+                    $updatesResponse = $this->_generateFilePart($storeId, 'updates', $productIdsForUpdate);
+                    if (isset($updatesResponse['updatesPerformed']) and $updatesResponse['updatesPerformed']) {
+                        $this->queueHelper->paginateSqlDelete($productIdsForUpdate, 0, [$storeId]);
+                    }
                 }
             }
+        } catch (LockException $e) {
+            $updatesPerformed = false;
         }
         return $updatesPerformed;
     }
@@ -302,12 +299,16 @@ class Sync extends \Magento\Framework\App\Helper\AbstractHelper
         $syncFileStatus = $this->tagalysConfiguration->getConfig("store:$storeId:{$type}_status", true);
         if ($syncFileStatus != NULL) {
             $syncFileStatus['products_count'] = $productsCount;
-            $this->tagalysConfiguration->setConfig("store:$storeId:{$type}_status", $syncFileStatus, true);
+            $this->setSyncStatusConfig("store:$storeId:{$type}_status", $syncFileStatus, $this->pid);
         }
         return $productsCount;
     }
-    public function _productIdsFromUpdatesQueueForCronInstance() {
-        $queueCollection = $this->queueFactory->create()->getCollection()->setOrder('id', 'ASC')->setPageSize($this->maxProducts);
+    public function getProductIdsForUpdate($storeId) {
+        $queueCollection = $this->queueFactory->create()
+            ->getCollection()
+            ->addFieldToFilter('store_id', $storeId)
+            ->setOrder('id', 'ASC')
+            ->setPageSize($this->maxProducts);
         $productIdsFromUpdatesQueueForCronInstance = array();
         foreach ($queueCollection as $i => $queueItem) {
             $productId = $queueItem->getProductId();
@@ -315,15 +316,9 @@ class Sync extends \Magento\Framework\App\Helper\AbstractHelper
         }
         return $productIdsFromUpdatesQueueForCronInstance;
     }
-    public function _deleteProductIdsFromUpdatesQueueForCronInstance($productIdsFromUpdatesQueueForCronInstance) {
-        $collection = $this->queueFactory->create()->getCollection()->addFieldToFilter('product_id', array('in' => $productIdsFromUpdatesQueueForCronInstance));
-        foreach($collection as $queueItem) {
-            $queueItem->delete();
-        }
-    }
 
     public function _generateFilePart($storeId, $type, $productIdsFromUpdatesQueueForCronInstance = array()) {
-        $pid = $this->random->getRandomString(24);
+        $pid = $this->pid;
 
         $this->tagalysApi->log('local', '1. Started _generateFilePart', array('pid' => $pid, 'storeId' => $storeId, 'type' => $type));
 
@@ -343,7 +338,7 @@ class Sync extends \Magento\Framework\App\Helper\AbstractHelper
         $this->tagalysApi->log('local', '2. Read / Initialized syncFileStatus', array('pid' => $pid, 'storeId' => $storeId, 'type' => $type, 'syncFileStatus' => $syncFileStatus));
 
         if ($syncFileStatus != NULL) {
-            if ($type == 'updates' && in_array($syncFileStatus['status'], array('finished'))) {
+            if ($type == 'updates' && in_array($syncFileStatus['status'], array('finished', 'sent_to_tagalys'))) {
                 // if updates are finished, reset config
                 $this->_reinitializeUpdatesConfig($storeId, $productIdsFromUpdatesQueueForCronInstance);
                 $syncFileStatus = $this->tagalysConfiguration->getConfig("store:$storeId:{$type}_status", true);
@@ -382,14 +377,14 @@ class Sync extends \Magento\Framework\App\Helper\AbstractHelper
                         $this->tagalysApi->log('warn', 'No products for feed generation', array('storeId' => $storeId, 'syncFileStatus' => $syncFileStatus));
                     }
                     $syncFileStatus['status'] = 'finished';
-                    $this->tagalysConfiguration->setConfig("store:$storeId:{$type}_status", $syncFileStatus, true);
+                    $this->setSyncStatusConfig("store:$storeId:{$type}_status", $syncFileStatus, $pid);
                     $updatesPerformed = true;
                     return compact('syncFileStatus', 'updatesPerformed');
                 } else {
                     $syncFileStatus['locked_by'] = $pid;
                     // set status to processing
                     $syncFileStatus['status'] = 'processing';
-                    $this->tagalysConfiguration->setConfig("store:$storeId:{$type}_status", $syncFileStatus, true);
+                    $this->setSyncStatusConfig("store:$storeId:{$type}_status", $syncFileStatus, $pid);
                 }
 
                 $this->tagalysApi->log('local', '4. Locked with pid', array('pid' => $pid, 'storeId' => $storeId, 'type' => $type, 'syncFileStatus' => $syncFileStatus));
@@ -465,7 +460,7 @@ class Sync extends \Magento\Framework\App\Helper\AbstractHelper
                             $syncFileStatus['updated_at'] = $timeNow;
                             $syncFileStatus['completed_count'] += $loopCurrentlyCompleted;
                             $cronCurrentlyCompleted += $loopCurrentlyCompleted;
-                            $this->tagalysConfiguration->setConfig("store:$storeId:{$type}_status", $syncFileStatus, true);
+                            $this->setSyncStatusConfig("store:$storeId:{$type}_status", $syncFileStatus, $pid);
                             $timeEnd = time();
 
                             if ($type == 'updates') {
@@ -502,7 +497,7 @@ class Sync extends \Magento\Framework\App\Helper\AbstractHelper
                     $this->tagalysApi->log('info', 'Written ' . $syncFileStatus['completed_count'] . ' out of ' . $syncFileStatus['products_count'] . ' products to '. $type .' file. Last batch of ' . $cronCurrentlyCompleted . ' took ' . $timeElapsed . ' seconds', array('storeId' => $storeId, 'syncFileStatus' => $syncFileStatus));
                     $syncFileStatus['status'] = 'pending';
                 }
-                $this->tagalysConfiguration->setConfig("store:$storeId:{$type}_status", $syncFileStatus, true);
+                $this->setSyncStatusConfig("store:$storeId:{$type}_status", $syncFileStatus, $pid);
                 $this->tagalysApi->log('local', '5. Removed lock', array('pid' => $pid, 'storeId' => $storeId, 'type' => $type, 'syncFileStatus' => $syncFileStatus));
                 if ($fileGenerationCompleted) {
                     $this->_sendFileToTagalys($storeId, $type, $syncFileStatus);
@@ -514,6 +509,19 @@ class Sync extends \Magento\Framework\App\Helper\AbstractHelper
             $this->tagalysApi->log('error', 'Unexpected error in generateFilePart. syncFileStatus is NULL', array('storeId' => $storeId));
         }
         return compact('syncFileStatus', 'updatesPerformed');
+    }
+
+    public function setSyncStatusConfig($path, $value, $pid = null) {
+        $currentValue = $this->tagalysConfiguration->getConfig($path, true);
+        if($currentValue && !empty($currentValue['locked_by'])) {
+            // currently locked my some process
+            if($currentValue['locked_by'] == $pid) {
+                // Oh I know him, he is me!
+            } else {
+                throw new LockException("locked_by value is no longer valid for key: {$path}");
+            }
+        }
+        $this->tagalysConfiguration->setConfig($path, $value, true);
     }
 
     public function _sendFileToTagalys($storeId, $type, $syncFileStatus = null) {
@@ -549,7 +557,7 @@ class Sync extends \Magento\Framework\App\Helper\AbstractHelper
             $response = $this->tagalysApi->storeApiCall($storeId.'', "/v1/products/sync", $data);
             if ($response != false && $response['result']) {
                 $syncFileStatus['status'] = 'sent_to_tagalys';
-                $this->tagalysConfiguration->setConfig("store:$storeId:{$type}_status", $syncFileStatus, true);
+                $this->setSyncStatusConfig("store:$storeId:{$type}_status", $syncFileStatus, $this->pid);
                 return true;
             } else {
                 $this->tagalysApi->log('error', 'Unexpected response in _sendFileToTagalys', array('storeId' => $storeId, 'syncFileStatus' => $syncFileStatus, 'response' => $response));
@@ -567,9 +575,16 @@ class Sync extends \Magento\Framework\App\Helper\AbstractHelper
         } elseif (strpos($filename, '-updates-') !== false) {
             $type = 'updates';
         }
-        $syncFileStatus = $this->tagalysConfiguration->getConfig("store:$storeId:{$type}_status", true);
-        if ($syncFileStatus != null) {
-            if ($syncFileStatus['status'] == 'sent_to_tagalys') {
+        if ($type == 'updates') {
+            $response = $this->deleteSyncFiles([$filename]);
+            if($response['errors']) {
+                $this->tagalysApi->log('warn', 'Unable to delete file in receivedCallback', array('filename' => $filename));
+            }
+            $this->tagalysApi->log('info', 'Updates sync completed.', array('store_id' => $storeId));
+            return true;
+        } else {
+            $syncFileStatus = $this->tagalysConfiguration->getConfig("store:$storeId:{$type}_status", true);
+            if ($syncFileStatus && $syncFileStatus['status'] == 'sent_to_tagalys') {
                 if ($syncFileStatus['filename'] == $filename) {
                     $filePath = $this->filesystem->getDirectoryRead('media')->getAbsolutePath() . 'tagalys/' . $filename;
                     if (!file_exists($filePath) || !unlink($filePath)) {
@@ -579,7 +594,7 @@ class Sync extends \Magento\Framework\App\Helper\AbstractHelper
                     $utcNow = new \DateTime("now", new \DateTimeZone('UTC'));
                     $timeNow = $utcNow->format(\DateTime::ATOM);
                     $syncFileStatus['updated_at'] = $timeNow;
-                    $this->tagalysConfiguration->setConfig("store:$storeId:{$type}_status", $syncFileStatus, true);
+                    $this->setSyncStatusConfig("store:$storeId:{$type}_status", $syncFileStatus);
                     if ($type == 'feed') {
                         $this->tagalysConfiguration->setConfig("store:$storeId:setup_complete", '1');
                         $this->tagalysApi->log('info', 'Feed sync completed.', array('store_id' => $storeId));
@@ -593,8 +608,6 @@ class Sync extends \Magento\Framework\App\Helper\AbstractHelper
             } else {
                 $this->tagalysApi->log('warn', 'Unexpected receivedCallback trigger', array('syncFileStatus' => $syncFileStatus, 'filename' => $filename));
             }
-        } else {
-            // TODO handle error
         }
     }
 
@@ -670,6 +683,11 @@ class Sync extends \Magento\Framework\App\Helper\AbstractHelper
                         $thisStore['updates_status'] = 'Nothing to update';
                     } else {
                         switch($storeUpdatesStatus['status']) {
+                            case 'processing':
+                                // Updates are running but the tagalys_queue table is cleared through API
+                                $thisStore['updates_status'] = 'Processing updates';
+                                $storesSyncRequired = true;
+                                break;
                             case 'generated_file':
                                 $thisStore['updates_status'] = 'Generated file. Sending to Tagalys.';
                                 $storesSyncRequired = true;
@@ -801,14 +819,20 @@ class Sync extends \Magento\Framework\App\Helper\AbstractHelper
     }
 
     public function deleteSyncFiles($filesToDelete) {
-        $this->forEachSyncFile(function($fullPath, $fileName) use ($filesToDelete) {
+        $response = ['failed_to_delete' => [], 'errors' => false];
+        $this->forEachSyncFile(function($fullPath, $fileName) use ($filesToDelete, &$response) {
             if (in_array($fileName, $filesToDelete)) {
+                $deleted = false;
                 try {
-                    unlink($fullPath);
-                } catch (\Exception $e) { }
+                    $deleted = unlink($fullPath);
+                } catch (\Exception $e) {}
+                if(!$deleted) {
+                    $response['errors'] = true;
+                    $response['failed_to_delete'][] = $fileName;
+                }
             }
         });
-        return true;
+        return $response;
     }
 
     public function deleteAllSyncFiles() {
@@ -1082,27 +1106,26 @@ class Sync extends \Magento\Framework\App\Helper\AbstractHelper
     }
 
     public function truncateQueueAndTriggerSyncIfRequired($stores) {
-        $updatesCount = $this->queueFactory->create()->getCollection()->addFieldToFilter('priority', 0)->getSize();
         $maxAllowedUpdatesCount = (int) $this->tagalysConfiguration->getConfig("sync:threshold_to_abandon_updates_and_trigger_feed");
-        $clearQueueAndTriggerResync = false;
-        if($updatesCount > $maxAllowedUpdatesCount) {
-            foreach($stores as $i => $storeId) {
+        $resyncTriggeredStores = [];
+        foreach ($stores as $storeId) {
+            $updatesCount = $this->queueFactory->create()
+                ->getCollection()
+                ->addFieldToFilter('priority', 0)
+                ->addFieldToFilter('store_id', $storeId)
+                ->getSize();
+            if($updatesCount > $maxAllowedUpdatesCount) {
                 $totalProducts = $this->getProductsCount($storeId);
                 $cutoff = 0.33 * $totalProducts;
                 if ($updatesCount > $cutoff) {
-                    $clearQueueAndTriggerResync = true;
-                    break;
-                }
-            }
-            if ($clearQueueAndTriggerResync) {
-                $this->queueHelper->truncate();
-                foreach ($stores as $storeId) {
+                    $resyncTriggeredStores[] = $storeId;
+                    $this->queueHelper->deleteByPriority(0);
                     $this->triggerFeedForStore($storeId, false, false, true);
+                    $this->tagalysApi->log('warn', 'Clearing updates queue and triggering full products sync', array('remainingProductUpdates' => $updatesCount));
                 }
-                $this->tagalysApi->log('warn', 'Clearing updates queue and triggering full products sync', array('remainingProductUpdates' => $updatesCount));
             }
         }
-        return $clearQueueAndTriggerResync;
+        return ['resyncTriggeredStores' => $resyncTriggeredStores];
     }
 
     public function shouldAbandonFeedAndUpdatesForStore($storeId) {

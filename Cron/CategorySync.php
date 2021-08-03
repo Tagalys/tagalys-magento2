@@ -1,29 +1,27 @@
 <?php
 namespace Tagalys\Sync\Cron;
 
-use Tagalys\Sync\Helper\Utils;
-
-class Sync extends Cron
+class CategorySync extends Cron
 {
     /**
-     * @param \Tagalys\Sync\Helper\Sync
+     * @param \Tagalys\Sync\Helper\Category
      */
-    private $tagalysSync;
+    private $tagalysCategory;
 
     public function __construct(
         \Magento\Framework\App\State $appState,
         \Tagalys\Sync\Helper\Configuration $tagalysConfiguration,
-        \Tagalys\Sync\Helper\Sync $tagalysSync
+        \Tagalys\Sync\Helper\Category $tagalysCategory
     ) {
         parent::__construct($appState, $tagalysConfiguration);
-        $this->tagalysSync = $tagalysSync;
+        $this->tagalysCategory = $tagalysCategory;
     }
 
     protected function heartbeatName() {
-        return "sync";
+        return "category_sync";
     }
 
     protected function perform() {
-        $this->tagalysSync->sync();
+        $this->tagalysCategory->sync();
     }
 }

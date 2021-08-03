@@ -292,13 +292,13 @@ class Edit extends \Magento\Backend\App\Action
                         $this->messageManager->addErrorMessage("Unable to trigger a full resync. There is already a sync in progress.");
                     }
                     if ($triggered){
-                        $this->queueHelper->truncate();
+                        $this->queueHelper->deleteByPriority(0);
                     }
                     $redirectToTab = 'support';
                     break;
                 case 'Clear Tagalys sync queue':
                     $this->tagalysApi->log('warn', 'Clearing Tagalys sync queue');
-                    $this->queueHelper->truncate();
+                    $this->queueHelper->deleteByPriority(0);
                     $redirectToTab = 'support';
                     break;
                 case 'Trigger configuration resync now':

@@ -265,9 +265,7 @@ class Product extends \Magento\Framework\App\Helper\AbstractHelper
             } catch (\Exception $e) {
                 continue;
             }
-            $categoryEnabled = (($category->getIsActive() === true || $category->getIsActive() === '1') ? true : false);
-            $categoryIncludedInMenu = (($category->getIncludeInMenu() === true || $category->getIncludeInMenu() === '1') ? true : false);
-            $thisCategoryDetails = array("id" => $category->getId() , "label" => $category->getName(), "is_active" => $categoryEnabled, "include_in_menu" => $categoryIncludedInMenu);
+            $thisCategoryDetails = $this->tagalysCategory->getCategoryTag($category);
             $subCategoriesCount = count($subCategoriesTree);
             if ($subCategoriesCount > 0) {
                 $thisCategoryDetails['items'] = $this->detailsFromCategoryTree($subCategoriesTree, $storeId);
@@ -304,14 +302,16 @@ class Product extends \Magento\Framework\App\Helper\AbstractHelper
                 $activeCategoryPaths[] = $path;
 
                 // assign to parent categories
-                $relevantCategories = array_slice(explode('/', $path), 2); // ignore level 0 and 1
-                $idsToAssign = array_diff($relevantCategories, $categoryIds);
-                foreach ($idsToAssign as $key => $categoryId) {
-                    if (!in_array($categoryId, $categoriesAssigned)) {
-                        if ($this->tagalysCategory->assignProductToCategoryViaDb($categoryId, $product)){
-                            $this->tagalysCategory->markPositionsSyncRequired($storeId, $categoryId);
+                if($this->tagalysConfiguration->canPerformParentCategoryAssignment($storeId)) {
+                    $relevantCategories = array_slice(explode('/', $path), 2); // ignore level 0 and 1
+                    $idsToAssign = array_diff($relevantCategories, $categoryIds);
+                    foreach ($idsToAssign as $key => $categoryId) {
+                        if (!in_array($categoryId, $categoriesAssigned) && $this->tagalysCategory->canPerformParentCategoryAssignment($storeId, $categoryId)) {
+                            if ($this->tagalysCategory->assignProductToCategoryViaDb($categoryId, $product)){
+                                $this->tagalysCategory->markPositionsSyncRequired($storeId, $categoryId);
+                            }
+                            array_push($categoriesAssigned, $categoryId);
                         }
-                        array_push($categoriesAssigned, $categoryId);
                     }
                 }
             }

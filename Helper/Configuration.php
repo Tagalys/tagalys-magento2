@@ -76,6 +76,8 @@ class Configuration extends \Magento\Framework\App\Helper\AbstractHelper
         'listing_pages:max_categories_per_cron' => '50',
         'listing_pages:categories_per_page' => '50',
         'magento_cron_enabled' => 'false',
+        'sync:avoid_parallel_sync_crons' => 'false',
+        'sync:always_perform_parent_category_assignment' => 'false',
     ];
 
     /**
@@ -240,6 +242,14 @@ class Configuration extends \Magento\Framework\App\Helper\AbstractHelper
             }
         } catch (\Exception $e){
             $this->tagalysApi->log('error', 'Exception in setConfig', array('exception_message' => $e->getMessage()));
+        }
+    }
+
+    public function clearConfig($path)
+    {
+        $config = $this->configFactory->create()->load($path);
+        if ($config->getId() != null) {
+            $config->delete();
         }
     }
 
@@ -1062,5 +1072,25 @@ class Configuration extends \Magento\Framework\App\Helper\AbstractHelper
             $this->_tagalysCategoryHelper = Utils::getInstanceOf('Tagalys\Sync\Helper\Category');
         }
         return $this->_tagalysCategoryHelper;
+    }
+
+    public function updateTagalysHealth() {
+        $storesForTagalys = $this->getStoresForTagalys();
+        if ($storesForTagalys != null) {
+            foreach ($storesForTagalys as $storeId) {
+                $response = $this->tagalysApi->storeApiCall($storeId . '', '/v1/mpages/_health', array('timeout' => 10));
+                if ($response != false && $response['total'] > 0) {
+                    $this->setConfig("tagalys:health", '1');
+                    return true;
+                } else {
+                    $this->setConfig("tagalys:health", '0');
+                    return false;
+                }
+            }
+        }
+    }
+
+    public function canPerformParentCategoryAssignment($storeId) {
+        return ($this->getConfig("sync:always_perform_parent_category_assignment", true) || $this->getConfig("store:$storeId:setup_complete") != '1');
     }
 }
