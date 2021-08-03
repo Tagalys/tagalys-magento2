@@ -41,7 +41,6 @@ class UpgradeSchema implements UpgradeSchemaInterface
                 'priority'
             );
             if($columnExist) {
-                // TODO: Test the case when the colum does not exist
                 $setup->getConnection()->dropColumn(
                     $setup->getTable('tagalys_config'),
                     'priority'

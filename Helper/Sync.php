@@ -683,6 +683,11 @@ class Sync extends \Magento\Framework\App\Helper\AbstractHelper
                         $thisStore['updates_status'] = 'Nothing to update';
                     } else {
                         switch($storeUpdatesStatus['status']) {
+                            case 'processing':
+                                // Updates are running but the tagalys_queue table is cleared through API
+                                $thisStore['updates_status'] = 'Processing updates';
+                                $storesSyncRequired = true;
+                                break;
                             case 'generated_file':
                                 $thisStore['updates_status'] = 'Generated file. Sending to Tagalys.';
                                 $storesSyncRequired = true;
