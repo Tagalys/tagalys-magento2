@@ -200,8 +200,8 @@ class TagalysApi implements TagalysManagementInterface
                         } else {
                             $this->tagalysSync->triggerFeedForStore($storeId, ($params['force_regenerate_thumbnails'] == 'true'), false, true);
                         }
+                        $this->queueHelper->deleteByPriority(0, $storeId);
                     }
-                    $this->queueHelper->deleteByPriority(0);
                     $response = array('triggered' => true);
                     break;
                 case 'trigger_quick_feed':
