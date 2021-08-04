@@ -413,8 +413,12 @@ class Queue extends \Magento\Framework\App\Helper\AbstractHelper
         return true;
     }
 
-    public function deleteByPriority($priority) {
-        $sql = "DELETE FROM {$this->tableName} WHERE priority=$priority";
+    public function deleteByPriority($priority, $storeId = null) {
+        $where = "priority=$priority";
+        if($storeId != null) {
+            $where .= " AND store_id=$storeId";
+        }
+        $sql = "DELETE FROM {$this->tableName} WHERE $where";
         $this->runSql($sql);
         $this->truncateIfEmpty();
         return true;

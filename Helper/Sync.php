@@ -1121,7 +1121,7 @@ class Sync extends \Magento\Framework\App\Helper\AbstractHelper
                 $cutoff = 0.33 * $totalProducts;
                 if ($updatesCount > $cutoff) {
                     $resyncTriggeredStores[] = $storeId;
-                    $this->queueHelper->deleteByPriority(0);
+                    $this->queueHelper->deleteByPriority(0, $storeId);
                     $this->triggerFeedForStore($storeId, false, false, true);
                     $this->tagalysApi->log('warn', 'Clearing updates queue and triggering full products sync', array('remainingProductUpdates' => $updatesCount));
                 }
