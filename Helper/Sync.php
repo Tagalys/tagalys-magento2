@@ -24,6 +24,11 @@ class Sync extends \Magento\Framework\App\Helper\AbstractHelper
      */
     private $queueHelper;
 
+    /**
+     * @param \Tagalys\Sync\Helper\Api
+     */
+    private $tagalysApi;
+
     public function __construct(
         \Magento\Framework\Filesystem $filesystem,
         \Tagalys\Sync\Helper\Configuration $tagalysConfiguration,
@@ -225,7 +230,6 @@ class Sync extends \Magento\Framework\App\Helper\AbstractHelper
     }
 
     public function _syncForStore($storeId) {
-        $updatesPerformed = false;
         try {
             $feedResponse = $this->_generateFilePart($storeId, 'feed');
             if($feedResponse == false) {
@@ -234,8 +238,10 @@ class Sync extends \Magento\Framework\App\Helper\AbstractHelper
             }
             $syncFileStatus = $feedResponse['syncFileStatus'];
             if (!$this->_isFeedGenerationInProgress($storeId, $syncFileStatus)) {
-                $this->queueHelper->queuePrimaryProductIdForStore($storeId);
                 $productIdsForUpdate = $this->getProductIdsForUpdate($storeId);
+                foreach ($productIdsForUpdate as $productId) {
+                    $this->queueHelper->queuePrimaryProductIdFor($storeId, $productId);
+                }
                 if (count($productIdsForUpdate) > -1) {
                     $updatesResponse = $this->_generateFilePart($storeId, 'updates', $productIdsForUpdate);
                     if (isset($updatesResponse['updatesPerformed']) and $updatesResponse['updatesPerformed']) {
@@ -244,9 +250,8 @@ class Sync extends \Magento\Framework\App\Helper\AbstractHelper
                 }
             }
         } catch (LockException $e) {
-            $updatesPerformed = false;
+            $this->tagalysApi->logExceptionToTagalys("LockException during product sync", $e, ['store_id' => $storeId]);
         }
-        return $updatesPerformed;
     }
 
     public function _isFeedGenerationInProgress($storeId, $storeFeedStatus) {
