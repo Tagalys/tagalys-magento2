@@ -178,7 +178,7 @@ class TagalysApi implements TagalysManagementInterface
                     foreach ($params['stores'] as $storeId) {
                         $sync_types = array('updates', 'feed');
                         foreach ($sync_types as $sync_type) {
-                            $this->tagalysConfiguration->updateJsonConfig("store:$storeId:" . $sync_type . "_status", ['status' => 'finished', 'locked_by' => null]);
+                            $this->tagalysConfiguration->updateJsonConfig("store:$storeId:" . $sync_type . "_status", ['status' => 'finished', 'locked_by' => 'reset_via_api']);
                         }
                     }
                     $response = array('reset' => true);
