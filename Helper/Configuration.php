@@ -90,6 +90,8 @@ class Configuration extends \Magento\Framework\App\Helper\AbstractHelper
      */
     private $_tagalysCategoryHelper;
 
+    private $cachedStoreDomains = [];
+
     public function __construct(
         \Magento\Framework\Stdlib\DateTime\DateTime $datetime,
         \Magento\Framework\Stdlib\DateTime\TimezoneInterface $timezoneInterface,
@@ -519,6 +521,15 @@ class Configuration extends \Magento\Framework\App\Helper\AbstractHelper
             }
         }
         return $tagalysResponse;
+    }
+
+    public function getStoreDomain($storeId) {
+        if(empty($this->cachedStoreDomains[$storeId])) {
+            echo "hi $storeId";
+            $storeUrl = $this->storeManager->getStore($storeId)->getBaseUrl(\Magento\Framework\UrlInterface::URL_TYPE_WEB, true);
+            $this->cachedStoreDomains[$storeId] = parse_url($storeUrl)['host'];
+        }
+        return $this->cachedStoreDomains[$storeId];
     }
 
     public function getStoreConfiguration($storeId) {
