@@ -25,3 +25,4 @@ class CategorySync extends Cron
         $this->tagalysCategory->sync();
     }
 }
+?>

@@ -475,7 +475,7 @@ class Category extends \Magento\Framework\App\Helper\AbstractHelper
                     if ($payload === false) {
                         $categoryToSync->setStatus('failed')->save();
                     } else {
-                        array_push($detailsToSync, array('perform' => 'save', 'store_id' => $storeId, 'payload' => $payload));
+                        array_push($detailsToSync, array('perform' => 'save', 'store_id' => $storeId, 'payload' => $payload, 'domain' => $this->tagalysConfiguration->getStoreDomain($storeId)));
                     }
                 }
             }
@@ -487,7 +487,7 @@ class Category extends \Magento\Framework\App\Helper\AbstractHelper
             foreach ($categoriesToDisable as $i => $categoryToDisable) {
                 $storeId = $categoryToDisable->getStoreId();
                 $categoryId = $categoryToDisable->getCategoryId();
-                array_push($detailsToSync, array('perform' => 'disable', 'store_id' => $storeId, 'payload' => array('id_at_platform' => $categoryId)));
+                array_push($detailsToSync, array('perform' => 'disable', 'store_id' => $storeId, 'payload' => array('id_at_platform' => $categoryId), 'domain' => $this->tagalysConfiguration->getStoreDomain($storeId)));
             }
             // delete
             $categoriesToDelete = $this->tagalysCategoryFactory->create()->getCollection()
@@ -496,7 +496,7 @@ class Category extends \Magento\Framework\App\Helper\AbstractHelper
             foreach ($categoriesToDelete as $i => $categoryToDelete) {
                 $storeId = $categoryToDelete->getStoreId();
                 $categoryId = $categoryToDelete->getCategoryId();
-                array_push($detailsToSync, array('perform' => 'delete', 'store_id' => $storeId, 'payload' => array('id' => "__categories-{$categoryId}")));
+                array_push($detailsToSync, array('perform' => 'delete', 'store_id' => $storeId, 'payload' => array('id' => "__categories-{$categoryId}"), 'domain' => $this->tagalysConfiguration->getStoreDomain($storeId)));
             }
 
             if (count($detailsToSync) > 0) {

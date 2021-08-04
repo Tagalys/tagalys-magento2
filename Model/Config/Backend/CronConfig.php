@@ -7,7 +7,9 @@ class CronConfig extends \Magento\Framework\App\Config\Value
 {
     const MAINTENANCE_CRON_EXP_PATH = 'tagalys_cron/maintenance/cron_expr';
 
-    const SYNC_CRON_EXP_PATH = 'tagalys_cron/sync/cron_expr';
+    const PRODUCT_SYNC_CRON_EXP_PATH = 'tagalys_cron/product_sync/cron_expr';
+
+    const CATEGORY_SYNC_CRON_EXP_PATH = 'tagalys_cron/category_sync/cron_expr';
 
     const POSITION_UPDATE_CRON_EXP_PATH = 'tagalys_cron/position_update/cron_expr';
 
@@ -58,7 +60,8 @@ class CronConfig extends \Magento\Framework\App\Config\Value
     {
         if ($this->tagalysConfiguration->getConfig("magento_cron_enabled", true, true)) {
             $this->updateMaintenanceCronExp();
-            $this->updateSyncCronExp();
+            $this->updateProductSyncCronExp();
+            $this->updateCategorySyncCronExp();
             $this->updatePositionUpdateCronExp();
         }
 
@@ -82,10 +85,16 @@ class CronConfig extends \Magento\Framework\App\Config\Value
         $this->updateConfig(self::MAINTENANCE_CRON_EXP_PATH, $cronExprString);
     }
 
-    private function updateSyncCronExp() {
-        $frequency = $this->getData('groups/sync/fields/frequency/value');
+    private function updateProductSyncCronExp() {
+        $frequency = $this->getData('groups/product_sync/fields/frequency/value');
         $cronExprString = "$frequency * * * *";
-        $this->updateConfig(self::SYNC_CRON_EXP_PATH, $cronExprString);
+        $this->updateConfig(self::PRODUCT_SYNC_CRON_EXP_PATH, $cronExprString);
+    }
+
+    private function updateCategorySyncCronExp() {
+        $frequency = $this->getData('groups/category_sync/fields/frequency/value');
+        $cronExprString = "$frequency * * * *";
+        $this->updateConfig(self::CATEGORY_SYNC_CRON_EXP_PATH, $cronExprString);
     }
 
     private function updatePositionUpdateCronExp() {

@@ -22,8 +22,17 @@
         </field>
       </group>
 
-      <group id="sync" translate="label" type="text" sortOrder="10" showInDefault="1" showInWebsite="0" showInStore="0">
-        <label>Sync Cron</label>
+      <group id="product_sync" translate="label" type="text" sortOrder="10" showInDefault="1" showInWebsite="0" showInStore="0">
+        <label>Product Sync Cron</label>
+        <field id="frequency" translate="label" type="select" sortOrder="1" showInDefault="1" showInWebsite="0" showInStore="0">
+            <label>Frequency</label>
+            <source_model>Tagalys\Sync\Model\Config\Source\FrequencySmall</source_model>
+            <backend_model>Tagalys\Sync\Model\Config\Backend\CronConfig</backend_model>
+        </field>
+      </group>
+
+      <group id="category_sync" translate="label" type="text" sortOrder="10" showInDefault="1" showInWebsite="0" showInStore="0">
+        <label>Category Sync Cron</label>
         <field id="frequency" translate="label" type="select" sortOrder="1" showInDefault="1" showInWebsite="0" showInStore="0">
             <label>Frequency</label>
             <source_model>Tagalys\Sync\Model\Config\Source\FrequencySmall</source_model>

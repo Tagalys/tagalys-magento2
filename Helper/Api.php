@@ -20,7 +20,7 @@ class Api extends \Magento\Framework\App\Helper\AbstractHelper
         $this->tagalysLogger = new \Zend\Log\Logger();
         $this->tagalysLogger->addWriter($writer);
 
-        $this->pluginVersion = '2.3.1';
+        $this->pluginVersion = '2.4.0';
 
         $this->cacheApiCredentials();
     }
@@ -58,6 +58,11 @@ class Api extends \Magento\Framework\App\Helper\AbstractHelper
             }
             $this->clientApiCall('/v1/clients/log', $logParams);
         }
+    }
+
+    public function logExceptionToTagalys($message, $e, $debugInfo) {
+        array_merge($debugInfo, Utils::getExceptionDetails($e));
+        $this->log('error', $message, $debugInfo);
     }
 
     public function identificationCheck($apiCredentials) {

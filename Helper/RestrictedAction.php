@@ -156,3 +156,4 @@ class RestrictedAction
         return "ra:{$this->namespace}";
     }
 }
+?>
