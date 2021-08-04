@@ -474,6 +474,8 @@ class Sync extends \Magento\Framework\App\Helper\AbstractHelper
                             }
                         }
                         $this->tagalysProduct->reindexRequiredProducts();
+                    } catch(LockException $e) {
+                        throw $e;
                     } catch (\Exception $e) {
                         $this->tagalysApi->log('error', 'Exception in generateFilePart', array('storeId' => $storeId, 'syncFileStatus' => $syncFileStatus, 'message' => $e->getMessage()));
                         try {
@@ -518,12 +520,17 @@ class Sync extends \Magento\Framework\App\Helper\AbstractHelper
 
     public function setSyncStatusConfig($path, $value, $pid = null) {
         $currentValue = $this->tagalysConfiguration->getConfig($path, true);
-        if($currentValue && !empty($currentValue['locked_by'])) {
-            // currently locked my some process
-            if($currentValue['locked_by'] == $pid) {
-                // Oh I know him, he is me!
-            } else {
-                throw new LockException("locked_by value is no longer valid for key: {$path}");
+        if ($currentValue) {
+            if(isset($currentValue['abandon']) && $currentValue['abandon'] == true) {
+                throw new LockException("abandon flag was set to true for key: {$path}");
+            }
+            if(!empty($currentValue['locked_by'])) {
+                // currently locked my some process
+                if($currentValue['locked_by'] == $pid) {
+                    // Oh I know him, he is me!
+                } else {
+                    throw new LockException("locked_by value is no longer valid for key: {$path}");
+                }
             }
         }
         $this->tagalysConfiguration->setConfig($path, $value, true);

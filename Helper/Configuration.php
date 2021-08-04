@@ -525,7 +525,6 @@ class Configuration extends \Magento\Framework\App\Helper\AbstractHelper
 
     public function getStoreDomain($storeId) {
         if(empty($this->cachedStoreDomains[$storeId])) {
-            echo "hi $storeId";
             $storeUrl = $this->storeManager->getStore($storeId)->getBaseUrl(\Magento\Framework\UrlInterface::URL_TYPE_WEB, true);
             $this->cachedStoreDomains[$storeId] = parse_url($storeUrl)['host'];
         }

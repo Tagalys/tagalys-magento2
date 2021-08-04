@@ -178,7 +178,7 @@ class TagalysApi implements TagalysManagementInterface
                     foreach ($params['stores'] as $storeId) {
                         $sync_types = array('updates', 'feed');
                         foreach ($sync_types as $sync_type) {
-                            $this->tagalysConfiguration->updateJsonConfig("store:$storeId:" . $sync_type . "_status", ['status' => 'finished', 'locked_by' => 'reset_via_api']);
+                            $this->tagalysConfiguration->updateJsonConfig("store:$storeId:" . $sync_type . "_status", ['status' => 'finished', 'locked_by' => null, 'abandon' => true]);
                         }
                     }
                     $response = array('reset' => true);
@@ -200,8 +200,8 @@ class TagalysApi implements TagalysManagementInterface
                         } else {
                             $this->tagalysSync->triggerFeedForStore($storeId, ($params['force_regenerate_thumbnails'] == 'true'), false, true);
                         }
+                        $this->queueHelper->deleteByPriority(0, $storeId);
                     }
-                    $this->queueHelper->deleteByPriority(0);
                     $response = array('triggered' => true);
                     break;
                 case 'trigger_quick_feed':
