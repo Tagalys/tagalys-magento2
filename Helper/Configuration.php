@@ -1102,6 +1102,6 @@ class Configuration extends \Magento\Framework\App\Helper\AbstractHelper
     }
 
     public function canPerformParentCategoryAssignment($storeId) {
-        return ($this->getConfig("sync:always_perform_parent_category_assignment", true) || $this->getConfig("store:$storeId:setup_complete") != '1');
+        return ($this->getConfig("sync:always_perform_parent_category_assignment", true, true) || $this->getConfig("store:$storeId:setup_complete", false, true) != '1');
     }
 }
