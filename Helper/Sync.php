@@ -76,7 +76,7 @@ class Sync extends \Magento\Framework\App\Helper\AbstractHelper
     public function triggerFeedForStore($storeId, $forceRegenerateThumbnails = false, $productsCount = false, $abandonIfExisting = false) {
         $feedStatus = $this->tagalysConfiguration->getConfig("store:$storeId:feed_status", true);
         if ($feedStatus == NULL || in_array($feedStatus['status'], array('finished')) || $abandonIfExisting) {
-            $this->queueHelper->deleteByPriority(0);
+            $this->queueHelper->deleteByPriority(0, $storeId);
             $utcNow = new \DateTime("now", new \DateTimeZone('UTC'));
             $timeNow = $utcNow->format(\DateTime::ATOM);
             if ($productsCount == false) {
