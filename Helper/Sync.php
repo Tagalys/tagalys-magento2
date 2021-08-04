@@ -562,7 +562,7 @@ class Sync extends \Magento\Framework\App\Helper\AbstractHelper
             $response = $this->tagalysApi->storeApiCall($storeId.'', "/v1/products/sync", $data);
             if ($response != false && $response['result']) {
                 $syncFileStatus['status'] = 'sent_to_tagalys';
-                $this->setSyncStatusConfig("store:$storeId:{$type}_status", $syncFileStatus, $this->pid);
+                $this->setSyncStatusConfig("store:$storeId:{$type}_status", $syncFileStatus);
                 return true;
             } else {
                 $this->tagalysApi->log('error', 'Unexpected response in _sendFileToTagalys', array('storeId' => $storeId, 'syncFileStatus' => $syncFileStatus, 'response' => $response));
@@ -698,9 +698,6 @@ class Sync extends \Magento\Framework\App\Helper\AbstractHelper
                                 $storesSyncRequired = true;
                                 break;
                             case 'sent_to_tagalys':
-                                $thisStore['updates_status'] = 'Waiting for Tagalys';
-                                $waitingForTagalys = true;
-                                break;
                             case 'finished':
                                 $thisStore['updates_status'] = 'Finished';
                                 break;

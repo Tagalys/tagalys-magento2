@@ -76,21 +76,21 @@ class Queue extends \Magento\Framework\App\Helper\AbstractHelper
                 return $response;
             }
 
-            $response['stores'] = [];
+            $response['store_ops'] = [];
             foreach ($stores as $storeId) {
-                $response['stores'][$storeId] = [];
-                $response['stores'][$storeId]['ignored'] = 0;
-                $response['stores'][$storeId]['inserted'] = 0;
-                $response['stores'][$storeId]['updated'] = 0;
+                $response['store_ops'][$storeId] = [];
+                $response['store_ops'][$storeId]['ignored'] = 0;
+                $response['store_ops'][$storeId]['inserted'] = 0;
+                $response['store_ops'][$storeId]['updated'] = 0;
 
                 $idsByOperation = $this->splitProductIdsByOperations($relevantProductIds, $priority, $storeId);
-                $response['stores'][$storeId]['ignored'] += count($idsByOperation['ignore']);
+                $response['store_ops'][$storeId]['ignored'] += count($idsByOperation['ignore']);
 
                 $this->paginateSqlInsert($idsByOperation['insert'], $priority, $storeId);
-                $response['stores'][$storeId]['inserted'] += count($idsByOperation['insert']);
+                $response['store_ops'][$storeId]['inserted'] += count($idsByOperation['insert']);
 
                 $this->paginateSqlUpdatePriority($storeId, $idsByOperation['update'], $priority);
-                $response['stores'][$storeId]['updated'] += count($idsByOperation['update']);
+                $response['store_ops'][$storeId]['updated'] += count($idsByOperation['update']);
             }
 
             return $response;
@@ -274,16 +274,6 @@ class Queue extends \Magento\Framework\App\Helper\AbstractHelper
         $connection->truncateTable($tableName);
     }
 
-    public function getPriorityRows() {
-        $collection = $this->queueFactory->create()->getCollection()->addFieldToFilter('priority', ['gt' => 0])->setOrder('priority', 'desc');
-        $productIds = array_map(function($item){
-            $productId = $item['product_id'];
-            $priority = $item['priority'];
-            return "($productId, $priority)";
-        }, $collection->toArray(['product_id', 'priority'])['items']);
-        return $productIds;
-    }
-
     public function paginateAndInsertRows($rows) {
         $queueTable = $this->resourceConnection->getTableName('tagalys_queue');
         Utils::forEachChunk($rows, $this->sqlBulkBatchSize, function($rowsToInsert) use ($queueTable){
@@ -293,7 +283,7 @@ class Queue extends \Magento\Framework\App\Helper\AbstractHelper
         });
     }
 
-    private function queuePrimaryProductIdFor($storeId, $productId) {
+    public function queuePrimaryProductIdFor($storeId, $productId) {
         $primaryProductId = $this->getPrimaryProductId($storeId, $productId);
         if ($primaryProductId === false) {
             // no related product id
@@ -449,15 +439,6 @@ class Queue extends \Magento\Framework\App\Helper\AbstractHelper
             $this->paginateAndInsertRows($validRows);
         }
         return true;
-    }
-
-    public function queuePrimaryProductIdForStore($storeId) {
-        $sql = "SELECT * FROM {$this->tableName} WHERE store_id=$storeId;";
-        $rows = $this->runSqlSelect($sql);
-        foreach($rows as $row) {
-            $productId = $row['product_id'];
-            $this->queuePrimaryProductIdFor($storeId, $productId);
-        }
     }
 
     public function migrateUpdatesQueueIfRequired() {
