@@ -667,6 +667,16 @@ class Category extends \Magento\Framework\App\Helper\AbstractHelper
         return $tagalysCategories;
     }
 
+    public function getTagalysManagedCategories() {
+        $tagalysManagedCategories = $this->tagalysCategoryFactory->create()->getCollection()->addFieldToFilter('tagalys_managed_products', true);
+        $tagalysCategories = array();
+        foreach ($tagalysManagedCategories as $item) {
+            $tagalysCategories[] = $item->getCategoryId();
+        }
+        $tagalysCategories = array_unique($tagalysCategories);
+        return $tagalysCategories;
+    }
+
     public function performCategoryPositionUpdate($storeId, $categoryId, $positions) {
         $this->logger->info("performCategoryPositionUpdate: store_id: $storeId, category_id: $categoryId, productPositions count: " . count($positions));
         if ($this->tagalysConfiguration->isProductSortingReverse()) {
