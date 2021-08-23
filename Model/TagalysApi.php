@@ -3,6 +3,7 @@
 namespace Tagalys\Sync\Model;
 
 use Tagalys\Sync\Api\TagalysManagementInterface;
+use Tagalys\Sync\Helper\Utils;
 
 class TagalysApi implements TagalysManagementInterface
 {
@@ -215,9 +216,10 @@ class TagalysApi implements TagalysManagementInterface
                 case 'insert_into_sync_queue':
                     $this->tagalysApi->log('warn', 'Inserting into sync queue via API', array('product_ids' => $params['product_ids']));
                     $priority = array_key_exists('priority', $params) ? $params['priority'] : 0;
+                    $stores = Utils::fetchKey($params, 'stores');
                     $insertPrimary = array_key_exists('insert_primary', $params) ? $params['insert_primary'] : null;
                     $includeDeleted = array_key_exists('include_deleted', $params) ? $params['include_deleted'] : null;
-                    $res = $this->queueHelper->insertUnique($params['product_ids'], $priority, $insertPrimary, $includeDeleted);
+                    $res = $this->queueHelper->insertUnique($params['product_ids'], $priority, $stores, $insertPrimary, $includeDeleted);
                     $response = array('inserted' => true, 'info' => $res);
                     break;
                 case 'truncate_sync_queue':
@@ -470,10 +472,10 @@ class TagalysApi implements TagalysManagementInterface
                     $response = $this->getCronSchedule($params);
                     break;
                 case 'sync_products':
-                    $this->syncProducts($params);
+                    $response = $this->syncProducts($params);
                     break;
                 case 'sync_categories':
-                    $this->syncCategories($params);
+                    $response = $this->syncCategories($params);
                     break;
             }
         } catch (\Exception $e) {
@@ -543,7 +545,7 @@ class TagalysApi implements TagalysManagementInterface
         $count = (int) $params['count'];
         if($count > 0) {
             $this->tagalysSync->sync($count);
-            return true;
+            return "synced {$params['count']} products";
         }
         return false;
     }
@@ -552,7 +554,7 @@ class TagalysApi implements TagalysManagementInterface
         $count = (int) $params['count'];
         if($count > 0) {
             $this->tagalysCategoryHelper->sync($count);
-            return true;
+            return "synced {$params['count']} categories";
         }
         return false;
     }

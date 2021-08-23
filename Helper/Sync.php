@@ -685,7 +685,7 @@ class Sync extends \Magento\Framework\App\Helper\AbstractHelper
             }
 
             $storeUpdatesStatus = $this->tagalysConfiguration->getConfig("store:$storeId:updates_status", true);
-            $remainingUpdates = $this->queueFactory->create()->getCollection()->count();
+            $remainingUpdates = $this->queueFactory->create()->getCollection()->affFieldToFilter('store_id', $storeId)->getSize();
             if ($thisStore['setup_complete']) {
                 if ($remainingUpdates > 0) {
                     $storesSyncRequired = true;

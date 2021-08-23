@@ -78,6 +78,10 @@ class Utils
         return $to->getTimestamp() - $from->getTimestamp();
     }
 
+    public static function fetchKey($array, $key, $default = null) {
+        return array_key_exists($key, $array) ? $array[$key] : $default;
+    }
+
     // dev helpers
     public static function dj($data) {
         echo json_encode($data);

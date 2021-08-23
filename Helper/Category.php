@@ -389,18 +389,7 @@ class Category extends \Magento\Framework\App\Helper\AbstractHelper
         return $this->tagalysCategoryFactory->create()->getCollection()
         ->addFieldToFilter('marked_for_deletion', 1)->count();
     }
-    public function syncAll($force = false)
-    {
-        // $remainingForSync = $this->getRemainingForSync();
-        // $remainingForDelete = $this->getRemainingForDelete();
-        // // echo('syncAll: ' . json_encode(compact('remainingForSync', 'remainingForDelete')));
-        // while ($remainingForSync > 0 || $remainingForDelete > 0) {
-        //     $this->sync(50, $force);
-        //     $remainingForSync = $this->getRemainingForSync();
-        //     $remainingForDelete = $this->getRemainingForDelete();
-        //     // echo('syncAll: ' . json_encode(compact('remainingForSync', 'remainingForDelete')));
-        // }
-    }
+
     public function getCategoryUrl($category) {
         $categoryUrl = $category->getUrl();
         $unSecureBaseUrl = $this->storeManagerInterface->getStore()->getBaseUrl(\Magento\Framework\UrlInterface::URL_TYPE_WEB, false);
