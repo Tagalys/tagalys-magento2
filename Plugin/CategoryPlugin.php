@@ -21,18 +21,19 @@ class CategoryPlugin
         $this->auditLog = $auditLog;
     }
 
-    public function afterMove(\Magento\Catalog\Model\Category $category, $result)
-    {
-        $affectedCategoryIds = $category->getAllChildren(true);
-        $json = json_encode($affectedCategoryIds);
-        $this->auditLog->logInfo("CategoryPlugin::afterMove", "Marking categories: $json as pending_sync");
-        $categories = $this->tagalysCategoryFactory->create()->getCollection()
-            ->addFieldToFilter('category_id', $affectedCategoryIds)
-            ->addFieldToFilter('status', 'powered_by_tagalys')
-            ->addFieldToFilter('marked_for_deletion', 0);
-        foreach ($categories as $category) {
-            $category->setStatus('pending_sync')->save();
-        }
+    public function afterMove(\Magento\Catalog\Model\Category $category, $result) {
+        try {
+            $affectedCategoryIds = $category->getAllChildren(true);
+            $json = json_encode($affectedCategoryIds);
+            $this->auditLog->logInfo("CategoryPlugin::afterMove", "Marking categories: $json as pending_sync");
+            $categories = $this->tagalysCategoryFactory->create()->getCollection()
+                ->addFieldToFilter('category_id', $affectedCategoryIds)
+                ->addFieldToFilter('status', 'powered_by_tagalys')
+                ->addFieldToFilter('marked_for_deletion', 0);
+            foreach ($categories as $category) {
+                $category->setStatus('pending_sync')->save();
+            }
+        } catch (\Throwable $e) { }
     }
 }
 ?>
