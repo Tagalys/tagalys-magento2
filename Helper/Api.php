@@ -3,6 +3,11 @@ namespace Tagalys\Sync\Helper;
 
 class Api extends \Magento\Framework\App\Helper\AbstractHelper
 {
+    /**
+     * @param \Tagalys\Sync\Helper\Configuration
+     */
+    private $_tagalysConfiguration;
+
     public function __construct(
         \Magento\Framework\App\ProductMetadataInterface $productMetadataInterface,
         \Magento\Framework\Module\ModuleListInterface $moduleListInterface,
@@ -85,7 +90,8 @@ class Api extends \Magento\Framework\App\Helper\AbstractHelper
     public function clientApiCall($path, $params) {
         $params['identification'] = array(
             'client_code' => $this->clientCode,
-            'api_key' => $this->privateApiKey
+            'api_key' => $this->privateApiKey,
+            'store_domains' => $this->tagalysConfiguration()->getStoreDomains()
         );
         return $this->_apiCall($path, $params);
     }
@@ -154,5 +160,12 @@ class Api extends \Magento\Framework\App\Helper\AbstractHelper
             $this->tagalysLogger->warn("Exception in Api.php _apiCall: {$e->getMessage()}; api_server: $this->apiServer; path: $path; params: " . json_encode($params));
             return false;
         }
+    }
+
+    private function tagalysConfiguration() {
+        if ($this->_tagalysConfiguration == null) {
+            $this->_tagalysConfiguration = Utils::getInstanceOf('\Tagalys\Sync\Helper\Configuration');
+        }
+        return $this->_tagalysConfiguration;
     }
 }
