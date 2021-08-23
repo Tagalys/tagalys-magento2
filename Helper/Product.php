@@ -833,7 +833,7 @@ class Product extends \Magento\Framework\App\Helper\AbstractHelper
 
     public function logParentCategoryAssignments() {
         if(!empty($this->parentCategoryAssignments)) {
-            $this->auditLog->logInfo(['service' => 'sync', 'message' => "Parent category assignment done for the given category => products", 'parent_category_assignment' => $this->parentCategoryAssignments]);
+            $this->auditLog->logInfo('parent_category_assignment', "Parent category assignment done for the given category => products", ['parent_category_assignment' => $this->parentCategoryAssignments]);
         }
     }
 }

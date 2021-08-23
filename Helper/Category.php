@@ -679,7 +679,7 @@ class Category extends \Magento\Framework\App\Helper\AbstractHelper
 
     public function performCategoryPositionUpdate($storeId, $categoryId, $positions) {
         $this->logger->info("performCategoryPositionUpdate: store_id: $storeId, category_id: $categoryId, productPositions count: " . count($positions));
-        $this->auditLog->logInfo("Category helper | performCategoryPositionUpdate called for storeId: $storeId, categoryId: $categoryId");
+        $this->auditLog->logInfo("CategoryHelper::performCategoryPositionUpdate", "Performing position updated for storeId: $storeId, categoryId: $categoryId", ['positions' => $positions]);
         if ($this->tagalysConfiguration->isProductSortingReverse()) {
             $positions = $this->reverseProductPositionsHash($positions);
         }
@@ -853,7 +853,7 @@ class Category extends \Magento\Framework\App\Helper\AbstractHelper
     public function bulkAssignProductsToCategoryAndRemove($storeId, $categoryId, $productPositions) {
         $this->logger->info("bulkAssignProductsToCategoryAndRemove: store_id: $storeId, category_id: $categoryId, productPositions count: " . count($productPositions));
         if($this->isTagalysManaged($storeId, $categoryId)){
-            $this->auditLog->logInfo("Category helper | bulkAssignProductsToCategoryAndRemove called for storeId: $storeId, categoryId: $categoryId");
+            $this->auditLog->logInfo("CategoryHelper::bulkAssignProductsToCategoryAndRemove", "Performing product assignment and position updates for store_id: $storeId, category_id: $categoryId", ['positions' => $productPositions]);
             if ($this->tagalysConfiguration->isProductSortingReverse()) {
                 $productPositions = $this->reverseProductPositionsHash($productPositions);
             }

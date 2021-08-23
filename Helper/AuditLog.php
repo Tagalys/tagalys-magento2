@@ -24,28 +24,15 @@ class AuditLog
         $this->configuration = $configuration;
     }
 
-    public function logInfo($message) {
-        $this->log('info', $message);
+    public function logInfo($service, $message, $payload = null) {
+        $this->log('info', $service, $message, $payload);
     }
 
-    public function logWarn($message) {
-        $this->log('warn', $message);
-    }
-
-    public function logError($message) {
-        $this->log('error', $message);
-    }
-
-    private function log($level, $message) {
+    private function log($level, $service, $message, $payload) {
         if($this->configuration->getConfig('fallback:mute_audit_logs', true, true)) {
             return false;
         }
-        $data = ['level' => $level, 'timestamp' => Utils::now()];
-        if(is_a($message, "Array")) {
-            $data['message'] = json_encode($message);
-        } else {
-            $data['message'] = $message;
-        }
+        $data = ['service' => $service, 'message' => $message, 'payload' => $payload, 'timestamp' => Utils::now(), 'level' => $level];
         $dataJson = json_encode($data);
         $sql = "INSERT INTO {$this->tableName()} (log_data) VALUES ('$dataJson')";
         return $this->resourceConnection->getConnection()->query($sql);

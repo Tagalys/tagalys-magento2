@@ -25,7 +25,7 @@ class CategoryPlugin
     {
         $affectedCategoryIds = $category->getAllChildren(true);
         $json = json_encode($affectedCategoryIds);
-        $this->auditLog->logInfo("CategoryPlugin::afterMove | Marking categories: $json as pending_sync");
+        $this->auditLog->logInfo("CategoryPlugin::afterMove", "Marking categories: $json as pending_sync");
         $categories = $this->tagalysCategoryFactory->create()->getCollection()
             ->addFieldToFilter('category_id', $affectedCategoryIds)
             ->addFieldToFilter('status', 'powered_by_tagalys')
