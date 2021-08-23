@@ -1301,7 +1301,7 @@ class Category extends \Magento\Framework\App\Helper\AbstractHelper
         $storeRoot = $this->storeManagerInterface->getStore($storeId)->getRootCategoryId();
         foreach ($categories as $category) {
             $path = explode('/',$category['value']);
-            if(in_array($storeRoot, $path) && $category['static_block_only'] == false){
+            if(in_array($storeRoot, $path)){
                 $categoryId = end($path);
                 $this->markCategoryForSyncIfRequired($storeId, $categoryId);
             }

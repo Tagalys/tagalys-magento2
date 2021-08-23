@@ -209,18 +209,7 @@ class Edit extends \Magento\Backend\App\Action
                                         } catch (\Exception $e) {
                                             continue;
                                         }
-                                        if ($category->getDisplayMode() == 'PAGE') {
-                                            // skip
-                                            $firstItem = $this->tagalysCategoryFactory->create()->getCollection()
-                                                ->addFieldToFilter('store_id', $storeId)
-                                                ->addFieldToFilter('category_id', $categoryId)
-                                                ->getFirstItem();
-                                            if ($id = $firstItem->getId()) {
-                                                $firstItem->addData(array('marked_for_deletion' => 1))->save();
-                                            }
-                                        } else {
-                                            $this->tagalysCategoryHelper->markCategoryForSyncIfRequired($storeId, $categoryId);
-                                        }
+                                        $this->tagalysCategoryHelper->markCategoryForSyncIfRequired($storeId, $categoryId);
                                     }
                                 }
                                 $this->tagalysCategoryHelper->markStoreCategoryIdsToDisableExcept($storeId, $categoryIds);

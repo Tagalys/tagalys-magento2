@@ -409,7 +409,7 @@ class Configuration extends \Magento\Framework\App\Helper\AbstractHelper
             $node_exist = true;
             $children[$i]['value'] = $category_object['value'];
             $children[$i]['state'] = array();
-            $children[$i]['state']['disabled'] = $category_object['static_block_only'];
+            $children[$i]['state']['disabled'] = false;
             if(array_key_exists('selected', $category_object) && $category_object['selected']==true){
                 $children[$i]['state']['selected'] = true;
                 $iconAndText = $this->getCategoryStatusIconAndText($category_object);
@@ -425,7 +425,7 @@ class Configuration extends \Magento\Framework\App\Helper\AbstractHelper
                 'id'=>$category_id_path[0],
                 'value'=>$category_object['value'],
                 'text'=>$category_label_path[0].($category_object['static_block_only'] ? ' (Static block only)' : ''),
-                'state'=> array('selected'=> (array_key_exists('selected',$category_object) && $category_object['selected']==true) ? true : false, 'disabled' => $category_object['static_block_only']),
+                'state'=> array('selected'=> (array_key_exists('selected',$category_object) && $category_object['selected']==true) ? true : false, 'disabled' => false),
                 'children'=>array(),
                 'icon' => $this->getCategoryStatusIconAndText($category_object)
             );
