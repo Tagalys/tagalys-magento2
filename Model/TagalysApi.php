@@ -542,6 +542,9 @@ class TagalysApi implements TagalysManagementInterface
     }
 
     private function syncProducts($params){
+        if (empty($params['count'])) {
+            $params['count'] = 10;
+        }
         $count = (int) $params['count'];
         if($count > 0) {
             $this->tagalysSync->sync($count);
@@ -551,6 +554,9 @@ class TagalysApi implements TagalysManagementInterface
     }
 
     private function syncCategories($params){
+        if(empty($params['count'])) {
+            $params['count'] = 10;
+        }
         $count = (int) $params['count'];
         if($count > 0) {
             $this->tagalysCategoryHelper->sync($count);

@@ -17,7 +17,7 @@ class Sync extends \Magento\Framework\App\Helper\AbstractHelper
     /**
      * @param \Tagalys\Sync\Helper\RestrictedAction
      */
-    private $restrictedAction;
+    private $syncRestrictedAction;
 
     /**
      * @param \Tagalys\Sync\Helper\Queue

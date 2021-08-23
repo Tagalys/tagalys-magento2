@@ -10,11 +10,18 @@ class AuditLog
 
     private $tableName = NULL;
 
+    /**
+     * @param \Tagalys\Sync\Helper\Configuration
+     */
+    private $configuration;
+
     public function __construct(
-        \Magento\Framework\App\ResourceConnection $resourceConnection
+        \Magento\Framework\App\ResourceConnection $resourceConnection,
+        \Tagalys\Sync\Helper\Configuration $configuration
     )
     {
         $this->resourceConnection = $resourceConnection;
+        $this->configuration = $configuration;
     }
 
     public function logInfo($message) {
@@ -30,6 +37,9 @@ class AuditLog
     }
 
     private function log($level, $message) {
+        if($this->configuration->getConfig('fallback:mute_audit_logs', true, true)) {
+            return false;
+        }
         $data = ['level' => $level, 'timestamp' => Utils::now()];
         if(is_a($message, "Array")) {
             $data['message'] = json_encode($message);
