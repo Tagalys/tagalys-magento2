@@ -490,9 +490,13 @@ class Category extends \Magento\Framework\App\Helper\AbstractHelper
 
             if (count($detailsToSync) > 0) {
                 // sync
-                $tagalysResponse = $this->tagalysApi->clientApiCall('/v1/mpages/_sync_platform_pages', array('actions' => $detailsToSync));
+                $request = array('actions' => $detailsToSync, 'store_domains' => []);
+                foreach($this->tagalysConfiguration->getStoresForTagalys() as $storeId) {
+                    $request['store_domains'][$storeId] = $this->tagalysConfiguration->getStoreDomain($storeId);
+                }
+                $tagalysResponse = $this->tagalysApi->clientApiCall('/v1/mpages/_sync_platform_pages', $request);
 
-                if ($tagalysResponse != false) {
+                if ($tagalysResponse != false && $tagalysResponse['domains_allowed'] == true) {
                     foreach ($tagalysResponse['save_actions'] as $i => $saveActionResponse) {
                         $firstItem = $this->tagalysCategoryFactory->create()->getCollection()
                         ->addFieldToFilter('store_id', $saveActionResponse['store_id'])
