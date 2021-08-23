@@ -15,17 +15,43 @@ class AuditLog
      */
     private $configuration;
 
+    /**
+     * @param \Tagalys\Sync\Helper\Api
+     */
+    private $tagalysApi;
+
     public function __construct(
         \Magento\Framework\App\ResourceConnection $resourceConnection,
-        \Tagalys\Sync\Helper\Configuration $configuration
+        \Tagalys\Sync\Helper\Configuration $configuration,
+        \Tagalys\Sync\Helper\Api $tagalysApi
     )
     {
         $this->resourceConnection = $resourceConnection;
         $this->configuration = $configuration;
+        $this->tagalysApi = $tagalysApi;
     }
 
     public function logInfo($service, $message, $payload = null) {
         $this->log('info', $service, $message, $payload);
+    }
+
+    public function syncToTagalys() {
+        $logEntries = $this->getAllEntries();
+        Utils::forEachChunk($logEntries, 2000, function($chunk) {
+            $response = $this->tagalysApi->clientApiCall('/v1/clients/audit_log', ['log_entries' => $chunk]);
+            if($response) {
+                $this->deleteLogEntries($chunk[0]['id'], end($chunk)['id']);
+            }
+        });
+    }
+
+    public function getAllEntries() {
+        return $this->resourceConnection->getConnection()->fetchAll("SELECT * FROM {$this->tableName()} ORDER BY id ASC;");
+    }
+
+    private function deleteLogEntries($from, $to) {
+        $sql = "DELETE FROM {$this->tableName()} WHERE id >= $from AND id <= $to;";
+        $this->resourceConnection->getConnection()->query($sql);
     }
 
     private function log($level, $service, $message, $payload) {

@@ -18,6 +18,11 @@ class Category extends \Magento\Framework\App\Helper\AbstractHelper
      */
     private $auditLog;
 
+    /**
+     * @param \Tagalys\Sync\Helper\RestrictedAction
+     */
+    private $restrictedAction;
+
     public function __construct(
         \Tagalys\Sync\Helper\Configuration $tagalysConfiguration,
         \Tagalys\Sync\Helper\Api $tagalysApi,
@@ -40,7 +45,8 @@ class Category extends \Magento\Framework\App\Helper\AbstractHelper
         \Magento\Framework\Registry $registry,
         \Magento\UrlRewrite\Model\UrlRewriteFactory $urlRewriteFactory,
         \Magento\UrlRewrite\Model\ResourceModel\UrlRewriteCollection $urlRewriteCollection,
-        \Tagalys\Sync\Helper\AuditLog $auditLog
+        \Tagalys\Sync\Helper\AuditLog $auditLog,
+        \Tagalys\Sync\Helper\RestrictedAction $restrictedAction
     ) {
         $this->tagalysConfiguration = $tagalysConfiguration;
         $this->random = $random;
@@ -64,7 +70,10 @@ class Category extends \Magento\Framework\App\Helper\AbstractHelper
         $this->urlRewriteFactory = $urlRewriteFactory;
         $this->urlRewriteCollection = $urlRewriteCollection;
         $this->auditLog = $auditLog;
+        $this->restrictedAction = $restrictedAction;
         $this->tagalysQueue = $tagalysQueue;
+
+        $this->restrictedAction->setNamespace("audit_log_transfer");
 
         $writer = new \Zend\Log\Writer\Stream(BP . '/var/log/tagalys_categories.log');
         $this->logger = new \Zend\Log\Logger();
@@ -443,6 +452,10 @@ class Category extends \Magento\Framework\App\Helper\AbstractHelper
     {
 
         $this->tagalysConfiguration->updateTagalysHealth();
+
+        $this->restrictedAction->tryExecute(function() {
+            $this->auditLog->syncToTagalys();
+        });
 
         if($max == null) {
             $max = (int) $this->tagalysConfiguration->getConfig("sync:max_categories_per_cron");
