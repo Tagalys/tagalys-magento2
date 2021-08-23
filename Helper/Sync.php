@@ -473,6 +473,7 @@ class Sync extends \Magento\Framework\App\Helper\AbstractHelper
                                 break;
                             }
                         }
+                        $this->tagalysProduct->logParentCategoryAssignments();
                         $this->tagalysProduct->reindexRequiredProducts();
                     } catch(LockException $e) {
                         throw $e;

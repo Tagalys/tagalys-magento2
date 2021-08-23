@@ -30,7 +30,13 @@ class AuditLog
     }
 
     private function log($level, $message) {
-        $dataJson = json_encode(['level' => $level, 'timestamp'=> Utils::now(), 'message' => $message]);
+        $data = ['level' => $level, 'timestamp' => Utils::now()];
+        if(is_a($message, "Array")) {
+            $data['message'] = json_encode($message);
+        } else {
+            $data['message'] = $message;
+        }
+        $dataJson = json_encode($data);
         $sql = "INSERT INTO {$this->tableName()} (log_data) VALUES ('$dataJson')";
         return $this->resourceConnection->getConnection()->query($sql);
     }

@@ -4,6 +4,7 @@ namespace Tagalys\Sync\Helper;
 class Product extends \Magento\Framework\App\Helper\AbstractHelper
 {
     private $productsToReindex = array();
+    private $parentCategoryAssignments = array();
     /**
      * @param \Magento\Framework\App\ResourceConnection
      */
@@ -18,6 +19,11 @@ class Product extends \Magento\Framework\App\Helper\AbstractHelper
      * @param \Tagalys\Sync\Helper\Category
      */
     private $tagalysCategory;
+
+    /**
+     * @param \Tagalys\Sync\Helper\AuditLog
+     */
+    private $auditLog;
 
     public function __construct(
         \Magento\Catalog\Model\ProductFactory $productFactory,
@@ -45,7 +51,8 @@ class Product extends \Magento\Framework\App\Helper\AbstractHelper
         \Magento\Framework\Pricing\PriceCurrencyInterface $priceCurrency,
         \Magento\Framework\App\ProductMetadataInterface $productMetadata,
         \Magento\ConfigurableProduct\Model\Product\Type\Configurable $configurableProduct,
-        \Magento\Framework\App\ResourceConnection $resourceConnection
+        \Magento\Framework\App\ResourceConnection $resourceConnection,
+        \Tagalys\Sync\Helper\AuditLog $auditLog
     )
     {
         $this->productFactory = $productFactory;
@@ -74,6 +81,7 @@ class Product extends \Magento\Framework\App\Helper\AbstractHelper
         $this->productMetadata = $productMetadata;
         $this->configurableProduct = $configurableProduct;
         $this->resourceConnection = $resourceConnection;
+        $this->auditLog = $auditLog;
     }
 
     public function getPlaceholderImageUrl($imageAttributeCode, $allowPlaceholder) {
@@ -308,6 +316,10 @@ class Product extends \Magento\Framework\App\Helper\AbstractHelper
                     foreach ($idsToAssign as $key => $categoryId) {
                         if (!in_array($categoryId, $categoriesAssigned) && $this->tagalysCategory->canPerformParentCategoryAssignment($storeId, $categoryId)) {
                             if ($this->tagalysCategory->assignProductToCategoryViaDb($categoryId, $product)){
+                                if(!array_key_exists($categoryId, $this->parentCategoryAssignments)) {
+                                    $this->parentCategoryAssignments[$categoryId] = [];
+                                }
+                                $this->parentCategoryAssignments[$categoryId][] = $product->getId();
                                 $this->tagalysCategory->markPositionsSyncRequired($storeId, $categoryId);
                             }
                             array_push($categoriesAssigned, $categoryId);
@@ -819,4 +831,7 @@ class Product extends \Magento\Framework\App\Helper\AbstractHelper
         return $this->runSqlSelect($select);
     }
 
+    public function logParentCategoryAssignments() {
+        $this->auditLog->logInfo(['service' => 'sync', 'message' => "Parent category assignment done for the given category => products", 'parent_category_assignment' => $this->parentCategoryAssignments]);
+    }
 }
