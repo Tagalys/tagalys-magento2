@@ -61,6 +61,37 @@ class UpgradeSchema implements UpgradeSchemaInterface
             );
         }
 
+        if (version_compare($context->getVersion(), '1.1.5', '<')) {
+            $queueTable = $setup->getConnection()
+                ->newTable('tagalys_audit_log')
+                ->addColumn(
+                    'id',
+                    Table::TYPE_INTEGER,
+                    11,
+                    [
+                        'identity' => true,
+                        'unsigned' => true,
+                        'nullable' => false,
+                        'primary' => true
+                    ],
+                    'ID'
+                )
+                ->addColumn(
+                    'log_data',
+                    Table::TYPE_TEXT,
+                    null,
+                    [
+                        'nullable' => false,
+                        'default' => ''
+                    ],
+                    'Log Data'
+                )
+                ->setComment('Tagalys Audit Log Table')
+                ->setOption('type', 'InnoDB')
+                ->setOption('charset', 'utf8');
+            $setup->getConnection()->createTable($queueTable);
+        }
+
         $setup->endSetup();
     }
 
