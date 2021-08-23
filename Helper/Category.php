@@ -516,7 +516,7 @@ class Category extends \Magento\Framework\App\Helper\AbstractHelper
                 }
                 $tagalysResponse = $this->tagalysApi->clientApiCall('/v1/mpages/_sync_platform_pages', $request);
 
-                if ($tagalysResponse != false && $tagalysResponse['domains_allowed'] == true) {
+                if ($tagalysResponse != false) {
                     foreach ($tagalysResponse['save_actions'] as $i => $saveActionResponse) {
                         $firstItem = $this->tagalysCategoryFactory->create()->getCollection()
                         ->addFieldToFilter('store_id', $saveActionResponse['store_id'])
