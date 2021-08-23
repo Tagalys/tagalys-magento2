@@ -8,16 +8,23 @@ class CategoryPlugin
      */
     private $tagalysCategoryFactory;
 
+    /**
+     * @param \Tagalys\Sync\Helper\AuditLog
+     */
+    private $auditLog;
+
     public function __construct(
         \Tagalys\Sync\Model\CategoryFactory $tagalysCategoryFactory,
-        \Magento\Catalog\Model\CategoryFactory $categoryFactory
+        \Tagalys\Sync\Helper\AuditLog $auditLog
     ) {
         $this->tagalysCategoryFactory = $tagalysCategoryFactory;
+        $this->auditLog = $auditLog;
     }
 
     public function afterMove(\Magento\Catalog\Model\Category $category, $result)
     {
         $affectedCategoryIds = $category->getAllChildren(true);
+        $this->auditLog->logInfo("CategoryPlugin::afterMove | Marking categories: {$affectedCategoryIds} as pending_sync");
         $categories = $this->tagalysCategoryFactory->create()->getCollection()
             ->addFieldToFilter('category_id', $affectedCategoryIds)
             ->addFieldToFilter('status', 'powered_by_tagalys')
