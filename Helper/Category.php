@@ -13,6 +13,11 @@ class Category extends \Magento\Framework\App\Helper\AbstractHelper
     const PLATFORM_CREATED = 'platform_created';
     const TAGALYS_CREATED = 'tagalys_created';
 
+    /**
+     * @param \Tagalys\Sync\Helper\AuditLog
+     */
+    private $auditLog;
+
     public function __construct(
         \Tagalys\Sync\Helper\Configuration $tagalysConfiguration,
         \Tagalys\Sync\Helper\Api $tagalysApi,
@@ -34,7 +39,8 @@ class Category extends \Magento\Framework\App\Helper\AbstractHelper
         \Magento\Framework\Math\Random $random,
         \Magento\Framework\Registry $registry,
         \Magento\UrlRewrite\Model\UrlRewriteFactory $urlRewriteFactory,
-        \Magento\UrlRewrite\Model\ResourceModel\UrlRewriteCollection $urlRewriteCollection
+        \Magento\UrlRewrite\Model\ResourceModel\UrlRewriteCollection $urlRewriteCollection,
+        \Tagalys\Sync\Helper\AuditLog $auditLog
     ) {
         $this->tagalysConfiguration = $tagalysConfiguration;
         $this->random = $random;
@@ -57,6 +63,7 @@ class Category extends \Magento\Framework\App\Helper\AbstractHelper
         $this->indexerFactory = $indexerFactory;
         $this->urlRewriteFactory = $urlRewriteFactory;
         $this->urlRewriteCollection = $urlRewriteCollection;
+        $this->auditLog = $auditLog;
         $this->tagalysQueue = $tagalysQueue;
 
         $writer = new \Zend\Log\Writer\Stream(BP . '/var/log/tagalys_categories.log');
@@ -672,6 +679,7 @@ class Category extends \Magento\Framework\App\Helper\AbstractHelper
 
     public function performCategoryPositionUpdate($storeId, $categoryId, $positions) {
         $this->logger->info("performCategoryPositionUpdate: store_id: $storeId, category_id: $categoryId, productPositions count: " . count($positions));
+        $this->auditLog->logInfo("Category helper | performCategoryPositionUpdate called for storeId: $storeId, categoryId: $categoryId");
         if ($this->tagalysConfiguration->isProductSortingReverse()) {
             $positions = $this->reverseProductPositionsHash($positions);
         }
@@ -845,6 +853,7 @@ class Category extends \Magento\Framework\App\Helper\AbstractHelper
     public function bulkAssignProductsToCategoryAndRemove($storeId, $categoryId, $productPositions) {
         $this->logger->info("bulkAssignProductsToCategoryAndRemove: store_id: $storeId, category_id: $categoryId, productPositions count: " . count($productPositions));
         if($this->isTagalysManaged($storeId, $categoryId)){
+            $this->auditLog->logInfo("Category helper | bulkAssignProductsToCategoryAndRemove called for storeId: $storeId, categoryId: $categoryId");
             if ($this->tagalysConfiguration->isProductSortingReverse()) {
                 $productPositions = $this->reverseProductPositionsHash($productPositions);
             }
