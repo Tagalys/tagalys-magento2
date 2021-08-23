@@ -49,7 +49,8 @@ class UpdateCategory implements \Magento\Framework\Event\ObserverInterface
                 foreach($delete as $productId => $pos) {
                     array_push($modifiedProductIds, $productId);
                 }
-                $this->auditLog->logInfo("UpdateCategory observer | Inserting {count($modifiedProductIds)} product ids into updates queue");
+                $count = count($modifiedProductIds);
+                $this->auditLog->logInfo("UpdateCategory::execute | Inserting $count product id(s) into updates queue");
                 $this->queueHelper->insertUnique($modifiedProductIds);
                 if (count($insertedProductIds) > 0) {
                     $this->tagalysCategory->pushDownProductsIfRequired($insertedProductIds, array($category->getId()), 'category');
@@ -67,18 +68,19 @@ class UpdateCategory implements \Magento\Framework\Event\ObserverInterface
             $isActive = $category->getIsActive();
             if($isActive) {
                 $this->tagalysCategory->powerCategoryForAllStores($category);
-                $this->auditLog->logInfo("updateTagalysCategoryStatus | Marking $categoryId for sync; powerAllCategories: $powerAllCategories;");
+                $this->auditLog->logInfo("UpdateCategory::updateTagalysCategoryStatus | powerCategoryForAllStores called for categoryId: $categoryId");
             } else if ($isPresentInTagalysCategoriesTable) {
                 $this->tagalysCategory->markCategoryForDisable($categoryId);
+                $this->auditLog->logInfo("UpdateCategory::updateTagalysCategoryStatus | markCategoryForDisable called for categoryId: $categoryId");
             }
         } else {
-            $this->auditLog->logInfo("updateTagalysCategoryStatus | Marking $categoryId for sync; powerAllCategories: $powerAllCategories;");
             $categories = $this->tagalysCategoryFactory->create()->getCollection()->addFieldToFilter('category_id', $category->getId());
             foreach($categories as $category) {
                 if($category->getStatus()== 'powered_by_tagalys'){
                     $category->setStatus('pending_sync')->save();
                 }
             }
+            $this->auditLog->logInfo("UpdateCategory::updateTagalysCategoryStatus | Marked category: $categoryId for sync");
         }
     }
 }

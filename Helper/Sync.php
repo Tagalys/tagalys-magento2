@@ -29,6 +29,11 @@ class Sync extends \Magento\Framework\App\Helper\AbstractHelper
      */
     private $tagalysApi;
 
+    /**
+     * @param \Tagalys\Sync\Helper\Product
+     */
+    private $tagalysProduct;
+
     public function __construct(
         \Magento\Framework\Filesystem $filesystem,
         \Tagalys\Sync\Helper\Configuration $tagalysConfiguration,
@@ -61,6 +66,7 @@ class Sync extends \Magento\Framework\App\Helper\AbstractHelper
         $this->resourceConnection = $resourceConnection;
         $this->indexerFactory = $indexerFactory;
         $this->syncRestrictedAction = $restrictedAction;
+        $this->tagalysProduct = $tagalysProduct;
 
         $this->filesystem = $filesystem;
         $this->directory = $filesystem->getDirectoryWrite(\Magento\Framework\App\Filesystem\DirectoryList::MEDIA);
@@ -686,7 +692,7 @@ class Sync extends \Magento\Framework\App\Helper\AbstractHelper
             }
 
             $storeUpdatesStatus = $this->tagalysConfiguration->getConfig("store:$storeId:updates_status", true);
-            $remainingUpdates = $this->queueFactory->create()->getCollection()->affFieldToFilter('store_id', $storeId)->getSize();
+            $remainingUpdates = $this->queueFactory->create()->getCollection()->addFieldToFilter('store_id', $storeId)->getSize();
             if ($thisStore['setup_complete']) {
                 if ($remainingUpdates > 0) {
                     $storesSyncRequired = true;
@@ -1010,6 +1016,8 @@ class Sync extends \Magento\Framework\App\Helper\AbstractHelper
             $this->writeToFile($fileName, $rowsToWrite);
             $this->updateCompletedCount($statusPath, $completedCount);
         }
+        $this->tagalysProduct->logParentCategoryAssignments();
+        $this->tagalysProduct->reindexRequiredProducts();
     }
 
     public function updateCompletedCount($statusPath, $completedCount) {

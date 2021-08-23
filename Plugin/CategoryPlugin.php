@@ -24,7 +24,8 @@ class CategoryPlugin
     public function afterMove(\Magento\Catalog\Model\Category $category, $result)
     {
         $affectedCategoryIds = $category->getAllChildren(true);
-        $this->auditLog->logInfo("CategoryPlugin::afterMove | Marking categories: {$affectedCategoryIds} as pending_sync");
+        $json = json_encode($affectedCategoryIds);
+        $this->auditLog->logInfo("CategoryPlugin::afterMove | Marking categories: $json as pending_sync");
         $categories = $this->tagalysCategoryFactory->create()->getCollection()
             ->addFieldToFilter('category_id', $affectedCategoryIds)
             ->addFieldToFilter('status', 'powered_by_tagalys')
