@@ -68,7 +68,7 @@ class AuditLog
         }, $rows);
     }
 
-    private function deleteLogEntries($from, $to) {
+    public function deleteLogEntries($from, $to) {
         $sql = "DELETE FROM {$this->tableName()} WHERE id >= $from AND id <= $to;";
         $this->resourceConnection->getConnection()->query($sql);
     }
@@ -88,5 +88,10 @@ class AuditLog
             $this->tableName = $this->resourceConnection->getConnection()->getTableName('tagalys_audit_log');
         }
         return $this->tableName;
+    }
+
+    public function truncate() {
+        $sql = "TRUNCATE {$this->tableName()};";
+        $this->resourceConnection->getConnection()->query($sql);
     }
 }

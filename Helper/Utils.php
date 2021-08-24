@@ -82,6 +82,10 @@ class Utils
         return array_key_exists($key, $array) ? $array[$key] : $default;
     }
 
+    public static function camelize($input, $separator = '_') {
+        return str_replace($separator, '', ucwords($input, $separator));
+    }
+
     // dev helpers
     public static function dj($data) {
         echo json_encode($data);

@@ -45,6 +45,11 @@ class TagalysApi implements TagalysManagementInterface
      */
     private $tagalysSql;
 
+    /**
+     * @param \Tagalys\Sync\Helper\AuditLog
+     */
+    private $auditLogHelper;
+
     public function __construct(
         \Tagalys\Sync\Helper\Configuration $tagalysConfiguration,
         \Tagalys\Sync\Helper\Api $tagalysApi,
@@ -58,7 +63,8 @@ class TagalysApi implements TagalysManagementInterface
         \Magento\Framework\Registry $_registry,
         \Magento\Catalog\Model\ProductFactory $productFactory,
         \Magento\Framework\App\Config\ScopeConfigInterface $scopeConfig,
-        \Tagalys\Sync\Helper\TagalysSql $tagalysSql
+        \Tagalys\Sync\Helper\TagalysSql $tagalysSql,
+        \Tagalys\Sync\Helper\AuditLog $auditLogHelper
     ) {
         $this->tagalysConfiguration = $tagalysConfiguration;
         $this->tagalysApi = $tagalysApi;
@@ -73,6 +79,7 @@ class TagalysApi implements TagalysManagementInterface
         $this->productFactory = $productFactory;
         $this->scopeConfig = $scopeConfig;
         $this->tagalysSql = $tagalysSql;
+        $this->auditLogHelper = $auditLogHelper;
 
         $writer = new \Zend\Log\Writer\Stream(BP . '/var/log/tagalys_rest_api.log');
         $this->logger = new \Zend\Log\Logger();
@@ -468,15 +475,12 @@ class TagalysApi implements TagalysManagementInterface
                     $idsToRemove = $this->tagalysSync->getProductIdsToRemove($storeId, $productIds);
                     $response = ['status' => 'OK', 'to_remove' => $idsToRemove];
                     break;
-                case 'get_cron_schedule':
-                    $response = $this->getCronSchedule($params);
-                    break;
-                case 'sync_products':
-                    $response = $this->syncProducts($params);
-                    break;
-                case 'sync_categories':
-                    $response = $this->syncCategories($params);
-                    break;
+                default:
+                    try {
+                        $response = $this->{Utils::camelize($params['info_type'])}($params);
+                    } catch(\Exception $e) {
+                        throw $e;
+                    } catch (\Error $e) { }
             }
         } catch (\Exception $e) {
             $response = ['status' => 'error', 'message' => $e->getMessage(), 'trace' => $e->getTrace()];
@@ -563,5 +567,23 @@ class TagalysApi implements TagalysManagementInterface
             return "synced {$params['count']} categories";
         }
         return false;
+    }
+
+    private function deleteAuditLogs($params) {
+        if (Utils::fetchKey($params, 'clear_all', false)) {
+            $this->auditLogHelper->truncate();
+        } else {
+            $this->auditLogHelper->deleteLogEntries($params['from'], $params['to']);
+        }
+        return ['deleted' => true];
+    }
+
+    private function getAuditLogs($params) {
+        if(Utils::fetchKey($params, 'ids_only', false)) {
+            $output = $this->auditLogHelper->getAllIds();
+        } else {
+            $output = $this->auditLogHelper->getEntries($params['ids']);
+        }
+        return $output;
     }
 }
