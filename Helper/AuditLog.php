@@ -20,15 +20,22 @@ class AuditLog
      */
     private $tagalysApi;
 
+    /**
+     * @param \Tagalys\Sync\Model\ResourceModel\AuditLog\Collection
+     */
+    private $auditLogCollection;
+
     public function __construct(
         \Magento\Framework\App\ResourceConnection $resourceConnection,
         \Tagalys\Sync\Helper\Configuration $configuration,
-        \Tagalys\Sync\Helper\Api $tagalysApi
+        \Tagalys\Sync\Helper\Api $tagalysApi,
+        \Tagalys\Sync\Model\ResourceModel\AuditLog\Collection $auditLogCollection
     )
     {
         $this->resourceConnection = $resourceConnection;
         $this->configuration = $configuration;
         $this->tagalysApi = $tagalysApi;
+        $this->auditLogCollection = $auditLogCollection;
     }
 
     public function logInfo($service, $message, $payload = null) {
@@ -36,17 +43,29 @@ class AuditLog
     }
 
     public function syncToTagalys() {
-        $logEntries = $this->getAllEntries();
-        Utils::forEachChunk($logEntries, 2000, function($chunk) {
-            $response = $this->tagalysApi->clientApiCall('/v1/clients/audit_log', ['log_entries' => $chunk]);
+        $logIds = $this->getAllIds();
+        Utils::forEachChunk($logIds, 2000, function($idsChunk) {
+            $entries = $this->getEntries($idsChunk);
+            $response = $this->tagalysApi->clientApiCall('/v1/clients/audit_log', ['log_entries' => $entries]);
             if($response) {
-                $this->deleteLogEntries($chunk[0]['id'], end($chunk)['id']);
+                $this->deleteLogEntries($idsChunk[0], end($idsChunk));
             }
         });
     }
 
-    public function getAllEntries() {
-        return $this->resourceConnection->getConnection()->fetchAll("SELECT * FROM {$this->tableName()} ORDER BY id ASC;");
+    public function getEntries($ids) {
+        $collection = $this->auditLogCollection->clear();
+        if($ids != null) {
+            $collection->addFieldToFilter('id', ['in' => $ids]);
+        }
+        return $collection->toArray()['items'];
+    }
+
+    public function getAllIds() {
+        $rows = $this->resourceConnection->getConnection()->fetchAll("SELECT id FROM {$this->tableName()} ORDER BY id ASC;");
+        return array_map(function ($row) {
+            return $row['id'];
+        }, $rows);
     }
 
     private function deleteLogEntries($from, $to) {
