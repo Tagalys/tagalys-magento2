@@ -26,7 +26,7 @@ try {
                         if ($.inArray(currentCategory, tagalysCategories) !== -1) {
                             var message = 'Product positions in this category are controlled by Tagalys';
                             if ($.inArray(currentCategory, tagalysManaged) !== -1) {
-                                message = "The assignment and positioning of products in this category are done by Tagalys"
+                                message = "The assignment and positioning of products in this category are controlled by Tagalys"
                             }
                             tagalysNoticeInterval = setInterval(function() {
                                 if ($('#catalog_category_products').length > 0) {
