@@ -28,6 +28,12 @@ class UpdateCategory implements \Magento\Framework\Event\ObserverInterface
     {
         try {
             $category = $observer->getEvent()->getCategory();
+            if ($category->dataHasChangedFor('url_key')) {
+                $this->auditLog->logInfo("UpdateCategory::url_change", "", [
+                    'original_url_key' => $category->getOrigData('url_key'),
+                    'new_url_key' => $category->getData('url_key')
+                ]);
+            }
             $tagalysCreated = $this->tagalysCategory->isTagalysCreated($category);
             $tagalysContext = $this->_registry->registry("tagalys_context");
             if($tagalysCreated || $tagalysContext){
@@ -50,7 +56,7 @@ class UpdateCategory implements \Magento\Framework\Event\ObserverInterface
                     array_push($modifiedProductIds, $productId);
                 }
                 $count = count($modifiedProductIds);
-                $this->auditLog->logInfo("UpdateCategory::execute", "Inserting $count product id(s) into updates queue", ['product_ids' => $modifiedProductIds]);
+                $this->auditLog->logInfo("UpdateCategory::execute", "Inserting $count product id(s) into updates queue", ['inserted_product_ids' => $insert, 'removed_product_ids' => $delete]);
                 $this->queueHelper->insertUnique($modifiedProductIds);
                 if (count($insertedProductIds) > 0) {
                     $this->tagalysCategory->pushDownProductsIfRequired($insertedProductIds, array($category->getId()), 'category');
