@@ -430,6 +430,7 @@ class Category extends \Magento\Framework\App\Helper\AbstractHelper
                 "path" => $category->getUrlPath(),
                 'ancestry' => $ancestry,
                 "is_active" => $categoryActive,
+                'include_in_menu' => ($category->getIncludeInMenu() == '1'),
                 "name" => implode(' / ', array_slice(explode(' |>| ', $this->tagalysConfiguration->getCategoryName($category)), 1)),
                 "filters" => array(
                     array(
