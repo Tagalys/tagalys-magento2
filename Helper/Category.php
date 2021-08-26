@@ -510,10 +510,7 @@ class Category extends \Magento\Framework\App\Helper\AbstractHelper
 
             if (count($detailsToSync) > 0) {
                 // sync
-                $request = array('actions' => $detailsToSync, 'store_domains' => []);
-                foreach($this->tagalysConfiguration->getStoresForTagalys() as $storeId) {
-                    $request['store_domains'][$storeId] = $this->tagalysConfiguration->getStoreDomain($storeId);
-                }
+                $request = array('actions' => $detailsToSync);
                 $tagalysResponse = $this->tagalysApi->clientApiCall('/v1/mpages/_sync_platform_pages', $request);
 
                 if ($tagalysResponse != false) {
