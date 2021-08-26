@@ -256,7 +256,7 @@ class Sync extends \Magento\Framework\App\Helper\AbstractHelper
                 }
             }
         } catch (LockException $e) {
-            $this->tagalysApi->logExceptionToTagalys("LockException during product sync", $e, ['store_id' => $storeId]);
+            $this->tagalysApi->logExceptionToTagalys($e, "LockException during product sync", ['store_id' => $storeId]);
         }
     }
 

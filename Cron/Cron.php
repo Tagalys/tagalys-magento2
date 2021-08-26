@@ -17,12 +17,19 @@ abstract class Cron
      */
     private $tagalysConfiguration;
 
+    /**
+     * @param \Tagalys\Sync\Helper\Api
+     */
+    private $tagalysApi;
+
     public function __construct(
         \Magento\Framework\App\State $appState,
-        \Tagalys\Sync\Helper\Configuration $tagalysConfiguration
+        \Tagalys\Sync\Helper\Configuration $tagalysConfiguration,
+        \Tagalys\Sync\Helper\Api $tagalysApi
     ) {
         $this->appState = $appState;
         $this->tagalysConfiguration = $tagalysConfiguration;
+        $this->tagalysApi = $tagalysApi;
         $this->logger = Utils::getLogger("tagalys_cron.log");
     }
 
@@ -46,15 +53,23 @@ abstract class Cron
     }
 
     public function execute() {
-        $this->beforeEach(false);
-        $this->perform();
+        try {
+            $this->beforeEach(false);
+            $this->perform();
+        } catch (\Throwable $e) {
+            $this->tagalysApi->logExceptionToTagalys($e, "Exception in cron execution");
+        }
     }
 
     // Called through Magento cron
     public function tryExecute() {
-        if ($this->tagalysConfiguration->getConfig("magento_cron_enabled", true, true)) {
-            $this->beforeEach(true);
-            $this->perform();
+        try {
+            if ($this->tagalysConfiguration->getConfig("magento_cron_enabled", true, true)) {
+                $this->beforeEach(true);
+                $this->perform();
+            }
+        } catch (\Throwable $e) {
+            $this->tagalysApi->logExceptionToTagalys($e, "Exception in cron execution");
         }
     }
 }

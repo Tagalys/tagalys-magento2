@@ -11,9 +11,10 @@ class CategorySync extends Cron
     public function __construct(
         \Magento\Framework\App\State $appState,
         \Tagalys\Sync\Helper\Configuration $tagalysConfiguration,
-        \Tagalys\Sync\Helper\Category $tagalysCategory
+        \Tagalys\Sync\Helper\Category $tagalysCategory,
+        \Tagalys\Sync\Helper\Api $tagalysApi
     ) {
-        parent::__construct($appState, $tagalysConfiguration);
+        parent::__construct($appState, $tagalysConfiguration, $tagalysApi);
         $this->tagalysCategory = $tagalysCategory;
     }
 

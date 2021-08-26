@@ -65,9 +65,8 @@ class Api extends \Magento\Framework\App\Helper\AbstractHelper
         }
     }
 
-    public function logExceptionToTagalys($message, $e, $debugInfo) {
-        array_merge($debugInfo, Utils::getExceptionDetails($e));
-        $this->log('error', $message, $debugInfo);
+    public function logExceptionToTagalys($e, $message, $debugInfo = null) {
+        $this->log('error', $message, Utils::getExceptionDetails($e, $debugInfo));
     }
 
     public function identificationCheck($apiCredentials) {
