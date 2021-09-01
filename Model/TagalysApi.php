@@ -3,6 +3,7 @@
 namespace Tagalys\Sync\Model;
 
 use Tagalys\Sync\Api\TagalysManagementInterface;
+use Tagalys\Sync\Helper\Utils;
 
 class TagalysApi implements TagalysManagementInterface
 {
@@ -73,9 +74,7 @@ class TagalysApi implements TagalysManagementInterface
         $this->scopeConfig = $scopeConfig;
         $this->tagalysSql = $tagalysSql;
 
-        $writer = new \Zend\Log\Writer\Stream(BP . '/var/log/tagalys_rest_api.log');
-        $this->logger = new \Zend\Log\Logger();
-        $this->logger->addWriter($writer);
+        $this->logger = Utils::getLogger("tagalys_rest_api.log");
     }
 
     public function syncCallback($params) {
