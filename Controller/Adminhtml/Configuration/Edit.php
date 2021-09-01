@@ -1,6 +1,8 @@
 <?php
   namespace Tagalys\Sync\Controller\Adminhtml\Configuration;
 
+use Tagalys\Sync\Helper\Utils;
+
 class Edit extends \Magento\Backend\App\Action
 {
 
@@ -51,9 +53,7 @@ class Edit extends \Magento\Backend\App\Action
         $this->categoryFactory = $categoryFactory;
         $this->moduleManager = $moduleManager;
         $this->scopeConfig = $scopeConfig;
-        $writer = new \Zend\Log\Writer\Stream(BP . '/var/log/tagalys_core.log');
-        $this->logger = new \Zend\Log\Logger();
-        $this->logger->addWriter($writer);
+        $this->logger = Utils::getLogger("tagalys_core.log");
         $this->platformDetailsToSend = [];
     }
 

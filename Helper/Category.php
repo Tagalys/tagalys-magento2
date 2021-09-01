@@ -59,9 +59,7 @@ class Category extends \Magento\Framework\App\Helper\AbstractHelper
         $this->urlRewriteCollection = $urlRewriteCollection;
         $this->tagalysQueue = $tagalysQueue;
 
-        $writer = new \Zend\Log\Writer\Stream(BP . '/var/log/tagalys_categories.log');
-        $this->logger = new \Zend\Log\Logger();
-        $this->logger->addWriter($writer);
+        $this->logger = Utils::getLogger("tagalys_categories.log");
     }
 
     public function truncate() {
