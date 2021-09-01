@@ -34,6 +34,11 @@
                 <value id="tagalys-images" type="host">https://www.tagalys.com</value>
             </values>
         </policy>
+        <policy id="font-src">
+            <values>
+                <value id="bootstrapcdn-font" type="host">https://stackpath.bootstrapcdn.com</value>
+            </values>
+        </policy>
         <policy id="connect-src">
             <values>
                 <value id="tagalys-api-r1" type="host">https://api-r1.tagalys.com</value>
