@@ -28,9 +28,7 @@ class Queue extends \Magento\Framework\App\Helper\AbstractHelper
         $this->productMetadataInterface = $productMetadataInterface;
         $this->tagalysApi = $tagalysApi;
 
-        $writer = new \Zend\Log\Writer\Stream(BP . '/var/log/tagalys_core.log');
-        $this->tagalysLogger = new \Zend\Log\Logger();
-        $this->tagalysLogger->addWriter($writer);
+        $this->tagalysLogger = Utils::getLogger("tagalys_core.log");
 
         $this->tableName = $this->resourceConnection->getTableName('tagalys_queue');
     }

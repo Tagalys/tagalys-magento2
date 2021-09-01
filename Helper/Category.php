@@ -74,10 +74,7 @@ class Category extends \Magento\Framework\App\Helper\AbstractHelper
         $this->tagalysQueue = $tagalysQueue;
 
         $this->restrictedAction->setNamespace("audit_log_transfer");
-
-        $writer = new \Zend\Log\Writer\Stream(BP . '/var/log/tagalys_categories.log');
-        $this->logger = new \Zend\Log\Logger();
-        $this->logger->addWriter($writer);
+        $this->logger = Utils::getLogger("tagalys_categories.log");
     }
 
     public function truncate() {

@@ -57,8 +57,8 @@ class Utils
     }
 
     public static function getLogger($fileName) {
-        $writer = new \Zend\Log\Writer\Stream(BP . "/var/log/$fileName");
-        $logger = new \Zend\Log\Logger();
+        $writer = new \Zend_Log_Writer_Stream(BP . "/var/log/$fileName");
+        $logger = new \Zend_Log();
         $logger->addWriter($writer);
         return $logger;
     }

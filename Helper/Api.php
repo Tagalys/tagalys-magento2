@@ -21,9 +21,7 @@ class Api extends \Magento\Framework\App\Helper\AbstractHelper
         $this->configFactory = $configFactory;
         $this->storeManager = $storeManager;
 
-        $writer = new \Zend\Log\Writer\Stream(BP . '/var/log/tagalys_log.log');
-        $this->tagalysLogger = new \Zend\Log\Logger();
-        $this->tagalysLogger->addWriter($writer);
+        $this->tagalysLogger = Utils::getLogger("tagalys_log.log");
 
         $this->pluginVersion = '2.4.0'; // actual value: '2.4.0-beta'
 
