@@ -75,7 +75,7 @@ class Configuration extends \Magento\Framework\App\Helper\AbstractHelper
         'sync:max_categories_per_cron' => '50',
         'listing_pages:max_categories_per_cron' => '50',
         'listing_pages:categories_per_page' => '50',
-        'magento_cron_enabled' => 'false',
+        'magento_cron_enabled' => 'true',
         // v2.3.1
         'sync:consider_single_value_field_as_custom_field_too' => 'true',
         // v2.4.0

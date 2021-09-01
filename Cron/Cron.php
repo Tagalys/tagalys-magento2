@@ -52,22 +52,16 @@ abstract class Cron
         }
     }
 
-    public function execute() {
+    public function tryExecute($calledThroughMagentoCron = true) {
         try {
-            $this->beforeEach(false);
-            $this->perform();
-        } catch (\Throwable $e) {
-            $this->tagalysApi->logExceptionToTagalys($e, "Exception in cron execution");
-        }
-    }
-
-    // Called through Magento cron
-    public function tryExecute() {
-        try {
-            if ($this->tagalysConfiguration->getConfig("magento_cron_enabled", true, true)) {
-                $this->beforeEach(true);
+            $magentoCronEnabled = $this->tagalysConfiguration->getConfig("magento_cron_enabled", true, true);
+            $canRun = (($calledThroughMagentoCron && $magentoCronEnabled) || (!$calledThroughMagentoCron && !$magentoCronEnabled));
+            if ($canRun) {
+                $this->beforeEach($calledThroughMagentoCron);
                 $this->perform();
+                return true;
             }
+            return false;
         } catch (\Throwable $e) {
             $this->tagalysApi->logExceptionToTagalys($e, "Exception in cron execution");
         }
