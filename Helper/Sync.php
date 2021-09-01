@@ -536,7 +536,12 @@ class Sync extends \Magento\Framework\App\Helper\AbstractHelper
                 if($currentValue['locked_by'] == $pid) {
                     // Oh I know him, he is me!
                 } else {
-                    throw new LockException("locked_by value is no longer valid for key: {$path}");
+                    $secondsSinceLastUpdate = Utils::getIntervalInSeconds($currentValue['updated_at'], Utils::now());
+                    if ($secondsSinceLastUpdate > (60 * 10)) {
+                        // Overriding lock
+                    } else {
+                        throw new LockException("locked_by value is no longer valid for key: {$path}");
+                    }
                 }
             }
         }
