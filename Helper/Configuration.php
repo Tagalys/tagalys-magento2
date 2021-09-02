@@ -670,7 +670,8 @@ class Configuration extends \Magento\Framework\App\Helper\AbstractHelper
             'currency' => false,
             'display' => true,
             'filters' => false,
-            'search' => false
+            'search' => false,
+            'dashboard_filters' => true,
         );
         $custom_fields[] = array(
             'name' => '__magento_ratings_count',
