@@ -405,66 +405,66 @@ class Configuration extends \Magento\Framework\App\Helper\AbstractHelper
 
     private function constructTree($category_id_path, $category_label_path, $children, $category_object){
         if(count($category_id_path)==1){
-        // Append to array
-        $node_exist = false;
-        for($i=0;$i<count($children);$i++){
-            if($children[$i]['id']==$category_id_path[0]){
-            $node_exist = true;
-            $children[$i]['value'] = $category_object['value'];
-            $children[$i]['state'] = array();
-            $children[$i]['state']['disabled'] = false;
-            if(array_key_exists('selected', $category_object) && $category_object['selected']==true){
-                $children[$i]['state']['selected'] = true;
-                $iconAndText = $this->getCategoryStatusIconAndText($category_object);
-                $children[$i]['icon'] = $iconAndText['icon'];
-                if ($iconAndText['icon'] != 'hidden') {
-                    $children[$i]['text'] .= $iconAndText['text'];
+            // Append to array
+            $node_exist = false;
+            for($i=0;$i<count($children);$i++){
+                if($children[$i]['id']==$category_id_path[0]){
+                    $node_exist = true;
+                    $children[$i]['value'] = $category_object['value'];
+                    $children[$i]['state'] = array();
+                    $children[$i]['state']['disabled'] = false;
+                    if(array_key_exists('selected', $category_object) && $category_object['selected']==true){
+                        $children[$i]['state']['selected'] = true;
+                        $iconAndText = $this->getCategoryStatusIconAndText($category_object);
+                        $children[$i]['icon'] = $iconAndText['icon'];
+                        if ($iconAndText['icon'] != 'hidden') {
+                            $children[$i]['text'] .= $iconAndText['text'];
+                        }
+                    }
                 }
             }
+            if(!$node_exist){
+                $node = array(
+                    'id'=>$category_id_path[0],
+                    'value'=>$category_object['value'],
+                    'text'=>$category_label_path[0].($category_object['static_block_only'] ? ' (Static block only)' : ''),
+                    'state'=> array('selected'=> (array_key_exists('selected',$category_object) && $category_object['selected']==true) ? true : false, 'disabled' => false),
+                    'children'=>array(),
+                    'icon' => $this->getCategoryStatusIconAndText($category_object)
+                );
+                $iconAndText = $this->getCategoryStatusIconAndText($category_object);
+                $node['icon'] = $iconAndText['icon'];
+                if ($iconAndText['icon'] != 'hidden') {
+                    $node['text'] .= $iconAndText['text'];
+                }
+                $children[] = $node;
             }
-        }
-        if(!$node_exist){
-            $node = array(
-                'id'=>$category_id_path[0],
-                'value'=>$category_object['value'],
-                'text'=>$category_label_path[0].($category_object['static_block_only'] ? ' (Static block only)' : ''),
-                'state'=> array('selected'=> (array_key_exists('selected',$category_object) && $category_object['selected']==true) ? true : false, 'disabled' => false),
-                'children'=>array(),
-                'icon' => $this->getCategoryStatusIconAndText($category_object)
-            );
-            $iconAndText = $this->getCategoryStatusIconAndText($category_object);
-            $node['icon'] = $iconAndText['icon'];
-            if ($iconAndText['icon'] != 'hidden') {
-                $node['text'] .= $iconAndText['text'];
-            }
-            $children[] = $node;
-        }
         } else {
-        // Find the parent to pass to
-        $child_exist = false;
-        for($i=0;$i<count($children);$i++){
-            if($children[$i]['id']==$category_id_path[0]){
-            $child_exist = true;
-            $children[$i]['children']=$this->constructTree(
-                array_slice($category_id_path, 1),
-                array_slice($category_label_path, 1),
-                $children[$i]['children'],
-                $category_object
-            );
-            break;
+            // Find the parent to pass to
+            $child_exist = false;
+            for($i=0;$i<count($children);$i++){
+                if($children[$i]['id']==$category_id_path[0]){
+                    $child_exist = true;
+                    $children[$i]['children']=$this->constructTree(
+                        array_slice($category_id_path, 1),
+                        array_slice($category_label_path, 1),
+                        $children[$i]['children'],
+                        $category_object
+                    );
+                    break;
+                }
             }
-        }
-        if(!$child_exist){
-            // Create the parent
-            $children[]=array(
-                'id'=>$category_id_path[0],
-                'value'=> 'NOT_AVAILABLE',
-                'text' => $category_label_path[0].($category_object['static_block_only'] ? ' (Static block only)' : ''),
-                'state' => array('disabled' => true, 'opened' => true), // Only for ROOT (eg. defautl category) categories
-                'children' => $this->constructTree(array_slice($category_id_path, 1), array_slice($category_label_path, 1), array(), $category_object),
-                'icon' => 'hidden'
-            );
-        }
+            if(!$child_exist){
+                // Create the parent
+                $children[]=array(
+                    'id'=>$category_id_path[0],
+                    'value'=> 'NOT_AVAILABLE',
+                    'text' => $category_label_path[0].($category_object['static_block_only'] ? ' (Static block only)' : ''),
+                    'state' => array('disabled' => true, 'opened' => true), // Only for ROOT (eg. defautl category) categories
+                    'children' => $this->constructTree(array_slice($category_id_path, 1), array_slice($category_label_path, 1), array(), $category_object),
+                    'icon' => 'hidden'
+                );
+            }
         }
         return $children;
     }

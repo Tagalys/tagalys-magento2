@@ -89,6 +89,6 @@ class Utils
 
     // dev helpers
     public static function dj($data) {
-        echo json_encode($data);
+        echo json_encode($data) . "<br>";
     }
 }
