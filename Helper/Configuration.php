@@ -950,7 +950,6 @@ class Configuration extends \Magento\Framework\App\Helper\AbstractHelper
         $rootCategoryId = $this->storeManager->getStore($storeId)->getRootCategoryId();
         $categories = $this->categoryCollection->create()
             ->setStoreId($storeId)
-            ->addFieldToFilter('is_active', 1)
             ->addAttributeToFilter('path', array('like' => "1/{$rootCategoryId}/%"))
             ->addAttributeToSelect('*');
         if (!$includeTagalysCreated) {
