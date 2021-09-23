@@ -45,6 +45,11 @@ class TagalysApi implements TagalysManagementInterface
      */
     private $tagalysSql;
 
+    /**
+     * @param \Tagalys\Sync\Helper\AuditLog
+     */
+    private $auditLogHelper;
+
     public function __construct(
         \Tagalys\Sync\Helper\Configuration $tagalysConfiguration,
         \Tagalys\Sync\Helper\Api $tagalysApi,
@@ -58,7 +63,8 @@ class TagalysApi implements TagalysManagementInterface
         \Magento\Framework\Registry $_registry,
         \Magento\Catalog\Model\ProductFactory $productFactory,
         \Magento\Framework\App\Config\ScopeConfigInterface $scopeConfig,
-        \Tagalys\Sync\Helper\TagalysSql $tagalysSql
+        \Tagalys\Sync\Helper\TagalysSql $tagalysSql,
+        \Tagalys\Sync\Helper\AuditLog $auditLogHelper
     ) {
         $this->tagalysConfiguration = $tagalysConfiguration;
         $this->tagalysApi = $tagalysApi;
@@ -73,6 +79,7 @@ class TagalysApi implements TagalysManagementInterface
         $this->productFactory = $productFactory;
         $this->scopeConfig = $scopeConfig;
         $this->tagalysSql = $tagalysSql;
+        $this->auditLogHelper = $auditLogHelper;
 
         $this->logger = Utils::getLogger("tagalys_rest_api.log");
     }
@@ -109,6 +116,7 @@ class TagalysApi implements TagalysManagementInterface
             switch ($params['info_type']) {
                 case 'status':
                     $info = array(
+                        'plugin_version' => $this->tagalysApi->getPluginVersion(),
                         'config' => [],
                         'files_in_media_folder' => array(),
                         'sync_status' => $this->tagalysSync->status()
@@ -169,13 +177,14 @@ class TagalysApi implements TagalysManagementInterface
                     $response = $productDetails;
                     break;
                 case 'reset_sync_statuses':
-                    $this->queueHelper->truncate();
-                    foreach ($this->tagalysConfiguration->getStoresForTagalys() as $storeId) {
+                    $this->queueHelper->deleteByPriority(0);
+                    if (!array_key_exists('stores', $params)) {
+                        $params['stores'] = $this->tagalysConfiguration->getStoresForTagalys();
+                    }
+                    foreach ($params['stores'] as $storeId) {
                         $sync_types = array('updates', 'feed');
                         foreach ($sync_types as $sync_type) {
-                            $syncTypeStatus = $this->tagalysConfiguration->getConfig("store:$storeId:" . $sync_type . "_status", true);
-                            $syncTypeStatus['status'] = 'finished';
-                            $feed_status = $this->tagalysConfiguration->setConfig("store:$storeId:" . $sync_type . "_status", json_encode($syncTypeStatus));
+                            $this->tagalysConfiguration->updateJsonConfig("store:$storeId:" . $sync_type . "_status", ['status' => 'finished', 'locked_by' => null, 'abandon' => true]);
                         }
                     }
                     $response = array('reset' => true);
@@ -187,15 +196,18 @@ class TagalysApi implements TagalysManagementInterface
                     if (!array_key_exists('products_count', $params)) {
                         $params['products_count'] = false;
                     }
+                    if (!array_key_exists('stores', $params)) {
+                        $params['stores'] = $this->tagalysConfiguration->getStoresForTagalys();
+                    }
                     $this->tagalysApi->log('warn', 'Triggering full products resync via API', array('force_regenerate_thumbnails' => ($params['force_regenerate_thumbnails'] == 'true')));
-                    foreach ($this->tagalysConfiguration->getStoresForTagalys() as $storeId) {
+                    foreach ($params['stores'] as $storeId) {
                         if (isset($params['products_count'])) {
                             $this->tagalysSync->triggerFeedForStore($storeId, ($params['force_regenerate_thumbnails'] == 'true'), $params['products_count'], true);
                         } else {
                             $this->tagalysSync->triggerFeedForStore($storeId, ($params['force_regenerate_thumbnails'] == 'true'), false, true);
                         }
+                        $this->queueHelper->deleteByPriority(0, $storeId);
                     }
-                    $this->queueHelper->truncate();
                     $response = array('triggered' => true);
                     break;
                 case 'trigger_quick_feed':
@@ -209,9 +221,10 @@ class TagalysApi implements TagalysManagementInterface
                 case 'insert_into_sync_queue':
                     $this->tagalysApi->log('warn', 'Inserting into sync queue via API', array('product_ids' => $params['product_ids']));
                     $priority = array_key_exists('priority', $params) ? $params['priority'] : 0;
+                    $stores = Utils::fetchKey($params, 'stores');
                     $insertPrimary = array_key_exists('insert_primary', $params) ? $params['insert_primary'] : null;
                     $includeDeleted = array_key_exists('include_deleted', $params) ? $params['include_deleted'] : null;
-                    $res = $this->queueHelper->insertUnique($params['product_ids'], $priority, $insertPrimary, $includeDeleted);
+                    $res = $this->queueHelper->insertUnique($params['product_ids'], $priority, $stores, $insertPrimary, $includeDeleted);
                     $response = array('inserted' => true, 'info' => $res);
                     break;
                 case 'truncate_sync_queue':
@@ -228,11 +241,7 @@ class TagalysApi implements TagalysManagementInterface
                     $categories = array();
                     $tagalysCategoryCollection = $this->tagalysCategoryFactory->create()->getCollection()->setOrder('id', 'ASC');
                     foreach ($tagalysCategoryCollection as $i) {
-                        $fields = array('id', 'category_id', 'store_id', 'positions_synced_at', 'positions_sync_required', 'marked_for_deletion', 'status');
-                        $categoryData = array();
-                        foreach ($fields as $field) {
-                            $categoryData[$field] = $i->getData($field);
-                        }
+                        $categoryData = $i->getData();
                         array_push($categories, $categoryData);
                     }
                     $response = array('categories' => $categories);
@@ -241,7 +250,7 @@ class TagalysApi implements TagalysManagementInterface
                     if (isset($params['value']) && in_array($params['value'], array('1', '0'))) {
                         $this->tagalysConfiguration->setConfig("tagalys:health", $params['value']);
                     } else {
-                        $this->tagalysSync->updateTagalysHealth();
+                        $this->tagalysConfiguration->updateTagalysHealth();
                     }
                     $response = array('health_status' => $this->tagalysConfiguration->getConfig("tagalys:health"));
                     break;
@@ -256,7 +265,7 @@ class TagalysApi implements TagalysManagementInterface
                     $this->logger->info("assign_products_to_category_and_remove: params: " . json_encode($params));
                     $listingPagesEnabled = $this->tagalysConfiguration->isListingPagesEnabled();
                     $updatePositionAsync = $this->tagalysConfiguration->getConfig('listing_pages:update_position_async', true);
-                    $this->tagalysCategoryHelper->markAsPositionSyncRequired($params['store_id'], $params['category_id']);
+                    $this->tagalysCategoryHelper->markAsPositionSyncRequired($params['store_id'], $params['category_id'], true);
                     if ($listingPagesEnabled && !$updatePositionAsync) {
                         if ($params['product_positions'] == -1) {
                             $params['product_positions'] = [];
@@ -277,7 +286,7 @@ class TagalysApi implements TagalysManagementInterface
                     $this->logger->info("update_product_positions: params: " . json_encode($params));
                     $listingPagesEnabled = $this->tagalysConfiguration->isListingPagesEnabled();
                     $updatePositionAsync = $this->tagalysConfiguration->getConfig('listing_pages:update_position_async', true);
-                    $this->tagalysCategoryHelper->markAsPositionSyncRequired($params['store_id'], $params['category_id']);
+                    $this->tagalysCategoryHelper->markAsPositionSyncRequired($params['store_id'], $params['category_id'], false);
                     if($listingPagesEnabled && !$updatePositionAsync){
                         if ($params['product_positions'] == -1) {
                             $params['product_positions'] = [];
@@ -366,7 +375,8 @@ class TagalysApi implements TagalysManagementInterface
                 case 'remove_from_tagalys_queue':
                     if (array_key_exists('product_ids', $params)){
                         $priority = array_key_exists('priority', $params) ? $params['priority'] : null;
-                        $res = $this->queueHelper->paginateSqlDelete($params['product_ids'], $priority);
+                        $stores = array_key_exists('stores', $params) ? $params['stores'] : null;
+                        $res = $this->queueHelper->paginateSqlDelete($params['product_ids'], $priority, $stores);
                     } else {
                         $res = false;
                     }
@@ -463,9 +473,12 @@ class TagalysApi implements TagalysManagementInterface
                     $idsToRemove = $this->tagalysSync->getProductIdsToRemove($storeId, $productIds);
                     $response = ['status' => 'OK', 'to_remove' => $idsToRemove];
                     break;
-                case 'get_cron_schedule':
-                    $response = $this->getCronSchedule($params);
-                    break;
+                default:
+                    try {
+                        $response = $this->{Utils::camelize($params['info_type'])}($params);
+                    } catch(\Exception $e) {
+                        throw $e;
+                    } catch (\Error $e) { }
             }
         } catch (\Exception $e) {
             $response = ['status' => 'error', 'message' => $e->getMessage(), 'trace' => $e->getTrace()];
@@ -474,7 +487,6 @@ class TagalysApi implements TagalysManagementInterface
     }
 
     public function categorySave($category) {
-        // ALERT: Test this in 2.0 - 2.1
         try {
             $this->logger->info("categorySave: params: " . json_encode($category));
             if ($category['id']){
@@ -529,5 +541,47 @@ class TagalysApi implements TagalysManagementInterface
         $cronScheduleTable = $this->tagalysSql->getTableName("cron_schedule");
         $response['entries'] = $this->tagalysSql->runSqlSelect("SELECT * FROM $cronScheduleTable WHERE job_code LIKE 'Tagalys%' ORDER BY scheduled_at DESC LIMIT 1000;");
         return $response;
+    }
+
+    private function syncProducts($params){
+        if (empty($params['count'])) {
+            $params['count'] = 10;
+        }
+        $count = (int) $params['count'];
+        if($count > 0) {
+            $this->tagalysSync->sync($count);
+            return "synced {$params['count']} products";
+        }
+        return false;
+    }
+
+    private function syncCategories($params){
+        if(empty($params['count'])) {
+            $params['count'] = 10;
+        }
+        $count = (int) $params['count'];
+        if($count > 0) {
+            $this->tagalysCategoryHelper->sync($count);
+            return "synced {$params['count']} categories";
+        }
+        return false;
+    }
+
+    private function deleteAuditLogs($params) {
+        if (Utils::fetchKey($params, 'clear_all', false)) {
+            $this->auditLogHelper->truncate();
+        } else {
+            $this->auditLogHelper->deleteLogEntries($params['from'], $params['to']);
+        }
+        return ['deleted' => true];
+    }
+
+    private function getAuditLogs($params) {
+        if(Utils::fetchKey($params, 'ids_only', false)) {
+            $output = $this->auditLogHelper->getAllIds();
+        } else {
+            $output = $this->auditLogHelper->getEntries($params['ids']);
+        }
+        return $output;
     }
 }

@@ -49,15 +49,6 @@ class InstallSchema implements InstallSchemaInterface
                         'default' => ''
                     ],
                     'Config Value'
-                )->addColumn(
-                    'priority',
-                    Table::TYPE_INTEGER,
-                    null,
-                    [
-                        'nullable' => false,
-                        'default' => '0',
-                    ],
-                    'Priority of the update'
                 )
                 ->setComment('Tagalys Configuration Table')
                 ->setOption('type', 'InnoDB')
@@ -90,6 +81,23 @@ class InstallSchema implements InstallSchemaInterface
                         'default' => '0'
                     ],
                     'Product ID'
+                )->addColumn(
+                    'priority',
+                    Table::TYPE_INTEGER,
+                    null,
+                    [
+                        'nullable' => false,
+                        'default' => '0',
+                    ],
+                    'Priority of the update'
+                )->addColumn(
+                    'store_id',
+                    Table::TYPE_INTEGER,
+                    null,
+                    [
+                        'nullable' => false,
+                    ],
+                    'Store ID'
                 )->addIndex(
                     $installer->getIdxName(
                         $queueTableName,

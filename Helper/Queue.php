@@ -33,50 +33,7 @@ class Queue extends \Magento\Framework\App\Helper\AbstractHelper
         $this->tableName = $this->resourceConnection->getTableName('tagalys_queue');
     }
 
-    public function insertUnique($productIds, $priority = 0, $insertPrimary = null, $includeDeleted = null) {
-        $useOldInsertUnique = $this->tagalysConfiguration->getConfig('fallback:use_old_insert_unique', true);
-        if ($useOldInsertUnique) {
-            return $this->oldInsertUnique($productIds, $priority);
-        } else {
-            return $this->newInsertUnique($productIds, $priority, $insertPrimary, $includeDeleted);
-        }
-    }
-
-    public function oldInsertUnique($productIds, $priority = 0) {
-        try {
-            if (!is_array($productIds)) {
-                $productIds = array($productIds);
-            }
-            $logInsert = $this->tagalysConfiguration->getConfig('sync:log_product_ids_during_insert_to_queue', true);
-            if($logInsert){
-                $this->tagalysLogger->info("insertUnique: ProductIds: ". json_encode($productIds));
-            }
-            $insertPrimary = $this->tagalysConfiguration->getConfig('sync:insert_primary_products_in_insert_unique', true);
-            $perPage = 100;
-            $offset = 0;
-            $queueTable = $this->resourceConnection->getTableName('tagalys_queue');
-            $productIds = array_filter($productIds); // remove null values - this will cause a crash when used in the replace command below
-            $productsToInsert = array_slice($productIds, $offset, $perPage);
-            while(count($productsToInsert) > 0){
-                if($insertPrimary){
-                    $this->insertPrimaryProducts($productsToInsert, $priority);
-                } else {
-                    $productsToInsert = array_map(function($productId) use ($priority) {
-                        return "($productId, $priority)";
-                    }, $productsToInsert);
-                    $values = implode(',', $productsToInsert);
-                    $sql = "REPLACE $queueTable (product_id, priority) VALUES $values;";
-                    $this->runSql($sql);
-                }
-                $offset += $perPage;
-                $productsToInsert = array_slice($productIds, $offset, $perPage);
-            }
-        } catch (\Exception $e){
-            $this->tagalysLogger->warn("insertUnique exception: " . json_encode(['message' => $e->getMessage(), 'product_ids' => $productIds, 'backtrace' => $e->getTrace()]));
-        }
-    }
-
-    public function newInsertUnique($productIds, $priority = 0, $insertPrimary = null, $includeDeleted = null) {
+    public function insertUnique($productIds, $priority = 0, $stores = null, $insertPrimary = null, $includeDeleted = null) {
         $productIds = is_array($productIds) ? $productIds : [$productIds];
 
         $response = [
@@ -84,14 +41,13 @@ class Queue extends \Magento\Framework\App\Helper\AbstractHelper
             'insert_primary' => $insertPrimary,
             'include_deleted' => $includeDeleted,
             'count_after_filter' => null,
-            'inserted' => 0,
-            'updated' => 0,
-            'ignored' => 0,
             'errors' => false
         ];
 
         try {
-            // remove null values - this will cause a crash when used in the replace command below
+            $stores = (is_null($stores) ? $this->tagalysConfiguration->getStoresForTagalys() : $stores);
+            $response['stores'] = $stores;
+
             $productIds = array_filter($productIds);
 
             $logInsert = $this->tagalysConfiguration->getConfig('sync:log_product_ids_during_insert_to_queue', true);
@@ -118,14 +74,22 @@ class Queue extends \Magento\Framework\App\Helper\AbstractHelper
                 return $response;
             }
 
-            $idsByOperation = $this->splitProductIdsByOperations($relevantProductIds, $priority);
-            $response['ignored'] += count($idsByOperation['ignore']);
+            $response['store_ops'] = [];
+            foreach ($stores as $storeId) {
+                $response['store_ops'][$storeId] = [];
+                $response['store_ops'][$storeId]['ignored'] = 0;
+                $response['store_ops'][$storeId]['inserted'] = 0;
+                $response['store_ops'][$storeId]['updated'] = 0;
 
-            $this->paginateSqlInsert($idsByOperation['insert'], $priority);
-            $response['inserted'] += count($idsByOperation['insert']);
+                $idsByOperation = $this->splitProductIdsByOperations($relevantProductIds, $priority, $storeId);
+                $response['store_ops'][$storeId]['ignored'] += count($idsByOperation['ignore']);
 
-            $this->paginateSqlUpdate($idsByOperation['update'], $priority);
-            $response['updated'] += count($idsByOperation['update']);
+                $this->paginateSqlInsert($idsByOperation['insert'], $priority, $storeId);
+                $response['store_ops'][$storeId]['inserted'] += count($idsByOperation['insert']);
+
+                $this->paginateSqlUpdatePriority($storeId, $idsByOperation['update'], $priority);
+                $response['store_ops'][$storeId]['updated'] += count($idsByOperation['update']);
+            }
 
             return $response;
         } catch (\Exception $e){
@@ -135,11 +99,11 @@ class Queue extends \Magento\Framework\App\Helper\AbstractHelper
         }
     }
 
-    public function splitProductIdsByOperations($productIds, $priority) {
+    public function splitProductIdsByOperations($productIds, $priority, $storeId) {
         $idsByOperation = [ 'insert' => [], 'update' => [], 'ignore' => [] ];
-        Utils::forEachChunk($productIds, $this->sqlBulkBatchSize, function($idsChunk) use ($priority, &$idsByOperation) {
+        Utils::forEachChunk($productIds, $this->sqlBulkBatchSize, function($idsChunk) use ($priority, &$idsByOperation, $storeId) {
             $values = implode(',', $idsChunk);
-            $sql = "SELECT product_id, priority FROM {$this->tableName} WHERE product_id IN ($values)";
+            $sql = "SELECT product_id, priority FROM {$this->tableName} WHERE product_id IN ($values) AND store_id=$storeId";
             $rows = $this->runSqlSelect($sql);
             $productIdsToIgnore = [];
             $productIdsToUpdate = [];
@@ -186,13 +150,15 @@ class Queue extends \Magento\Framework\App\Helper\AbstractHelper
         $parentIds = [];
 
         $cpr = $this->resourceConnection->getTableName('catalog_product_relation');
+        $cpe = $this->resourceConnection->getTableName('catalog_product_entity');
+        $parentProductAssociationColumn = $this->getResourceColumnToJoin();
         $values = implode(',', $productIds);
 
         // select parent products of associated child products in the given array
-        $sql = "SELECT DISTINCT cpr.parent_id as product_id FROM $cpr as cpr WHERE cpr.child_id IN ($values);";
+        $sql = "SELECT DISTINCT cpe.entity_id as parent_id FROM $cpr as cpr INNER JOIN $cpe as cpe ON cpr.parent_id = cpe.{$parentProductAssociationColumn} WHERE cpr.child_id IN ($values);";
         $rows = $this->runSqlSelect($sql);
         foreach($rows as $row) {
-            $parentIds[] = $row['product_id'];
+            $parentIds[] = $row['parent_id'];
         }
         return $parentIds;
     }
@@ -301,41 +267,24 @@ class Queue extends \Magento\Framework\App\Helper\AbstractHelper
         }
     }
 
-    // Todo: rename this function, it's not just truncating anymore
-    public function truncate($preserve_priority_items = true) {
-        if ($preserve_priority_items) {
-            $priorityRows = $this->getPriorityRows();
-        }
+    public function truncate() {
         $queue = $this->queueFactory->create();
         $connection = $queue->getResource()->getConnection();
         $tableName = $queue->getResource()->getMainTable();
         $connection->truncateTable($tableName);
-        if ($preserve_priority_items) {
-            $this->paginateAndInsertRows($priorityRows);
-        }
-    }
-
-    public function getPriorityRows() {
-        $collection = $this->queueFactory->create()->getCollection()->addFieldToFilter('priority', ['gt' => 0])->setOrder('priority', 'desc');
-        $productIds = array_map(function($item){
-            $productId = $item['product_id'];
-            $priority = $item['priority'];
-            return "($productId, $priority)";
-        }, $collection->toArray(['product_id', 'priority'])['items']);
-        return $productIds;
     }
 
     public function paginateAndInsertRows($rows) {
         $queueTable = $this->resourceConnection->getTableName('tagalys_queue');
         Utils::forEachChunk($rows, $this->sqlBulkBatchSize, function($rowsToInsert) use ($queueTable){
             $values = implode(',', $rowsToInsert);
-            $sql = "REPLACE $queueTable (product_id, priority) VALUES $values;";
+            $sql = "REPLACE $queueTable (product_id, priority, store_id) VALUES $values;";
             $this->runSql($sql);
         });
     }
 
-    public function queuePrimaryProductIdFor($productId) {
-        $primaryProductId = $this->getPrimaryProductId($productId);
+    public function queuePrimaryProductIdFor($storeId, $productId) {
+        $primaryProductId = $this->getPrimaryProductId($storeId, $productId);
         if ($primaryProductId === false) {
             // no related product id
         } elseif ($productId == $primaryProductId) {
@@ -367,33 +316,25 @@ class Queue extends \Magento\Framework\App\Helper\AbstractHelper
         $this->runSql($sql);
     }
 
-    public function _visibleInAnyStore($product) {
-        $visible = false;
-        $storesForTagalys = $this->tagalysConfiguration->getStoresForTagalys();
-        foreach ($storesForTagalys as $storeId) {
-            $this->storeManager->setCurrentStore($storeId);
-            $productVisibility = $product->getVisibility();
-            if ($productVisibility != 1) {
-                $visible = true;
-                break;
-            }
-        }
-        return $visible;
+    private function visibleInStore($storeId, $product) {
+        $this->storeManager->setCurrentStore($storeId);
+        $productVisibility = $product->getVisibility();
+        return ($productVisibility != 1);
     }
 
-    public function getPrimaryProductId($productId) {
+    private function getPrimaryProductId($storeId, $productId) {
         $product = $this->productFactory->create()->load($productId);
         if ($product) {
             $productType = $product->getTypeId();
-            $visibleInAnyStore = $this->_visibleInAnyStore($product);
-            if (!$visibleInAnyStore) {
+            $visibleInStore = $this->visibleInStore($storeId, $product);
+            if (!$visibleInStore) {
                 // not visible individually
                 if ($productType == 'simple' || $productType == 'virtual') {
                     // coulbe be attached to configurable product
                     $parentIds = $this->configurableProduct->getParentIdsByChild($productId);
                     if (count($parentIds) > 0) {
                         // check and return configurable product id
-                        return $this->getPrimaryProductId($parentIds[0]);
+                        return $this->getPrimaryProductId($storeId, $parentIds[0]);
                     } else {
                         // simple product which is not visible / an orphan simple product
                         return false;
@@ -441,27 +382,30 @@ class Queue extends \Magento\Framework\App\Helper\AbstractHelper
         return $this->visibilityAttrId;
     }
 
-    public function paginateSqlInsert($productIds, $priority) {
-        $rows = array_map(function($productId) use ($priority) {
-            return "($productId, $priority)";
+    public function paginateSqlInsert($productIds, $priority, $storeId) {
+        $rows = array_map(function($productId) use ($priority, $storeId) {
+            return "($productId, $priority, $storeId)";
         }, $productIds);
         $this->paginateAndInsertRows($rows);
     }
 
-    public function paginateSqlUpdate($productIds, $priority) {
-        Utils::forEachChunk($productIds, $this->sqlBulkBatchSize, function($idsChunk) use ($priority){
+    private function paginateSqlUpdatePriority($storeId, $productIds, $priority) {
+        Utils::forEachChunk($productIds, $this->sqlBulkBatchSize, function($idsChunk) use ($priority, $storeId){
             $values = implode(',', $idsChunk);
-            $sql = "UPDATE {$this->tableName} SET priority=$priority WHERE product_id IN ($values);";
+            $sql = "UPDATE {$this->tableName} SET priority=$priority WHERE product_id IN ($values) AND store_id=$storeId;";
             $this->runSql($sql);
         });
     }
 
-    public function paginateSqlDelete($productIds, $priority = null) {
-        Utils::forEachChunk($productIds, $this->sqlBulkBatchSize, function($idsChunk) use($priority) {
+    public function paginateSqlDelete($productIds, $priority = null, $stores = null) {
+        Utils::forEachChunk($productIds, $this->sqlBulkBatchSize, function($idsChunk) use($priority, $stores) {
             $values = implode(',', $idsChunk);
             $where = "product_id IN ($values)";
             if ($priority != null) {
                 $where .= " AND priority=$priority";
+            }
+            if ($stores != null) {
+                $where .= " AND store_id IN (" . implode(',', $stores) . ")";
             }
             $sql = "DELETE FROM {$this->tableName} WHERE $where;";
             $this->runSql($sql);
@@ -469,26 +413,57 @@ class Queue extends \Magento\Framework\App\Helper\AbstractHelper
         return true;
     }
 
-    public function deleteByPriority($priority) {
-        $sql = "DELETE FROM {$this->tableName} WHERE priority=$priority";
-        return $this->runSql($sql);
+    public function deleteByPriority($priority, $storeId = null) {
+        $where = "priority=$priority";
+        if($storeId != null) {
+            $where .= " AND store_id=$storeId";
+        }
+        $sql = "DELETE FROM {$this->tableName} WHERE $where";
+        $this->runSql($sql);
+        $this->truncateIfEmpty();
+        return true;
     }
 
     public function removeDuplicatesFromQueue() {
-        $sql = "SELECT * FROM {$this->tableName} ORDER BY priority DESC;";
+        $stores = $this->tagalysConfiguration->getStoresForTagalys();
+        foreach ($stores as $storeId) {
+            $sql = "SELECT * FROM {$this->tableName} WHERE store_id=$storeId ORDER BY priority DESC;";
+            $rows = $this->runSqlSelect($sql);
+            $productIdsHash = [];
+            $validRows = [];
+            foreach($rows as $row) {
+                $productId = $row['product_id'];
+                $priority = $row['priority'];
+                if(!array_key_exists($productId, $productIdsHash)) {
+                    $validRows[] = "($productId, $priority, $storeId)";
+                    $productIdsHash[$productId] = true;
+                }
+            }
+            $this->paginateSqlDelete(array_keys($productIdsHash), null, [$storeId]);
+            $this->paginateAndInsertRows($validRows);
+        }
+        return true;
+    }
+
+    public function migrateUpdatesQueueIfRequired() {
+        $stores = $this->tagalysConfiguration->getStoresForTagalys();
+        $sql = "SELECT * FROM {$this->tableName} WHERE store_id IS NULL;";
         $rows = $this->runSqlSelect($sql);
-        $productIdsHash = [];
+        if(count($rows) == 0) {
+            return false;
+        }
         $validRows = [];
-        foreach($rows as $row) {
-            $productId = $row['product_id'];
-            $priority = $row['priority'];
-            if(!array_key_exists($productId, $productIdsHash)) {
-                $validRows[] = "($productId, $priority)";
-                $productIdsHash[$productId] = true;
+        foreach($stores as $storeId) {
+            foreach ($rows as $row) {
+                $row['store_id'] = $storeId;
+                $validRows[] = "({$row['product_id']}, {$row['priority']}, {$row['store_id']})";
             }
         }
-        $this->paginateSqlDelete(array_keys($productIdsHash));
         $this->paginateAndInsertRows($validRows);
-        return ['before' => count($rows), 'after' => count($validRows)];
+
+        $sql = "DELETE FROM {$this->tableName} WHERE store_id IS NULL;";
+        $this->runSql($sql);
+
+        return true;
     }
 }

@@ -209,18 +209,7 @@ class Edit extends \Magento\Backend\App\Action
                                         } catch (\Exception $e) {
                                             continue;
                                         }
-                                        if ($category->getDisplayMode() == 'PAGE') {
-                                            // skip
-                                            $firstItem = $this->tagalysCategoryFactory->create()->getCollection()
-                                                ->addFieldToFilter('store_id', $storeId)
-                                                ->addFieldToFilter('category_id', $categoryId)
-                                                ->getFirstItem();
-                                            if ($id = $firstItem->getId()) {
-                                                $firstItem->addData(array('marked_for_deletion' => 1))->save();
-                                            }
-                                        } else {
-                                            $this->tagalysCategoryHelper->markCategoryForSyncIfRequired($storeId, $categoryId);
-                                        }
+                                        $this->tagalysCategoryHelper->markCategoryForSyncIfRequired($storeId, $categoryId);
                                     }
                                 }
                                 $this->tagalysCategoryHelper->markStoreCategoryIdsToDisableExcept($storeId, $categoryIds);
@@ -292,13 +281,13 @@ class Edit extends \Magento\Backend\App\Action
                         $this->messageManager->addErrorMessage("Unable to trigger a full resync. There is already a sync in progress.");
                     }
                     if ($triggered){
-                        $this->queueHelper->truncate();
+                        $this->queueHelper->deleteByPriority(0);
                     }
                     $redirectToTab = 'support';
                     break;
                 case 'Clear Tagalys sync queue':
                     $this->tagalysApi->log('warn', 'Clearing Tagalys sync queue');
-                    $this->queueHelper->truncate();
+                    $this->queueHelper->deleteByPriority(0);
                     $redirectToTab = 'support';
                     break;
                 case 'Trigger configuration resync now':

@@ -4,8 +4,10 @@ try {
     $tagalysCategoryHelper = $objectManager->get('Tagalys\Sync\Helper\Category');
     $tagalysCategories = json_encode($tagalysCategoryHelper->getTagalysCategories());
     $tagalysCreated = json_encode($tagalysCategoryHelper->getTagalysCreatedCategories());
-    echo "<script>tagalysCategories = $tagalysCategories;tagalysCreated = $tagalysCreated;</script>";
-} catch (\Exception $e) {}
+    $tagalysManaged = json_encode($tagalysCategoryHelper->getTagalysManagedCategories());
+    echo "<script>tagalysCategories = $tagalysCategories;tagalysCreated = $tagalysCreated;tagalysManaged = $tagalysManaged;</script>";
+} catch (\Exception $e) {
+}
 ?>
 <script>
     require(
@@ -22,10 +24,14 @@ try {
                     if (id_index != -1) {
                         var currentCategory = urlComponents[id_index + 1];
                         if ($.inArray(currentCategory, tagalysCategories) !== -1) {
+                            var message = 'Product positions in this category are controlled by Tagalys';
+                            if ($.inArray(currentCategory, tagalysManaged) !== -1) {
+                                message = "The assignment and positioning of products in this category are controlled by Tagalys"
+                            }
                             tagalysNoticeInterval = setInterval(function() {
                                 if ($('#catalog_category_products').length > 0) {
                                     var $tagalysDiv = $('<div>').css('background', '#1c6dad').css('padding', '10px').css('margin-bottom', '10px').css('color', 'white');
-                                    $tagalysDiv.append($('<h2>').css('margin-bottom', '5px').html('Product positions in this category are controlled by Tagalys').css('color', 'white'));
+                                    $tagalysDiv.append($('<h2>').css('margin-bottom', '5px').html(message).css('color', 'white'));
                                     $tagalysDiv.append($('<p>').css('margin-bottom', '0').html('Visit <a target="__blank" style="color:white;text-decoration:underline;" href="https://next.tagalys.com">next.tagalys.com</a> to merchandise & change product positions'));
                                     $tagalysDiv.insertBefore('#catalog_category_products');
                                     clearInterval(tagalysNoticeInterval);

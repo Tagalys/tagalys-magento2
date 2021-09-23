@@ -3,6 +3,11 @@ namespace Tagalys\Sync\Helper;
 
 class Api extends \Magento\Framework\App\Helper\AbstractHelper
 {
+    /**
+     * @param \Tagalys\Sync\Helper\Configuration
+     */
+    private $_tagalysConfiguration;
+
     public function __construct(
         \Magento\Framework\App\ProductMetadataInterface $productMetadataInterface,
         \Magento\Framework\Module\ModuleListInterface $moduleListInterface,
@@ -58,6 +63,10 @@ class Api extends \Magento\Framework\App\Helper\AbstractHelper
         }
     }
 
+    public function logExceptionToTagalys($e, $message, $debugInfo = null) {
+        $this->log('error', $message, Utils::getExceptionDetails($e, $debugInfo));
+    }
+
     public function identificationCheck($apiCredentials) {
         try {
             $this->apiServer = $apiCredentials['api_server'];
@@ -78,7 +87,8 @@ class Api extends \Magento\Framework\App\Helper\AbstractHelper
     public function clientApiCall($path, $params) {
         $params['identification'] = array(
             'client_code' => $this->clientCode,
-            'api_key' => $this->privateApiKey
+            'api_key' => $this->privateApiKey,
+            'store_domains' => $this->tagalysConfiguration()->getStoreDomains()
         );
         return $this->_apiCall($path, $params);
     }
@@ -101,6 +111,20 @@ class Api extends \Magento\Framework\App\Helper\AbstractHelper
         return 'Magento-' . $this->productMetadataInterface->getEdition() . '-' . $this->platformVersionMajor();
     }
 
+    private function getCurlHandle($url, $params) {
+        $curlHandle = curl_init($url);
+        $port = parse_url($url, PHP_URL_PORT);
+        if ($port != NULL) {
+            curl_setopt($curlHandle, CURLOPT_PORT, $port);
+        }
+        curl_setopt($curlHandle, CURLOPT_POST, 1);
+        curl_setopt($curlHandle, CURLOPT_POSTFIELDS, json_encode($params));
+        curl_setopt($curlHandle, CURLOPT_HTTPHEADER, array('Content-Type: application/json'));
+        curl_setopt($curlHandle, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($curlHandle, CURLOPT_TIMEOUT, $this->timeout);
+        return $curlHandle;
+    }
+
     private function _apiCall($path, $params) {
         try {
             if ($this->apiServer === false) {
@@ -111,17 +135,7 @@ class Api extends \Magento\Framework\App\Helper\AbstractHelper
                 $params['identification']['api_client'] = array('platform' => $this->platformIdentifier(), 'platform_version' => $this->productMetadataInterface->getVersion(), 'plugin' => 'Tagalys_Sync', 'plugin_version' => $this->getPluginVersion());
             }
             $url = $this->apiServer . $path;
-            $curlHandle = curl_init($url);
-            $port = parse_url($url, PHP_URL_PORT);
-            if ($port != NULL) {
-                curl_setopt($curlHandle, CURLOPT_PORT, $port);
-            }
-            curl_setopt($curlHandle, CURLOPT_POST, 1);
-            curl_setopt($curlHandle, CURLOPT_POSTFIELDS, json_encode($params));
-            curl_setopt($curlHandle, CURLOPT_HTTPHEADER, array('Content-Type: application/json'));
-            curl_setopt($curlHandle, CURLOPT_RETURNTRANSFER, true);
-            curl_setopt($curlHandle, CURLOPT_SSL_VERIFYPEER, 0);
-            curl_setopt($curlHandle, CURLOPT_TIMEOUT, $this->timeout);
+            $curlHandle = $this->getCurlHandle($url, $params);
             $response = curl_exec($curlHandle);
             if (curl_errno($curlHandle)) {
                 $http_code = curl_getinfo($curlHandle, CURLINFO_HTTP_CODE);
@@ -147,5 +161,12 @@ class Api extends \Magento\Framework\App\Helper\AbstractHelper
             $this->tagalysLogger->warn("Exception in Api.php _apiCall: {$e->getMessage()}; api_server: $this->apiServer; path: $path; params: " . json_encode($params));
             return false;
         }
+    }
+
+    private function tagalysConfiguration() {
+        if ($this->_tagalysConfiguration == null) {
+            $this->_tagalysConfiguration = Utils::getInstanceOf('\Tagalys\Sync\Helper\Configuration');
+        }
+        return $this->_tagalysConfiguration;
     }
 }

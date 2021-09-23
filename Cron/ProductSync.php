@@ -1,9 +1,7 @@
 <?php
 namespace Tagalys\Sync\Cron;
 
-use Tagalys\Sync\Helper\Utils;
-
-class Sync extends Cron
+class ProductSync extends Cron
 {
     /**
      * @param \Tagalys\Sync\Helper\Sync
@@ -13,14 +11,15 @@ class Sync extends Cron
     public function __construct(
         \Magento\Framework\App\State $appState,
         \Tagalys\Sync\Helper\Configuration $tagalysConfiguration,
-        \Tagalys\Sync\Helper\Sync $tagalysSync
+        \Tagalys\Sync\Helper\Sync $tagalysSync,
+        \Tagalys\Sync\Helper\Api $tagalysApi
     ) {
-        parent::__construct($appState, $tagalysConfiguration);
+        parent::__construct($appState, $tagalysConfiguration, $tagalysApi);
         $this->tagalysSync = $tagalysSync;
     }
 
     protected function heartbeatName() {
-        return "sync";
+        return "product_sync";
     }
 
     protected function perform() {

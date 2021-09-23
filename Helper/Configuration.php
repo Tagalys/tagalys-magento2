@@ -75,9 +75,12 @@ class Configuration extends \Magento\Framework\App\Helper\AbstractHelper
         'sync:max_categories_per_cron' => '50',
         'listing_pages:max_categories_per_cron' => '50',
         'listing_pages:categories_per_page' => '50',
-        'magento_cron_enabled' => 'false',
+        'magento_cron_enabled' => 'true',
         // v2.3.1
         'sync:consider_single_value_field_as_custom_field_too' => 'true',
+        // v2.4.0
+        'sync:avoid_parallel_sync_crons' => 'false',
+        'sync:always_perform_parent_category_assignment' => 'false',
     ];
 
     /**
@@ -89,6 +92,8 @@ class Configuration extends \Magento\Framework\App\Helper\AbstractHelper
      * @param \Tagalys\Sync\Helper\Category
      */
     private $_tagalysCategoryHelper;
+
+    private $cachedStoreDomains = [];
 
     public function __construct(
         \Magento\Framework\Stdlib\DateTime\DateTime $datetime,
@@ -245,6 +250,14 @@ class Configuration extends \Magento\Framework\App\Helper\AbstractHelper
         }
     }
 
+    public function clearConfig($path)
+    {
+        $config = $this->configFactory->create()->load($path);
+        if ($config->getId() != null) {
+            $config->delete();
+        }
+    }
+
     public function truncate() {
         $config = $this->configFactory->create();
         $connection = $config->getResource()->getConnection();
@@ -392,66 +405,66 @@ class Configuration extends \Magento\Framework\App\Helper\AbstractHelper
 
     private function constructTree($category_id_path, $category_label_path, $children, $category_object){
         if(count($category_id_path)==1){
-        // Append to array
-        $node_exist = false;
-        for($i=0;$i<count($children);$i++){
-            if($children[$i]['id']==$category_id_path[0]){
-            $node_exist = true;
-            $children[$i]['value'] = $category_object['value'];
-            $children[$i]['state'] = array();
-            $children[$i]['state']['disabled'] = $category_object['static_block_only'];
-            if(array_key_exists('selected', $category_object) && $category_object['selected']==true){
-                $children[$i]['state']['selected'] = true;
-                $iconAndText = $this->getCategoryStatusIconAndText($category_object);
-                $children[$i]['icon'] = $iconAndText['icon'];
-                if ($iconAndText['icon'] != 'hidden') {
-                    $children[$i]['text'] .= $iconAndText['text'];
+            // Append to array
+            $node_exist = false;
+            for($i=0;$i<count($children);$i++){
+                if($children[$i]['id']==$category_id_path[0]){
+                    $node_exist = true;
+                    $children[$i]['value'] = $category_object['value'];
+                    $children[$i]['state'] = array();
+                    $children[$i]['state']['disabled'] = false;
+                    if(array_key_exists('selected', $category_object) && $category_object['selected']==true){
+                        $children[$i]['state']['selected'] = true;
+                        $iconAndText = $this->getCategoryStatusIconAndText($category_object);
+                        $children[$i]['icon'] = $iconAndText['icon'];
+                        if ($iconAndText['icon'] != 'hidden') {
+                            $children[$i]['text'] .= $iconAndText['text'];
+                        }
+                    }
                 }
             }
+            if(!$node_exist){
+                $node = array(
+                    'id'=>$category_id_path[0],
+                    'value'=>$category_object['value'],
+                    'text'=>$category_label_path[0].($category_object['static_block_only'] ? ' (Static block only)' : ''),
+                    'state'=> array('selected'=> (array_key_exists('selected',$category_object) && $category_object['selected']==true) ? true : false, 'disabled' => false),
+                    'children'=>array(),
+                    'icon' => $this->getCategoryStatusIconAndText($category_object)
+                );
+                $iconAndText = $this->getCategoryStatusIconAndText($category_object);
+                $node['icon'] = $iconAndText['icon'];
+                if ($iconAndText['icon'] != 'hidden') {
+                    $node['text'] .= $iconAndText['text'];
+                }
+                $children[] = $node;
             }
-        }
-        if(!$node_exist){
-            $node = array(
-                'id'=>$category_id_path[0],
-                'value'=>$category_object['value'],
-                'text'=>$category_label_path[0].($category_object['static_block_only'] ? ' (Static block only)' : ''),
-                'state'=> array('selected'=> (array_key_exists('selected',$category_object) && $category_object['selected']==true) ? true : false, 'disabled' => $category_object['static_block_only']),
-                'children'=>array(),
-                'icon' => $this->getCategoryStatusIconAndText($category_object)
-            );
-            $iconAndText = $this->getCategoryStatusIconAndText($category_object);
-            $node['icon'] = $iconAndText['icon'];
-            if ($iconAndText['icon'] != 'hidden') {
-                $node['text'] .= $iconAndText['text'];
-            }
-            $children[] = $node;
-        }
         } else {
-        // Find the parent to pass to
-        $child_exist = false;
-        for($i=0;$i<count($children);$i++){
-            if($children[$i]['id']==$category_id_path[0]){
-            $child_exist = true;
-            $children[$i]['children']=$this->constructTree(
-                array_slice($category_id_path, 1),
-                array_slice($category_label_path, 1),
-                $children[$i]['children'],
-                $category_object
-            );
-            break;
+            // Find the parent to pass to
+            $child_exist = false;
+            for($i=0;$i<count($children);$i++){
+                if($children[$i]['id']==$category_id_path[0]){
+                    $child_exist = true;
+                    $children[$i]['children']=$this->constructTree(
+                        array_slice($category_id_path, 1),
+                        array_slice($category_label_path, 1),
+                        $children[$i]['children'],
+                        $category_object
+                    );
+                    break;
+                }
             }
-        }
-        if(!$child_exist){
-            // Create the parent
-            $children[]=array(
-                'id'=>$category_id_path[0],
-                'value'=> 'NOT_AVAILABLE',
-                'text' => $category_label_path[0].($category_object['static_block_only'] ? ' (Static block only)' : ''),
-                'state' => array('disabled' => true, 'opened' => true), // Only for ROOT (eg. defautl category) categories
-                'children' => $this->constructTree(array_slice($category_id_path, 1), array_slice($category_label_path, 1), array(), $category_object),
-                'icon' => 'hidden'
-            );
-        }
+            if(!$child_exist){
+                // Create the parent
+                $children[]=array(
+                    'id'=>$category_id_path[0],
+                    'value'=> 'NOT_AVAILABLE',
+                    'text' => $category_label_path[0].($category_object['static_block_only'] ? ' (Static block only)' : ''),
+                    'state' => array('disabled' => true, 'opened' => true), // Only for ROOT (eg. defautl category) categories
+                    'children' => $this->constructTree(array_slice($category_id_path, 1), array_slice($category_label_path, 1), array(), $category_object),
+                    'icon' => 'hidden'
+                );
+            }
         }
         return $children;
     }
@@ -511,6 +524,14 @@ class Configuration extends \Magento\Framework\App\Helper\AbstractHelper
             }
         }
         return $tagalysResponse;
+    }
+
+    public function getStoreDomain($storeId) {
+        if(empty($this->cachedStoreDomains[$storeId])) {
+            $storeUrl = $this->storeManager->getStore($storeId)->getBaseUrl(\Magento\Framework\UrlInterface::URL_TYPE_WEB, true);
+            $this->cachedStoreDomains[$storeId] = parse_url($storeUrl)['host'];
+        }
+        return $this->cachedStoreDomains[$storeId];
     }
 
     public function getStoreConfiguration($storeId) {
@@ -649,7 +670,8 @@ class Configuration extends \Magento\Framework\App\Helper\AbstractHelper
             'currency' => false,
             'display' => true,
             'filters' => false,
-            'search' => false
+            'search' => false,
+            'dashboard_filters' => true,
         );
         $custom_fields[] = array(
             'name' => '__magento_ratings_count',
@@ -928,7 +950,6 @@ class Configuration extends \Magento\Framework\App\Helper\AbstractHelper
         $rootCategoryId = $this->storeManager->getStore($storeId)->getRootCategoryId();
         $categories = $this->categoryCollection->create()
             ->setStoreId($storeId)
-            ->addFieldToFilter('is_active', 1)
             ->addAttributeToFilter('path', array('like' => "1/{$rootCategoryId}/%"))
             ->addAttributeToSelect('*');
         if (!$includeTagalysCreated) {
@@ -1071,5 +1092,33 @@ class Configuration extends \Magento\Framework\App\Helper\AbstractHelper
             $this->_tagalysCategoryHelper = Utils::getInstanceOf('Tagalys\Sync\Helper\Category');
         }
         return $this->_tagalysCategoryHelper;
+    }
+
+    public function updateTagalysHealth() {
+        $storesForTagalys = $this->getStoresForTagalys();
+        if ($storesForTagalys != null) {
+            foreach ($storesForTagalys as $storeId) {
+                $response = $this->tagalysApi->storeApiCall($storeId . '', '/v1/mpages/_health', array('timeout' => 10));
+                if ($response != false && $response['total'] > 0) {
+                    $this->setConfig("tagalys:health", '1');
+                    return true;
+                } else {
+                    $this->setConfig("tagalys:health", '0');
+                    return false;
+                }
+            }
+        }
+    }
+
+    public function canPerformParentCategoryAssignment($storeId) {
+        return ($this->getConfig("sync:always_perform_parent_category_assignment", true, true) || $this->getConfig("store:$storeId:setup_complete", false, true) != '1');
+    }
+
+    public function getStoreDomains() {
+        $domains = [];
+        foreach ($this->getStoresForTagalys() as $storeId) {
+            $domains[$storeId] = $this->getStoreDomain($storeId);
+        }
+        return $domains;
     }
 }

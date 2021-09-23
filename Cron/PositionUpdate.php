@@ -11,10 +11,11 @@ class PositionUpdate extends Cron
     public function __construct(
         \Magento\Framework\App\State $appState,
         \Tagalys\Sync\Helper\Configuration $tagalysConfiguration,
-        \Tagalys\Sync\Helper\Category $tagalysCategory
+        \Tagalys\Sync\Helper\Category $tagalysCategory,
+        \Tagalys\Sync\Helper\Api $tagalysApi
     ) {
         $this->tagalysCategory = $tagalysCategory;
-        parent::__construct($appState, $tagalysConfiguration);
+        parent::__construct($appState, $tagalysConfiguration, $tagalysApi);
     }
 
     protected function heartbeatName() {

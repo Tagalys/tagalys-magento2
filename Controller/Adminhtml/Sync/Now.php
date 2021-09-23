@@ -33,7 +33,7 @@
         {
              $resultJson = $this->jsonResultFactory->create();
 
-             $this->tagalysSync->sync(50, 5);
+            //  $this->tagalysSync->sync(50, 5);
 
              $syncStatus = $this->tagalysSync->status();
 

@@ -27,12 +27,13 @@ class Utils
         return false;
     }
 
-    public static function getExceptionDetails($e) {
+    public static function getExceptionDetails($e, $debugInfo = null) {
         return [
             'message' => $e->getMessage(),
             'file' => $e->getFile(),
             'line' => $e->getLine(),
             'trace' => $e->getTrace(),
+            'debug_info' => $debugInfo,
         ];
     }
 
@@ -67,8 +68,27 @@ class Utils
         return $utcNow->format(\DateTime::ATOM);
     }
 
+    public static function getIntervalInSeconds($from, $to)
+    {
+        if (is_string($from)) {
+            $from = new \DateTime($from);
+        }
+        if (is_string($to)) {
+            $to = new \DateTime($to);
+        }
+        return $to->getTimestamp() - $from->getTimestamp();
+    }
+
+    public static function fetchKey($array, $key, $default = null) {
+        return array_key_exists($key, $array) ? $array[$key] : $default;
+    }
+
+    public static function camelize($input, $separator = '_') {
+        return str_replace($separator, '', ucwords($input, $separator));
+    }
+
     // dev helpers
     public static function dj($data) {
-        echo json_encode($data);
+        echo json_encode($data) . "<br>";
     }
 }
