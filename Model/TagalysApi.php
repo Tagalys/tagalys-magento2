@@ -475,11 +475,10 @@ class TagalysApi implements TagalysManagementInterface
                     break;
                 default:
                     $method = Utils::camelize($params['info_type']);
-                    $reflection = new \ReflectionMethod($this, $method);
-                    if (!$reflection->isPublic()) {
-                        throw new \RuntimeException("The called method is not public.");
+                    $whitelistedMethodNames = ["syncProducts", "syncCategories", "syncPositions", "deleteAuditLogs", "getAuditLogs"];
+                    if(in_array($method, $whitelistedMethodNames)) {
+                        $response = $this->{$method}($params);
                     }
-                    $response = $this->{$method}($params);
             }
         } catch (\Exception $e) {
             $response = ['status' => 'error', 'message' => $e->getMessage(), 'trace' => $e->getTrace()];
