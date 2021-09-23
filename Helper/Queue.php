@@ -150,13 +150,15 @@ class Queue extends \Magento\Framework\App\Helper\AbstractHelper
         $parentIds = [];
 
         $cpr = $this->resourceConnection->getTableName('catalog_product_relation');
+        $cpe = $this->resourceConnection->getTableName('catalog_product_entity');
+        $parentProductAssociationColumn = $this->getResourceColumnToJoin();
         $values = implode(',', $productIds);
 
         // select parent products of associated child products in the given array
-        $sql = "SELECT DISTINCT cpr.parent_id as product_id FROM $cpr as cpr WHERE cpr.child_id IN ($values);";
+        $sql = "SELECT DISTINCT cpe.entity_id as parent_id FROM $cpr as cpr INNER JOIN $cpe as cpe ON cpr.parent_id = cpe.{$parentProductAssociationColumn} WHERE cpr.child_id IN ($values);";
         $rows = $this->runSqlSelect($sql);
         foreach($rows as $row) {
-            $parentIds[] = $row['product_id'];
+            $parentIds[] = $row['parent_id'];
         }
         return $parentIds;
     }
