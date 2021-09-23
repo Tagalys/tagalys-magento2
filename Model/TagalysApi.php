@@ -474,11 +474,12 @@ class TagalysApi implements TagalysManagementInterface
                     $response = ['status' => 'OK', 'to_remove' => $idsToRemove];
                     break;
                 default:
-                    try {
-                        $response = $this->{Utils::camelize($params['info_type'])}($params);
-                    } catch(\Exception $e) {
-                        throw $e;
-                    } catch (\Error $e) { }
+                    $method = Utils::camelize($params['info_type']);
+                    $reflection = new \ReflectionMethod($this, $method);
+                    if (!$reflection->isPublic()) {
+                        throw new \RuntimeException("The called method is not public.");
+                    }
+                    $response = $this->{$method}($params);
             }
         } catch (\Exception $e) {
             $response = ['status' => 'error', 'message' => $e->getMessage(), 'trace' => $e->getTrace()];
@@ -532,7 +533,7 @@ class TagalysApi implements TagalysManagementInterface
         return json_encode($response);
     }
 
-    private function getCronSchedule($params) {
+    public function getCronSchedule($params) {
         $response = ['configuration' => []];
         $response['magento_cron_enabled'] = $this->tagalysConfiguration->getConfig('magento_cron_enabled', true);
         $response['configuration']['sync'] = $this->scopeConfig->getValue('tagalys_cron/sync/cron_expr');
@@ -543,7 +544,7 @@ class TagalysApi implements TagalysManagementInterface
         return $response;
     }
 
-    private function syncProducts($params){
+    public function syncProducts($params){
         if (empty($params['count'])) {
             $params['count'] = 10;
         }
@@ -555,7 +556,7 @@ class TagalysApi implements TagalysManagementInterface
         return false;
     }
 
-    private function syncCategories($params){
+    public function syncCategories($params){
         if(empty($params['count'])) {
             $params['count'] = 10;
         }
@@ -567,7 +568,7 @@ class TagalysApi implements TagalysManagementInterface
         return false;
     }
 
-    private function deleteAuditLogs($params) {
+    public function deleteAuditLogs($params) {
         if (Utils::fetchKey($params, 'clear_all', false)) {
             $this->auditLogHelper->truncate();
         } else {
@@ -576,7 +577,7 @@ class TagalysApi implements TagalysManagementInterface
         return ['deleted' => true];
     }
 
-    private function getAuditLogs($params) {
+    public function getAuditLogs($params) {
         if(Utils::fetchKey($params, 'ids_only', false)) {
             $output = $this->auditLogHelper->getAllIds();
         } else {
