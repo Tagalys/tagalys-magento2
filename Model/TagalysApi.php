@@ -568,6 +568,12 @@ class TagalysApi implements TagalysManagementInterface
         return false;
     }
 
+    public function syncPositions($params) {
+        $count = (int) Utils::fetchKey($params, 'count', 1);
+        $this->tagalysCategoryHelper->updatePositionsIfRequired($count);
+        return "synced positions for {$count} categories";
+    }
+
     public function deleteAuditLogs($params) {
         if (Utils::fetchKey($params, 'clear_all', false)) {
             $this->auditLogHelper->truncate();

@@ -317,10 +317,16 @@ class Category extends \Magento\Framework\App\Helper\AbstractHelper
         return $categoriesToSync;
     }
 
-    public function updatePositionsIfRequired($force = false) {
-        $this->_registry->register("tagalys_context", true);
+    private function setTagalysContextIfRequired() {
+        if (is_null($this->_registry->registry("tagalys_context"))) {
+            $this->_registry->register("tagalys_context", true);
+        }
+    }
+
+    public function updatePositionsIfRequired($maxProductsPerCronRun = null) {
+        $this->setTagalysContextIfRequired();
         $listingPagesEnabled = ($this->tagalysConfiguration->getConfig("module:listingpages:enabled") != '0');
-        if ($listingPagesEnabled || $force) {
+        if ($listingPagesEnabled) {
             $pid = $this->random->getRandomString(24);
             $this->tagalysApi->log('local', '1. Started updatePositionsIfRequired', array('pid' => $pid));
             $categoriesSyncStatus = $this->tagalysConfiguration->getConfig("categories_sync_status", true);
@@ -332,7 +338,9 @@ class Category extends \Magento\Framework\App\Helper\AbstractHelper
                     'locked_by' => $pid
                 );
                 $this->tagalysConfiguration->setConfig('categories_sync_status', $syncStatus, true);
-                $maxProductsPerCronRun = $this->tagalysConfiguration->getConfig('listing_pages:max_categories_per_cron');
+                if (is_null($maxProductsPerCronRun)) {
+                    $maxProductsPerCronRun = $this->tagalysConfiguration->getConfig('listing_pages:max_categories_per_cron');
+                }
                 $collection = $this->getRequiresPositionsSyncCollection()->setPageSize($maxProductsPerCronRun);
                 $collectionIds = Utils::getAllIds($collection);
                 $perPage = $this->tagalysConfiguration->getConfig('listing_pages:categories_per_page');
