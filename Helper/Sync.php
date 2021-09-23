@@ -198,11 +198,12 @@ class Sync extends \Magento\Framework\App\Helper\AbstractHelper
             $productUpdateDetectionMethods = $this->tagalysConfiguration->getConfig('product_update_detection_methods', true);
             if (in_array('db.catalog_product_entity.updated_at', $productUpdateDetectionMethods)) {
                 // ! FIXME: creates entries with store_id as null, use insert unique internally to avoid that
-                // NOT used for RAG, for later
+                // migrateUpdatesQueueIfRequired will convert those into proper entries
                 $this->queueHelper->importProductsToSync();
             }
 
             // migration step, set store_id value from entries in updates queue
+            //* do not remove before fixing importProductsToSync
             $this->queueHelper->migrateUpdatesQueueIfRequired();
 
             // 5. check queue size and (clear_queue, trigger_feed) if required
@@ -484,7 +485,7 @@ class Sync extends \Magento\Framework\App\Helper\AbstractHelper
                     } catch(LockException $e) {
                         throw $e;
                     } catch (\Exception $e) {
-                        $this->tagalysApi->log('error', 'Exception in generateFilePart', array('storeId' => $storeId, 'syncFileStatus' => $syncFileStatus, 'message' => $e->getMessage()));
+                        $this->tagalysApi->logExceptionToTagalys($e, 'Exception in generateFilePart', ['storeId' => $storeId, 'syncFileStatus' => $syncFileStatus]);
                         try {
                             $this->tagalysProduct->reindexRequiredProducts();
                         } catch (\Exception $e) {
