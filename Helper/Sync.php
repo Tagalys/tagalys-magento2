@@ -169,6 +169,8 @@ class Sync extends \Magento\Framework\App\Helper\AbstractHelper
     public function sync($maxProducts = null) {
         if($maxProducts == null) {
             $this->maxProducts = (int) $this->tagalysConfiguration->getConfig("sync:max_products_per_cron");
+        } else {
+            $this->maxProducts = $maxProducts;
         }
         $this->perPage = (int) $this->tagalysConfiguration->getConfig("sync:feed_per_page");
         $this->perPage = min($this->maxProducts, $this->perPage);
