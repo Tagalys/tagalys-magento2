@@ -82,7 +82,7 @@ class Configuration extends \Magento\Framework\App\Helper\AbstractHelper
         'sync:avoid_parallel_sync_crons' => 'false',
         'sync:always_perform_parent_category_assignment' => 'false',
         "fallback:sync:add_price_data_to_product_collection" => 'false',
-        'configurable_attributes_to_sync_all_tags' => '[]',
+        'sync:configurable_attributes_to_sync_all_tags' => '[]',
     ];
 
     /**
@@ -706,8 +706,10 @@ class Configuration extends \Magento\Framework\App\Helper\AbstractHelper
         );
         $attributes = $this->attributeCollectionFactory->create()->addVisibleFilter();
         $whitelistedAttributes = $this->getConfig('sync:whitelisted_product_attributes', true);
+        $configurableAttributesToGetAllTags = $this->getConfig('sync:configurable_attributes_to_sync_all_tags', true, true);
         foreach($attributes as $attribute) {
             if ($this->shouldSyncAttribute($attribute, $whitelistedAttributes)) {
+                $attributeCode = $attribute->getAttributeCode();
                 $isForDisplay = ((bool)$attribute->getUsedInProductListing() && (bool)$attribute->getIsUserDefined());
                 if ($this->isAttributeCustomField($attribute)) {
                     $isPriceField = ($attribute->getFrontendInput() == "price" );
@@ -717,7 +719,7 @@ class Configuration extends \Magento\Framework\App\Helper\AbstractHelper
                         $type = 'string';
                     }
                     $custom_fields[] = array(
-                        'name' => $attribute->getAttributeCode(),
+                        'name' => $attributeCode,
                         'label' => $attribute->getStoreLabel($storeId),
                         'type' => $type,
                         'currency' => $isPriceField,
@@ -728,11 +730,21 @@ class Configuration extends \Magento\Framework\App\Helper\AbstractHelper
                 }
                 if ($this->isAttributeTagSet($attribute)) {
                     $tag_sets[] = array(
-                        'id' => $attribute->getAttributeCode(),
+                        'id' => $attributeCode,
                         'label' => $attribute->getStoreLabel($storeId),
                         'filters' => (bool)$attribute->getIsFilterable(),
                         'search' => (bool)$attribute->getIsSearchable(),
                         'display' => $isForDisplay
+                    );
+                }
+                if(isset($configurableAttributesToGetAllTags[$attributeCode])) {
+                    $tagSetDetails = $configurableAttributesToGetAllTags[$attributeCode];
+                    $tag_sets[] = array(
+                        'id' => $tagSetDetails['key'],
+                        'label' => $tagSetDetails['label'],
+                        'filters' => false,
+                        'search' => false,
+                        'display' => $tagSetDetails['is_for_display']
                     );
                 }
             }

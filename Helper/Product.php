@@ -409,9 +409,18 @@ class Product extends \Magento\Framework\App\Helper\AbstractHelper
         $productForPrice = $product;
         $minSalePrice = PHP_INT_MAX;
 
+        $alreadyRecordedTagIds = [];
         $configurableAttributes = array_map(function ($el) {
+            $alreadyRecordedTagIds[$el['attribute_code']] = [];
             return $el['attribute_code'];
         }, $product->getTypeInstance(true)->getConfigurableAttributesAsArray($product));
+
+        $configurableAttributesToGetAllTags = $this->tagalysConfiguration->getConfig('sync:configurable_attributes_to_sync_all_tags', true, true);
+        $customAttributeLabels = [];
+        foreach($configurableAttributesToGetAllTags as $attribute => $details) {
+            $customAttributeLabels[$details['key']] = $details['label'];
+        }
+
         $associatedProducts = $this->linkManagement->getChildren($product->getSku());
         $ids = array();
         foreach($associatedProducts as $p){
@@ -434,7 +443,6 @@ class Product extends \Magento\Framework\App\Helper\AbstractHelper
         }
 
         $tagItems = array();
-        $hash = array();
         foreach($associatedProducts as $associatedProduct){
             $totalAssociatedProducts += 1;
             $inventoryDetails = $this->getSimpleProductInventoryDetails($associatedProduct);
@@ -449,23 +457,18 @@ class Product extends \Magento\Framework\App\Helper\AbstractHelper
                 }
                 $totalInventory += $inventoryDetails['qty'];
                 foreach($configurableAttributes as $configurableAttribute) {
-                    $id = $associatedProduct->getData($configurableAttribute);
-                    if($id !== NULL && !isset($hash[$id])) {
-                        $hash[$id] = true;
-                        $thisItem = array('id' => $id, 'label' => $associatedProduct->setStoreId($storeId)->getAttributeText($configurableAttribute));
-                        $attr = $this->productAttributeRepository->get($configurableAttribute);
-                        try {
-                            if ($this->swatchesHelper->isVisualSwatch($attr)) {
-                                $swatchConfig = $this->swatchesHelper->getSwatchesByOptionsId([$id]);
-                                if (count($swatchConfig) > 0) {
-                                    $thisItem['swatch'] = $swatchConfig[$id]['value'];
-                                    if (strpos($thisItem['swatch'], '#') === false) {
-                                        $thisItem['swatch'] = $this->swatchesMediaHelper->getSwatchAttributeImage('swatch_image', $thisItem['swatch']);
-                                    }
-                                }
-                            }
-                        } catch (\Exception $e) { }
-                        $tagItems[$configurableAttribute][] = $thisItem;
+                    $tagItem = $this->getTagItem($storeId, $associatedProduct, $configurableAttribute, $alreadyRecordedTagIds[$configurableAttribute]);
+                    if (!empty($tagItem)) {
+                        $tagItems[$configurableAttribute][] = $tagItem;
+                    }
+                }
+            }
+            foreach ($configurableAttributes as $configurableAttribute) {
+                if (isset($configurableAttributesToGetAllTags[$configurableAttribute])) {
+                    $newAttributeDetails = $configurableAttributesToGetAllTags[$configurableAttribute];
+                    $tagItem = $this->getTagItem($storeId, $associatedProduct, $configurableAttribute, $alreadyRecordedTagIds[$newAttributeDetails['key']]);
+                    if(!empty($tagItem)) {
+                        $tagItems[$newAttributeDetails['key']][] = $tagItem;
                     }
                 }
             }
@@ -486,9 +489,45 @@ class Product extends \Magento\Framework\App\Helper\AbstractHelper
 
         // Reformat tag sets
         foreach($tagItems as $configurableAttribute => $items){
-            array_push($productDetails['__tags'], array("tag_set" => array("id" => $configurableAttribute, "label" => $product->getResource()->getAttribute($configurableAttribute)->getStoreLabel($storeId)), "items" => $items));
+            if(isset($customAttributeLabels[$configurableAttribute])) {
+                $tagSetLabel = $customAttributeLabels[$configurableAttribute];
+            } else {
+                $tagSetLabel = $product->getResource()->getAttribute($configurableAttribute)->getStoreLabel($storeId);
+            }
+            $tagSetData = [
+                "tag_set" => [
+                    "id" => $configurableAttribute,
+                    "label" => $tagSetLabel
+                ],
+                "items" => $items
+            ];
+            array_push($productDetails['__tags'], $tagSetData);
         }
         return array('details' => $productDetails, 'product_for_price'=>$productForPrice);
+    }
+
+    public function getTagItem($storeId, $product, $attribute, &$alreadyRecordedTagIds) {
+        $tagId = $product->getData($attribute);
+        if ($tagId != NULL && empty($alreadyRecordedTagIds[$tagId])) {
+            $tagIdsHash[$tagId] = true;
+            $thisItem = array('id' => $tagId, 'label' => $product->setStoreId($storeId)->getAttributeText($attribute));
+            $attr = $this->productAttributeRepository->get($attribute);
+            try {
+                if ($this->swatchesHelper->isVisualSwatch($attr)) {
+                    $swatchConfig = $this->swatchesHelper->getSwatchesByOptionsId([$tagId]);
+                    if (count($swatchConfig) > 0) {
+                        $thisItem['swatch'] = $swatchConfig[$tagId]['value'];
+                        if (strpos($thisItem['swatch'], '#') === false) {
+                            $thisItem['swatch'] = $this->swatchesMediaHelper->getSwatchAttributeImage('swatch_image', $thisItem['swatch']);
+                        }
+                    }
+                }
+            } catch (\Exception $e) {
+            }
+            $alreadyRecordedTagIds[$tagId] = true;
+            return $thisItem;
+        }
+        return false;
     }
 
     public function addPriceDetails($product, $productDetails) {
@@ -586,6 +625,11 @@ class Product extends \Magento\Framework\App\Helper\AbstractHelper
         $this->eventManager->dispatch('tagalys_read_product_details', ['tgls_data' => $productDetailsObj]);
         $productDetails = $productDetailsObj->getProductDetails();
         return $productDetails;
+    }
+
+    public function gpd($productId, $storeId, $forceRegenerateThumbnail = false) {
+        $product = $this->productFactory->create()->setStoreId($storeId)->load($productId);
+        return $this->productDetails($product, $storeId, $forceRegenerateThumbnail);
     }
 
     public function productDetails($product, $storeId, $forceRegenerateThumbnail = false) {
