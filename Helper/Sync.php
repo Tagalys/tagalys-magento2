@@ -142,10 +142,10 @@ class Sync extends \Magento\Framework\App\Helper\AbstractHelper
         if ($type == 'updates') {
             $collection = $collection->addAttributeToFilter('entity_id', array('in' => $productIdsFromUpdatesQueueForCronInstance));
         }
-        if($this->tagalysConfiguration->getConfig("sync:add_price_data_to_product_collection", true, true)) {
+        if($this->tagalysConfiguration->getConfig("fallback:sync:add_price_data_to_product_collection", true, true)) {
             // calling addPriceData here was leading to "out of stock" products not being synced to Tagalys
             // reset website context - changed when using addFinalPrice() in addAssociatedProductDetails() and affects subsequent website store collection queries
-            // the code causing the above mentioned problem will also run only if "sync:add_price_data_to_product_collection" is set to true
+            // the code causing the above mentioned problem will also run only if "fallback:sync:add_price_data_to_product_collection" is set to true
             $collection->addPriceData(null, $websiteId);
         }
         return $collection;

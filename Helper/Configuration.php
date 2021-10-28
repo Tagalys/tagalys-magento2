@@ -81,7 +81,8 @@ class Configuration extends \Magento\Framework\App\Helper\AbstractHelper
         // v2.4.0
         'sync:avoid_parallel_sync_crons' => 'false',
         'sync:always_perform_parent_category_assignment' => 'false',
-        "sync:add_price_data_to_product_collection" => 'false'
+        "fallback:sync:add_price_data_to_product_collection" => 'false',
+        'configurable_attributes_to_sync_all_tags' => '[]',
     ];
 
     /**
