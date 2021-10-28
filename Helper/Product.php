@@ -419,12 +419,19 @@ class Product extends \Magento\Framework\App\Helper\AbstractHelper
         }
         // potential optimization: why are we querying the products again through a collection if linkManagement already returns product objects.
         $associatedProducts = $this->productFactory->create()->getCollection()
+            // setting flag to include out of stock products: https://magento.stackexchange.com/questions/241709/how-to-get-product-collection-with-both-in-stock-and-out-of-stock-products-in-ma
+            ->setFlag('has_stock_status_filter', false)
             ->setStoreId($storeId)
             ->addStoreFilter($storeId)
             ->addAttributeToFilter('status', 1)
             ->addAttributeToFilter('entity_id', array('in' => $ids))
-            ->addFinalPrice()
             ->addAttributeToSelect('*');
+
+        if($this->tagalysConfiguration->getConfig("sync:add_price_data_to_product_collection", true, true)) {
+            // we are able to retrieve the correct product prices even without calling this function
+            // adding this configuration just in case if we face any side effects by removing this
+            $associatedProducts->addFinalPrice();
+        }
 
         $tagItems = array();
         $hash = array();
