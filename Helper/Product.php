@@ -744,6 +744,7 @@ class Product extends \Magento\Framework\App\Helper\AbstractHelper
         return $inStock;
     }
 
+    // TODO: Check if this works with MSI
     public function getSelectiveProductDetails($storeId, $product) {
         return $this->tagalysConfiguration->processInStoreContext($storeId, function () use ($storeId, $product) {
 
