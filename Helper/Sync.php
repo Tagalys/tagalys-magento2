@@ -514,6 +514,9 @@ class Sync extends \Magento\Framework\App\Helper\AbstractHelper
                 $timeEnd = time();
                 $timeElapsed = $timeEnd - $timeStart;
                 if ($fileGenerationCompleted) {
+                    if($this->tagalysConfiguration->getConfig('debug:product_details', true, true)) {
+                        copy($this->getSyncFilePath($syncFileStatus['filename']), $this->getSyncFilePath('debug_' . $syncFileStatus['filename']));
+                    }
                     $syncFileStatus['status'] = 'generated_file';
                     $syncFileStatus['completed_count'] += count($deletedIds);
                     $this->tagalysApi->log('info', 'Completed writing ' . $syncFileStatus['completed_count'] . ' products to '. $type .' file. Last batch of ' . $cronCurrentlyCompleted . ' took ' . $timeElapsed . ' seconds.', array('storeId' => $storeId, 'syncFileStatus' => $syncFileStatus));
@@ -533,6 +536,10 @@ class Sync extends \Magento\Framework\App\Helper\AbstractHelper
             $this->tagalysApi->log('error', 'Unexpected error in generateFilePart. syncFileStatus is NULL', array('storeId' => $storeId));
         }
         return compact('syncFileStatus', 'updatesPerformed');
+    }
+
+    public function getSyncFilePath($filename) {
+        return $this->filesystem->getDirectoryRead('media')->getAbsolutePath('tagalys') . '/' . $filename;
     }
 
     public function setSyncStatusConfig($path, $value, $pid = null) {
