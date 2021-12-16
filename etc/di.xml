@@ -26,4 +26,8 @@
     <type name="Magento\Catalog\Model\Category">
         <plugin name="MoveCategoryTree" type="Tagalys\Sync\Plugin\CategoryPlugin" sortOrder="2" />
     </type>
+
+    <type name="Magento\Sales\Api\OrderManagementInterface">
+        <plugin name="after_order_cancel" type="Tagalys\Sync\Plugin\OrderCancel"/>
+    </type>
 </config>
