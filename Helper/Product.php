@@ -138,6 +138,11 @@ class Product extends \Magento\Framework\App\Helper\AbstractHelper
                             }
                             return $this->getPlaceholderImageUrl($imageAttributeCode, $allowPlaceholder);
                         }
+                    } else {
+                        if ($debug) {
+                            $this->logger->warn("Image dimensions are not > 1 (width: $width, height: $height) for product $productId. Returning placeholder image.");
+                        }
+                        return $this->getPlaceholderImageUrl($imageAttributeCode, $allowPlaceholder);
                     }
                 } else {
                     if($debug) {
@@ -153,7 +158,10 @@ class Product extends \Magento\Framework\App\Helper\AbstractHelper
             }
         } catch(\Exception $e) {
             if($debug) {
-                $this->logger->warn("Exception in getProductImageUrl for product $productId. Returning placeholder image. Exception message: ". $e->getMessage() . ".");
+                $this->logger->err(json_encode([
+                    'message' => "Exception in getProductImageUrl for product $productId. Returning placeholder image.",
+                    'exception' => Utils::getExceptionDetails($e)
+                ]));
             }
             return $this->getPlaceholderImageUrl($imageAttributeCode, $allowPlaceholder);
         }
