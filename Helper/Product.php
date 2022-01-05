@@ -82,6 +82,8 @@ class Product extends \Magento\Framework\App\Helper\AbstractHelper
         $this->configurableProduct = $configurableProduct;
         $this->resourceConnection = $resourceConnection;
         $this->auditLog = $auditLog;
+
+        $this->logger = Utils::getLogger("tagalys_product_helper.log");
     }
 
     public function getPlaceholderImageUrl($imageAttributeCode, $allowPlaceholder) {
@@ -97,6 +99,8 @@ class Product extends \Magento\Framework\App\Helper\AbstractHelper
     }
 
     public function getProductImageUrl($storeId, $imageAttributeCode, $allowPlaceholder, $product, $forceRegenerateThumbnail) {
+        $debug = ($this->tagalysConfiguration->getConfig("debug:product_image_sync", true, true) == true);
+        $productId = $product->getEntityId();
         try {
             $productImagePath = $product->getData($imageAttributeCode);
             if ($productImagePath != null) {
@@ -129,16 +133,28 @@ class Product extends \Magento\Framework\App\Helper\AbstractHelper
                         if (file_exists($resizedProductImagePath)) {
                             return str_replace('http:', '', $this->storeManager->getStore()->getBaseUrl('media') . 'tagalys/product_images' . $productImagePath);
                         } else {
+                            if($debug) {
+                                $this->logger->warn("Resized image file ($resizedProductImagePath) not found for product $productId. Returning placeholder image.");
+                            }
                             return $this->getPlaceholderImageUrl($imageAttributeCode, $allowPlaceholder);
                         }
                     }
                 } else {
+                    if($debug) {
+                        $this->logger->warn("Base image file ($baseProductImagePath) not found for product $productId. Returning placeholder image.");
+                    }
                     return $this->getPlaceholderImageUrl($imageAttributeCode, $allowPlaceholder);
                 }
             } else {
+                if($debug) {
+                    $this->logger->warn("Product image path is blank ($productImagePath) for product $productId. Returning placeholder image.");
+                }
                 return $this->getPlaceholderImageUrl($imageAttributeCode, $allowPlaceholder);
             }
         } catch(\Exception $e) {
+            if($debug) {
+                $this->logger->warn("Exception in getProductImageUrl for product $productId. Returning placeholder image. Exception message: ". $e->getMessage() . ".");
+            }
             return $this->getPlaceholderImageUrl($imageAttributeCode, $allowPlaceholder);
         }
     }
