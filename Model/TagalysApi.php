@@ -265,6 +265,7 @@ class TagalysApi implements TagalysManagementInterface
                     $this->logger->info("assign_products_to_category_and_remove: params: " . json_encode($params));
                     $listingPagesEnabled = $this->tagalysConfiguration->isListingPagesEnabled();
                     $updatePositionAsync = $this->tagalysConfiguration->getConfig('listing_pages:update_position_async', true);
+                    $updatePositionAsync = Utils::fetchKey($params, "update_products_async", $updatePositionAsync);
                     $this->tagalysCategoryHelper->markAsPositionSyncRequired($params['store_id'], $params['category_id'], true);
                     if ($listingPagesEnabled && !$updatePositionAsync) {
                         if ($params['product_positions'] == -1) {
@@ -286,6 +287,7 @@ class TagalysApi implements TagalysManagementInterface
                     $this->logger->info("update_product_positions: params: " . json_encode($params));
                     $listingPagesEnabled = $this->tagalysConfiguration->isListingPagesEnabled();
                     $updatePositionAsync = $this->tagalysConfiguration->getConfig('listing_pages:update_position_async', true);
+                    $updatePositionAsync = Utils::fetchKey($params, "update_products_async", $updatePositionAsync);
                     $this->tagalysCategoryHelper->markAsPositionSyncRequired($params['store_id'], $params['category_id'], false);
                     if($listingPagesEnabled && !$updatePositionAsync){
                         if ($params['product_positions'] == -1) {
