@@ -477,7 +477,15 @@ class TagalysApi implements TagalysManagementInterface
                     break;
                 default:
                     $method = Utils::camelize($params['info_type']);
-                    $whitelistedMethodNames = ["syncProducts", "syncCategories", "syncPositions", "deleteAuditLogs", "getAuditLogs", 'getStoreConfiguration'];
+                    $whitelistedMethodNames = [
+                        "syncProducts",
+                        "syncCategories",
+                        "syncPositions",
+                        "deleteAuditLogs",
+                        "getAuditLogs",
+                        'getStoreConfiguration',
+                        'getStoreCategoryDetails',
+                    ];
                     if(in_array($method, $whitelistedMethodNames)) {
                         $response = $this->{$method}($params);
                     }
@@ -596,4 +604,9 @@ class TagalysApi implements TagalysManagementInterface
     public function getStoreConfiguration($params) {
         return $this->tagalysConfiguration->getStoreConfiguration($params['store_id']);
     }
+
+    public function getStoreCategoryDetails($params) {
+        return $this->tagalysCategoryHelper->getStoreCategoryDetails($params['store_id'], $params['category_id']);
+    }
+
 }
