@@ -33,7 +33,7 @@ class Configuration extends \Magento\Framework\App\Helper\AbstractHelper
         'legacy_mpage_categories' => '[]',
         'category_pages_store_mapping' => '{}',
         'integration_permissions' => '["Tagalys_Sync::tagalys"]',
-        'product_update_detection_methods' => '["events"]',
+        'product_update_detection_methods' => '["events", "db.catalog_product_entity.updated_at"]',
         'use_optimized_product_updated_at' => 'true',
         /* Key:
             mcc -> magento created category
@@ -72,7 +72,7 @@ class Configuration extends \Magento\Framework\App\Helper\AbstractHelper
         'sync:allow_parent_category_assignment_during_sync' => 'true',
         'sync:use_min_total_prices_for_bundles' => 'true',
         'fallback:use_old_method_to_get_bundle_prices' => 'false',
-        'sync:max_categories_per_cron' => '50',
+        'sync:max_categories_per_cron' => '20',
         'listing_pages:max_categories_per_cron' => '50',
         'listing_pages:categories_per_page' => '50',
         'magento_cron_enabled' => 'true',

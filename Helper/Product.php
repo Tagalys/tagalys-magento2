@@ -179,20 +179,17 @@ class Product extends \Magento\Framework\App\Helper\AbstractHelper
         $storeId = $this->storeManager->getStore()->getId();
         $whitelistedAttributes = $this->tagalysConfiguration->getConfig('sync:whitelisted_product_attributes', true);
         foreach ($attributes as $attribute) {
+            $attributeCode = $attribute->getAttributeCode();
             if($this->tagalysConfiguration->isAttributeField($attribute)) {
                 $shouldSyncAttribute = $this->tagalysConfiguration->shouldSyncAttribute($attribute, $whitelistedAttributes, $attributesToIgnore);
                 if($shouldSyncAttribute) {
                     $isBoolean = $attribute->getFrontendInput() == 'boolean';
                     if($isBoolean) {
-                        $productFields[$attribute->getAttributeCode()] = $this->getBooleanAttributeValue($storeId, $product, $attribute);
+                        $productFields[$attributeCode] = $this->getBooleanAttributeValue($storeId, $product, $attribute);
                     } else {
                         $attributeValue = $attribute->getFrontend()->getValue($product);
                         if (!is_null($attributeValue)) {
-                            if ($isBoolean) {
-                                $productFields[$attribute->getAttributeCode()] = ($attributeValue == 'Yes');
-                            } else {
-                                $productFields[$attribute->getAttributeCode()] = $attributeValue;
-                            }
+                            $productFields[$attributeCode] = $attributeValue;
                         }
                     }
                 }
@@ -276,6 +273,22 @@ class Product extends \Magento\Framework\App\Helper\AbstractHelper
             }
         }
         return $productTags;
+    }
+
+    public function getTagSetDetails($storeId, $product, $attributeCode, &$cache) {
+        if (isset($cache[$attributeCode])) {
+            return $cache[$attributeCode];
+        }
+        $productAttribute = $product->getResource()->getAttribute($attributeCode);
+        $fieldType = $productAttribute->getFrontendInput();
+        $label = $productAttribute->getStoreLabel($storeId);
+        $tagSet = [
+            'id' => $attributeCode,
+            'label' => $label,
+            'type' => $fieldType
+        ];
+        $cache[$attributeCode] = $tagSet;
+        return $tagSet;
     }
 
     public function mergeIntoCategoriesTree($categoriesTree, $pathIds) {
@@ -433,6 +446,10 @@ class Product extends \Magento\Framework\App\Helper\AbstractHelper
         $productForPrice = $product;
         $minSalePrice = PHP_INT_MAX;
 
+        $nonConfigurableAttributesToInclude = $this->tagalysConfiguration->getConfig("sync:non_configurable_associated_product_attributes_to_include", true, true);
+        $nonConfigurableFields = [];
+        $nonConfigurableTagSets = [];
+
         $alreadyRecordedTagIds = [];
         $configurableAttributes = array_map(function ($el) {
             $alreadyRecordedTagIds[$el['attribute_code']] = [];
@@ -481,16 +498,26 @@ class Product extends \Magento\Framework\App\Helper\AbstractHelper
                 }
                 $totalInventory += $inventoryDetails['qty'];
                 foreach($configurableAttributes as $configurableAttribute) {
-                    $tagItem = $this->getTagItem($storeId, $associatedProduct, $configurableAttribute, $alreadyRecordedTagIds[$configurableAttribute]);
+                    $tagItem = $this->getSingleSelectTagItem($storeId, $associatedProduct, $configurableAttribute, $alreadyRecordedTagIds[$configurableAttribute]);
                     if (!empty($tagItem)) {
                         $tagItems[$configurableAttribute][] = $tagItem;
+                    }
+                }
+                if (!empty($nonConfigurableAttributesToInclude)) {
+                    $nonConfigurableAttributes = $this->getProductAttributeValuesFor($storeId, $associatedProduct, $nonConfigurableAttributesToInclude, $alreadyRecordedTagIds);
+                    $nonConfigurableFields = array_merge_recursive($nonConfigurableFields, $nonConfigurableAttributes['fields']); // test this with value for 3 products
+                    foreach($nonConfigurableAttributes['tag_sets'] as $tag_set_code => $tags) {
+                        if(!isset($nonConfigurableTagSets[$tag_set_code])) {
+                            $nonConfigurableTagSets[$tag_set_code] = [];
+                        }
+                        $nonConfigurableTagSets[$tag_set_code] = array_merge($nonConfigurableTagSets[$tag_set_code], $tags);
                     }
                 }
             }
             foreach ($configurableAttributes as $configurableAttribute) {
                 if (isset($configurableAttributesToGetAllTags[$configurableAttribute])) {
                     $newAttributeDetails = $configurableAttributesToGetAllTags[$configurableAttribute];
-                    $tagItem = $this->getTagItem($storeId, $associatedProduct, $configurableAttribute, $alreadyRecordedTagIds[$newAttributeDetails['key']]);
+                    $tagItem = $this->getSingleSelectTagItem($storeId, $associatedProduct, $configurableAttribute, $alreadyRecordedTagIds[$newAttributeDetails['key']]);
                     if(!empty($tagItem)) {
                         $tagItems[$newAttributeDetails['key']][] = $tagItem;
                     }
@@ -527,31 +554,128 @@ class Product extends \Magento\Framework\App\Helper\AbstractHelper
             ];
             array_push($productDetails['__tags'], $tagSetData);
         }
+        if (!empty($nonConfigurableAttributesToInclude)) {
+            foreach($nonConfigurableFields as $key => $value) {
+                if (!is_array($value)) {
+                    $value = [$value];
+                }
+                $productDetails[$key] = json_encode($value);
+            }
+            $tagSetDetailsCache = [];
+            foreach($nonConfigurableTagSets as $tagSetCode => $items) {
+                $items = Utils::filterDuplicateHashes($items, 'id');
+                $tagSet = $this->getTagSetDetails($storeId, $product, $tagSetCode, $tagSetDetailsCache);
+                $tagSetData = [
+                    "tag_set" => $tagSet,
+                    "items" => $items
+                ];
+                array_push($productDetails['__tags'], $tagSetData);
+            }
+        }
         return array('details' => $productDetails, 'product_for_price'=>$productForPrice);
     }
 
-    public function getTagItem($storeId, $product, $attribute, &$alreadyRecordedTagIds) {
-        $tagId = $product->getData($attribute);
+    public function getSingleSelectTagItem($storeId, $product, $attributeCode, &$alreadyRecordedTagIds = []) {
+        $tagId = $product->getData($attributeCode);
         if ($tagId != NULL && empty($alreadyRecordedTagIds[$tagId])) {
-            $tagIdsHash[$tagId] = true;
-            $thisItem = array('id' => $tagId, 'label' => $product->setStoreId($storeId)->getAttributeText($attribute));
-            $attr = $this->productAttributeRepository->get($attribute);
-            try {
-                if ($this->swatchesHelper->isVisualSwatch($attr)) {
-                    $swatchConfig = $this->swatchesHelper->getSwatchesByOptionsId([$tagId]);
-                    if (count($swatchConfig) > 0) {
-                        $thisItem['swatch'] = $swatchConfig[$tagId]['value'];
-                        if (strpos($thisItem['swatch'], '#') === false) {
-                            $thisItem['swatch'] = $this->swatchesMediaHelper->getSwatchAttributeImage('swatch_image', $thisItem['swatch']);
+            $thisItem = array('id' => $tagId, 'label' => $product->setStoreId($storeId)->getAttributeText($attributeCode));
+            if ($this->isValidTagItem($thisItem)) {
+                $attr = $this->productAttributeRepository->get($attributeCode);
+                try {
+                    if ($this->swatchesHelper->isVisualSwatch($attr)) {
+                        $swatchConfig = $this->swatchesHelper->getSwatchesByOptionsId([$tagId]);
+                        if (count($swatchConfig) > 0) {
+                            $thisItem['swatch'] = $swatchConfig[$tagId]['value'];
+                            if (strpos($thisItem['swatch'], '#') === false) {
+                                $thisItem['swatch'] = $this->swatchesMediaHelper->getSwatchAttributeImage('swatch_image', $thisItem['swatch']);
+                            }
                         }
                     }
+                } catch (\Exception $e) {
                 }
-            } catch (\Exception $e) {
+                $alreadyRecordedTagIds[$tagId] = true;
+                return $thisItem;
             }
-            $alreadyRecordedTagIds[$tagId] = true;
-            return $thisItem;
         }
         return false;
+    }
+
+    public function getProductAttributeValuesFor($storeId, $product, $whitelistedAttributeCodes) {
+        $attributeValues = [
+            'fields' => [],
+            'tag_sets' => [],
+        ];
+        $attributes = $product->getTypeInstance()->getEditableAttributes($product);
+        foreach ($attributes as $attribute) {
+            $attributeCode = $attribute->getAttributeCode();
+            if (!in_array($attributeCode, $whitelistedAttributeCodes)) {
+                continue;
+            }
+
+            if($this->tagalysConfiguration->isAttributeField($attribute)) {
+                $attributeValue = $this->getFieldAttributeValue($storeId, $product, $attribute);
+                if (!is_null($attributeValue)) {
+                    $attributeValues['fields'][$attributeCode] = $attributeValue;
+                }
+            }
+            if($this->tagalysConfiguration->isAttributeTagSet($attribute)) {
+                $tags = $this->getTagSetAttributeValues($storeId, $product, $attribute);
+                if (!empty($tags)) {
+                    $attributeValues['tag_sets'][$attributeCode] = $tags;
+                }
+            }
+        }
+        return $attributeValues;
+    }
+
+    public function getFieldAttributeValue($storeId, $product, $attribute) {
+        $isBoolean = $attribute->getFrontendInput() == 'boolean';
+        if($isBoolean) {
+            return $this->getBooleanAttributeValue($storeId, $product, $attribute);
+        } else {
+            $value = $attribute->getFrontend()->getValue($product);
+            if ($value != false) {
+                return $value;
+            }
+        }
+        return null;
+    }
+
+    public function getTagSetAttributeValues($storeId, $product, $attribute) {
+        $attributeCode = $attribute->getAttributeCode();
+        $productAttribute = $product->getResource()->getAttribute($attributeCode);
+        // select, multi-select
+        $fieldType = $productAttribute->getFrontendInput();
+        $items = array();
+        if ($fieldType == 'multiselect') {
+            $items[] = $this->getMultiSelectTagItems($storeId, $product, $attributeCode);
+        } else {
+            $tagItem = $this->getSingleSelectTagItem($storeId, $product, $attributeCode);
+            if($tagItem) {
+                $items[] = $tagItem;
+            }
+        }
+        return $items;
+    }
+
+    public function getMultiSelectTagItems($storeId, $product, $attributeCode) {
+        $items = [];
+        $value = $product->getData($attributeCode);
+        $tagIds = explode(',', $value);
+        foreach ($tagIds as $tagId) {
+            $tagItem = [
+                'id' => $tagId,
+                'label' => $product->setStoreId($storeId)->getAttributeText($attributeCode)
+            ];
+            if($this->isValidTagItem($tagItem)) {
+                $items[] = $tagItem;
+            }
+        }
+        return $items;
+    }
+
+    public function isValidTagItem($tagItem) {
+        return ($tagItem && $tagItem['id'] != null && $tagItem['label'] != false);
     }
 
     public function addPriceDetails($product, $productDetails) {
@@ -675,6 +799,8 @@ class Product extends \Magento\Framework\App\Helper\AbstractHelper
                 '__tags' => $this->getDirectProductTags($product, $storeId)
             );
 
+            $productDetails = array_merge($productDetails, $this->getProductFields($product));
+
             if ($productDetails['__magento_type'] == 'simple') {
                 $inventoryDetails = $this->getSimpleProductInventoryDetails($product, $stockItem);
                 $productDetails['in_stock'] = $inventoryDetails['in_stock'];
@@ -700,8 +826,6 @@ class Product extends \Magento\Framework\App\Helper\AbstractHelper
             if ($imageHoverAttr != '') {
                 $productDetails['image_hover_url'] = $this->getProductImageUrl($storeId, $imageHoverAttr, false, $product, $forceRegenerateThumbnail);
             }
-
-            $productDetails = array_merge($productDetails, $this->getProductFields($product));
 
             // synced_at
             $productDetails = $this->addSyncedAtTime($productDetails);

@@ -52,6 +52,12 @@ abstract class Cron
         }
     }
 
+    private function afterEach() {
+        $now = Utils::now();
+        $name = $this->heartbeatName();
+        $this->tagalysConfiguration->setConfig("command:$name:completed_at", $now);
+    }
+
     public function tryExecute($calledThroughMagentoCron = true) {
         try {
             $magentoCronEnabled = $this->tagalysConfiguration->getConfig("magento_cron_enabled", true, true);
@@ -59,6 +65,7 @@ abstract class Cron
             if ($canRun) {
                 $this->beforeEach($calledThroughMagentoCron);
                 $this->perform();
+                $this->afterEach();
                 return true;
             }
             return false;

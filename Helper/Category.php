@@ -811,11 +811,11 @@ class Category extends \Magento\Framework\App\Helper\AbstractHelper
             $parentCategoryId = $this->getTagalysParentCategory($storeId);
              if($parentCategoryId != $categoryId && $this->tagalysConfiguration->isPrimaryStore($storeId)){
                 if($category->getIsActive() == '1'){
-                    $this->logger->info("enabling category: $categoryId for store: $storeId");
                     $this->createOrUpdateWithData($storeId, $categoryId, ['positions_sync_required' => 1, 'status' => 'powered_by_tagalys']);
+                    $this->logger->info("enabling category: $categoryId for store: $storeId");
                 } else {
-                    $this->logger->info("disabling category: $categoryId for store: $storeId");
                     $this->deleteCategoryEntries($storeId, $categoryId);
+                    $this->logger->info("disabling category: $categoryId for store: $storeId");
                 }
             }
         }

@@ -87,8 +87,21 @@ class Utils
         return lcfirst(str_replace($separator, '', ucwords($input, $separator)));
     }
 
+    public static function filterDuplicateHashes($arrayOfHashes, $identifierKey = 'id') {
+        $uniques = [];
+        $addedItems = [];
+        foreach ($arrayOfHashes as $hash) {
+            $identifier = $hash[$identifierKey];
+            if(!isset($addedItems[$identifier])) {
+                $addedItems[$identifier] = true;
+                $uniques[] = $hash;
+            }
+        }
+        return $uniques;
+    }
+
     // dev helpers
-    public static function dj($data) {
-        echo json_encode($data) . "<br>";
+    public static function dj($data, $lineBreaker = "\n") {
+        echo json_encode($data) . "$lineBreaker";
     }
 }
