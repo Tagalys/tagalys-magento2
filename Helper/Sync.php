@@ -1178,7 +1178,7 @@ class Sync extends \Magento\Framework\App\Helper\AbstractHelper
             $this->tagalysConfiguration->updateJsonConfig("store:$storeId:feed_status", [
                 'status' => 'finished'
             ]);
-            $this->tagalysApi->log('warn', "Feed as been abandoned and marked as finished for store: $storeId");
+            $this->tagalysApi->log('warn', "Feed has been abandoned and marked as finished for store: $storeId");
         }
     }
 
