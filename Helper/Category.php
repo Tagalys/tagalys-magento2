@@ -422,33 +422,33 @@ class Category extends \Magento\Framework\App\Helper\AbstractHelper
     }
     public function getStoreCategoryDetails($storeId, $categoryId) {
         try {
-            $originalStoreId = $this->storeManagerInterface->getStore()->getId();
-            $this->storeManagerInterface->setCurrentStore($storeId);
-            $category = null;
-            $category = $this->categoryFactory->create()->load($categoryId);
-            $categoryActive = ($category->getIsActive() == '1');
-            $path = explode('/', $category->getPath());
-            $ancestry = array_slice($path, 2, -1);
-            $output = array(
-                "id" => "__categories-$categoryId",
-                "slug" => $this->getCategoryUrl($category),
-                "path" => $category->getUrlPath(),
-                'ancestry' => $ancestry,
-                "is_active" => $categoryActive,
-                'include_in_menu' => ($category->getIncludeInMenu() == '1'),
-                "name" => implode(' / ', array_slice(explode(' |>| ', $this->tagalysConfiguration->getCategoryName($category)), 1)),
-                "filters" => array(
-                    array(
-                        "field" => "__categories",
-                        "tag_jsons" => [json_encode(['id' => $category->getId(), 'name' => $category->getName(), 'ancestry' => $ancestry])]
-                    ),
-                    array(
-                        "field" => "visibility",
-                        "tag_jsons" => array("{\"id\":\"2\",\"name\":\"Catalog\"}", "{\"id\":\"4\",\"name\":\"Catalog, Search\"}")
+            $output = null;
+            $this->tagalysConfiguration->emulateEnvironment($storeId, function () use($categoryId, &$output) {
+                $category = null;
+                $category = $this->categoryFactory->create()->load($categoryId);
+                $categoryActive = ($category->getIsActive() == '1');
+                $path = explode('/', $category->getPath());
+                $ancestry = array_slice($path, 2, -1);
+                $output = array(
+                    "id" => "__categories-$categoryId",
+                    "slug" => $this->getCategoryUrl($category),
+                    "path" => $category->getUrlPath(),
+                    'ancestry' => $ancestry,
+                    "is_active" => $categoryActive,
+                    'include_in_menu' => ($category->getIncludeInMenu() == '1'),
+                    "name" => implode(' / ', array_slice(explode(' |>| ', $this->tagalysConfiguration->getCategoryName($category)), 1)),
+                    "filters" => array(
+                        array(
+                            "field" => "__categories",
+                            "tag_jsons" => [json_encode(['id' => $category->getId(), 'name' => $category->getName(), 'ancestry' => $ancestry])]
+                        ),
+                        array(
+                            "field" => "visibility",
+                            "tag_jsons" => array("{\"id\":\"2\",\"name\":\"Catalog\"}", "{\"id\":\"4\",\"name\":\"Catalog, Search\"}")
+                        )
                     )
-                )
-            );
-            $this->storeManagerInterface->setCurrentStore($originalStoreId);
+                );
+            });
             return $output;
         } catch (\Exception $e) {
             return false;

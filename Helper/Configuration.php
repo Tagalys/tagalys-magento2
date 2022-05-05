@@ -120,7 +120,8 @@ class Configuration extends \Magento\Framework\App\Helper\AbstractHelper
         \Magento\Integration\Model\AuthorizationService $authorizationService,
         \Magento\Integration\Model\OauthService $oauthService,
         \Magento\Framework\Event\Manager $eventManager,
-        \Magento\Framework\App\ProductMetadataInterface $productMetadataInterface
+        \Magento\Framework\App\ProductMetadataInterface $productMetadataInterface,
+        \Magento\Store\Model\App\Emulation $emulation
     )
     {
         $this->datetime = $datetime;
@@ -145,6 +146,7 @@ class Configuration extends \Magento\Framework\App\Helper\AbstractHelper
         $this->oauthService = $oauthService;
         $this->eventManager = $eventManager;
         $this->productMetadataInterface = $productMetadataInterface;
+        $this->emulation = $emulation;
     }
 
     public function isTagalysEnabledForStore($storeId, $module = false) {
@@ -1135,5 +1137,23 @@ class Configuration extends \Magento\Framework\App\Helper\AbstractHelper
             $domains[$storeId] = $this->getStoreDomain($storeId);
         }
         return $domains;
+    }
+
+    public function emulateEnvironment($storeId, $callback) {
+        $originalStoreId = null;
+        $useMagentoEmulator = !$this->getConfig("fallback:dont_use_magento_emulator", true, true);
+        $useMagentoEmulator = false;
+        if ($useMagentoEmulator) {
+            $this->emulation->startEnvironmentEmulation($storeId, \Magento\Framework\App\Area::AREA_FRONTEND, true);
+        } else {
+            $originalStoreId = $this->storeManager->getStore()->getId();
+            $this->storeManager->setCurrentStore($storeId);
+        }
+        $callback();
+        if ($useMagentoEmulator) {
+            $this->emulation->stopEnvironmentEmulation($storeId);
+        } else {
+            $this->storeManager->setCurrentStore($originalStoreId);
+        }
     }
 }
