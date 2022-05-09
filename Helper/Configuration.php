@@ -1015,26 +1015,32 @@ class Configuration extends \Magento\Framework\App\Helper\AbstractHelper
         return $columnToJoin;
     }
 
-    public function processInStoreContext($storeId, $callback) {
+    public function processInStoreContext($storeId, $callback, $context = null) {
         $originalStoreId = null;
-        $originalCurrency = null;
 
-        $fallbackToSetCurrentStore = $this->getConfig("fallback_to_set_current_store", true);
+        if(isset($context)) {
+            $fallbackToSetCurrentStore = $this->getConfig("fallback_to_set_current_store:$context", true);
+        } else {
+            $fallbackToSetCurrentStore = $this->getConfig("fallback_to_set_current_store", true);
+        }
+
         if ($fallbackToSetCurrentStore) {
             $originalStoreId = $this->storeManager->getStore()->getId();
             $this->storeManager->setCurrentStore($storeId);
-            $store = $this->storeManager->getStore();
-            $originalCurrency = $this->storeManager->getStore()->getCurrentCurrencyCode();
-            $store->setCurrentCurrencyCode($store->getBaseCurrencyCode());
         } else {
             $this->emulation->startEnvironmentEmulation($storeId, \Magento\Framework\App\Area::AREA_FRONTEND, true);
         }
 
+        $store = $this->storeManager->getStore();
+        $originalCurrency = $store->getCurrentCurrencyCode();
+        $store->setCurrentCurrencyCode($store->getBaseCurrencyCode());
+
         $res = $callback();
+
+        $this->storeManager->getStore()->setCurrentCurrencyCode($originalCurrency);
 
         if ($fallbackToSetCurrentStore) {
             $this->storeManager->setCurrentStore($originalStoreId);
-            $this->storeManager->getStore()->setCurrentCurrencyCode($originalCurrency);
         } else {
             $this->emulation->stopEnvironmentEmulation($storeId);
         }

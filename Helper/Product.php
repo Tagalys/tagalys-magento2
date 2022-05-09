@@ -876,7 +876,7 @@ class Product extends \Magento\Framework\App\Helper\AbstractHelper
 
             $productDetails = $this->dispatchProductDetails($productDetails);
             return $productDetails;
-        });
+        }, "product_details");
     }
 
     public function isInStock($product, $scopeId = null) {
