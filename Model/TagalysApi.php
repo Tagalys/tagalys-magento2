@@ -492,7 +492,7 @@ class TagalysApi implements TagalysManagementInterface
                         "getAuditLogs",
                         'getStoreConfiguration',
                         'getStoreCategoryDetails',
-                        'selectTable',
+                        'getCatalogProductEntities',
                     ];
                     if(in_array($method, $whitelistedMethodNames)) {
                         $response = $this->{$method}($params);
@@ -617,8 +617,18 @@ class TagalysApi implements TagalysManagementInterface
         return $this->tagalysCategoryHelper->getStoreCategoryDetails($params['store_id'], $params['category_id']);
     }
 
-    public function selectTable($params) {
-        return $this->tableCrud->select($params['table'], $params['order'], $params['limit'], $params['offset']);
+    public function getCatalogProductEntities($params) {
+        $where = null;
+        $limit = null;
+        if(isset($params['product_ids'])) {
+            $where = [
+                "entity_id IN (?)",
+                $params['product_ids']
+            ];
+        } else {
+            $limit = Utils::fetchKey($params, 'limit', 10);
+        }
+        return $this->tableCrud->select('catalog_product_entity', $where, "updated_at DESC", $limit);
     }
 
 }

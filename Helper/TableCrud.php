@@ -18,9 +18,12 @@ class TableCrud
     }
 
 
-    public function select($tableName, $order = null, $limit = null, $offset = null) {
+    public function select($tableName, $where = null, $order = null, $limit = null, $offset = null) {
         $connection = $this->resourceConnection->getConnection();
         $select = $connection->select()->from($tableName);
+        if ($where) {
+            $select->where($where[0], $where[1]);
+        }
         if ($limit) {
             $select->limit($limit, $offset);
         }
