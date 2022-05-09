@@ -1015,21 +1015,35 @@ class Configuration extends \Magento\Framework\App\Helper\AbstractHelper
         return $columnToJoin;
     }
 
-    public function processInStoreContext($storeId, $callback) {
-        // set store
-        $originalStoreId = $this->storeManager->getStore()->getId();
-        $this->storeManager->setCurrentStore($storeId);
-        $store = $this->storeManager->getStore();
+    public function processInStoreContext($storeId, $callback, $context = null) {
+        $originalStoreId = null;
 
-        // set currency
-        $originalCurrency = $this->storeManager->getStore()->getCurrentCurrencyCode();
+        if(isset($context)) {
+            $fallbackToSetCurrentStore = $this->getConfig("fallback_to_set_current_store:$context", true);
+        } else {
+            $fallbackToSetCurrentStore = $this->getConfig("fallback_to_set_current_store", true);
+        }
+
+        if ($fallbackToSetCurrentStore) {
+            $originalStoreId = $this->storeManager->getStore()->getId();
+            $this->storeManager->setCurrentStore($storeId);
+        } else {
+            $this->emulation->startEnvironmentEmulation($storeId, \Magento\Framework\App\Area::AREA_FRONTEND, true);
+        }
+
+        $store = $this->storeManager->getStore();
+        $originalCurrency = $store->getCurrentCurrencyCode();
         $store->setCurrentCurrencyCode($store->getBaseCurrencyCode());
 
         $res = $callback();
 
-        // reset both
-        $this->storeManager->setCurrentStore($originalStoreId);
         $this->storeManager->getStore()->setCurrentCurrencyCode($originalCurrency);
+
+        if ($fallbackToSetCurrentStore) {
+            $this->storeManager->setCurrentStore($originalStoreId);
+        } else {
+            $this->emulation->stopEnvironmentEmulation($storeId);
+        }
 
         return $res;
     }
@@ -1137,23 +1151,5 @@ class Configuration extends \Magento\Framework\App\Helper\AbstractHelper
             $domains[$storeId] = $this->getStoreDomain($storeId);
         }
         return $domains;
-    }
-
-    public function emulateEnvironment($storeId, $callback) {
-        $originalStoreId = null;
-        $useMagentoEmulator = !$this->getConfig("fallback:dont_use_magento_emulator", true, true);
-        $useMagentoEmulator = false;
-        if ($useMagentoEmulator) {
-            $this->emulation->startEnvironmentEmulation($storeId, \Magento\Framework\App\Area::AREA_FRONTEND, true);
-        } else {
-            $originalStoreId = $this->storeManager->getStore()->getId();
-            $this->storeManager->setCurrentStore($storeId);
-        }
-        $callback();
-        if ($useMagentoEmulator) {
-            $this->emulation->stopEnvironmentEmulation($storeId);
-        } else {
-            $this->storeManager->setCurrentStore($originalStoreId);
-        }
     }
 }

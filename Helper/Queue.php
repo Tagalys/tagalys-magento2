@@ -8,6 +8,11 @@ class Queue extends \Magento\Framework\App\Helper\AbstractHelper
     private $visibilityAttrId = null;
     private $sqlBulkBatchSize = 1000;
 
+    /**
+     * @param \Tagalys\Sync\Helper\AuditLog
+     */
+    private $auditLog;
+
     public function __construct(
         \Tagalys\Sync\Model\QueueFactory $queueFactory,
         \Tagalys\Sync\Helper\Configuration $tagalysConfiguration,
@@ -16,7 +21,8 @@ class Queue extends \Magento\Framework\App\Helper\AbstractHelper
         \Magento\Catalog\Model\ProductFactory $productFactory,
         \Magento\Framework\App\ResourceConnection $resourceConnection,
         \Magento\Framework\App\ProductMetadataInterface $productMetadataInterface,
-        \Tagalys\Sync\Helper\Api $tagalysApi
+        \Tagalys\Sync\Helper\Api $tagalysApi,
+        \Tagalys\Sync\Helper\AuditLog $auditLog
     )
     {
         $this->queueFactory = $queueFactory;
@@ -27,6 +33,7 @@ class Queue extends \Magento\Framework\App\Helper\AbstractHelper
         $this->resourceConnection = $resourceConnection;
         $this->productMetadataInterface = $productMetadataInterface;
         $this->tagalysApi = $tagalysApi;
+        $this->auditLog = $auditLog;
 
         $this->tagalysLogger = Utils::getLogger("tagalys_core.log");
 
@@ -70,6 +77,7 @@ class Queue extends \Magento\Framework\App\Helper\AbstractHelper
             }
 
             $response['count_after_filter'] = count($relevantProductIds);
+            $response['ids_after_filter'] = array_values($relevantProductIds);
             if(count($relevantProductIds) == 0) {
                 return $response;
             }
@@ -221,30 +229,39 @@ class Queue extends \Magento\Framework\App\Helper\AbstractHelper
         $tq = $this->resourceConnection->getTableName('tagalys_queue');
         $cpe = $this->resourceConnection->getTableName('catalog_product_entity');
         $lastDetected = $this->tagalysConfiguration->getConfig("sync:method:db.catalog_product_entity.updated_at:last_detected_change");
+
+        $now = date('Y-m-d H:i:s');
         if ($lastDetected == NULL) {
-            $lastDetected = $this->runSqlSelect("SELECT updated_at from $cpe ORDER BY updated_at DESC LIMIT 1")[0]['updated_at'];
+            $lastDetected = $now;
+            $this->tagalysConfiguration->setConfig("sync:method:db.catalog_product_entity.updated_at:last_detected_change", $lastDetected);
+            return 0;
         }
-        $optimize = $this->tagalysConfiguration->getConfig('use_optimized_product_updated_at', true);
-        if ($optimize) {
-            $stores = $this->tagalysConfiguration->getStoresForTagalys(true);
-            $stores = implode(',', $stores);
-            $cpei = $this->resourceConnection->getTableName('catalog_product_entity_int');
-            $cpr = $this->resourceConnection->getTableName('catalog_product_relation');
-            $attrId = $this->getProductVisibilityAttrId();
-            $columnToMap = $this->getResourceColumnToJoin();
-            // insert individually visible products
-            $sql = "REPLACE $tq (product_id) SELECT DISTINCT cpe.entity_id as product_id FROM $cpe as cpe INNER JOIN $cpei as cpei ON cpe.{$columnToMap} = cpei.{$columnToMap} WHERE cpe.updated_at > '$lastDetected' AND cpei.attribute_id = $attrId AND cpei.value IN (2,3,4) AND cpei.store_id IN ($stores);";
-            $this->runSql($sql);
-            // insert parent products of associated child products
-            $sql = "REPLACE $tq (product_id) SELECT DISTINCT cpr.parent_id as product_id FROM $cpr as cpr INNER JOIN $cpe as cpe ON cpe.entity_id = cpr.child_id WHERE cpe.updated_at > '$lastDetected'";
-            $this->runSql($sql);
-        } else {
-            $sql = "REPLACE $tq (product_id) SELECT DISTINCT entity_id from $cpe WHERE updated_at > '$lastDetected'";
-            $this->runSql($sql);
+        $logData = ['start_time' => $now, 'last_detected' => $lastDetected];
+
+        // Ignore the product updates for this second coz there maybe more coming.
+        $sql = "SELECT DISTINCT entity_id, updated_at from $cpe WHERE updated_at > '$lastDetected' AND updated_at < '$now' ORDER BY updated_at DESC";
+        $recentlyUpdatedRows = $this->runSqlSelect($sql);
+
+        $detectedCount = count($recentlyUpdatedRows);
+        $logMessage = "Detected $detectedCount product updates due to change in updated_at";
+
+        if ($detectedCount > 0) {
+            $recentlyUpdatedProductIds = array_map(function ($row) {
+                return $row['entity_id'];
+            }, $recentlyUpdatedRows);
+            $response = $this->insertUnique($recentlyUpdatedProductIds);
+
+            $lastDetected = $recentlyUpdatedRows[0]['updated_at'];
+            $logData['new_last_detected'] = $lastDetected;
+            $this->tagalysConfiguration->setConfig("sync:method:db.catalog_product_entity.updated_at:last_detected_change", $lastDetected);
+
+            $logData['insert_unique_response'] = $response;
+            // Data might be too large to fit into SQL column. So take max of 5k entries.
+            $logData['detected_ids'] = array_slice($recentlyUpdatedProductIds, 0, 5000);
         }
-        $lastDetected = $this->runSqlSelect("SELECT updated_at from $cpe ORDER BY updated_at DESC LIMIT 1")[0]['updated_at'];
-        $this->tagalysConfiguration->setConfig("sync:method:db.catalog_product_entity.updated_at:last_detected_change", $lastDetected);
-        return true;
+
+        $this->auditLog->logInfo('product_updated_at_detection', $logMessage, $logData);
+        return $detectedCount;
     }
 
     private function runSql($sql){

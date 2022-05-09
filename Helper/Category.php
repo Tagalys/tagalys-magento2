@@ -423,7 +423,7 @@ class Category extends \Magento\Framework\App\Helper\AbstractHelper
     public function getStoreCategoryDetails($storeId, $categoryId) {
         try {
             $output = null;
-            $this->tagalysConfiguration->emulateEnvironment($storeId, function () use($categoryId, &$output) {
+            $this->tagalysConfiguration->processInStoreContext($storeId, function () use($categoryId, &$output) {
                 $category = null;
                 $category = $this->categoryFactory->create()->load($categoryId);
                 $categoryActive = ($category->getIsActive() == '1');

@@ -50,6 +50,11 @@ class TagalysApi implements TagalysManagementInterface
      */
     private $auditLogHelper;
 
+    /**
+     * @param \Tagalys\Sync\Helper\TableCrud
+     */
+    private $tableCrud;
+
     public function __construct(
         \Tagalys\Sync\Helper\Configuration $tagalysConfiguration,
         \Tagalys\Sync\Helper\Api $tagalysApi,
@@ -64,7 +69,8 @@ class TagalysApi implements TagalysManagementInterface
         \Magento\Catalog\Model\ProductFactory $productFactory,
         \Magento\Framework\App\Config\ScopeConfigInterface $scopeConfig,
         \Tagalys\Sync\Helper\TagalysSql $tagalysSql,
-        \Tagalys\Sync\Helper\AuditLog $auditLogHelper
+        \Tagalys\Sync\Helper\AuditLog $auditLogHelper,
+        \Tagalys\Sync\Helper\TableCrud $tableCrud
     ) {
         $this->tagalysConfiguration = $tagalysConfiguration;
         $this->tagalysApi = $tagalysApi;
@@ -80,6 +86,7 @@ class TagalysApi implements TagalysManagementInterface
         $this->scopeConfig = $scopeConfig;
         $this->tagalysSql = $tagalysSql;
         $this->auditLogHelper = $auditLogHelper;
+        $this->tableCrud = $tableCrud;
 
         $this->logger = Utils::getLogger("tagalys_rest_api.log");
     }
@@ -485,6 +492,7 @@ class TagalysApi implements TagalysManagementInterface
                         "getAuditLogs",
                         'getStoreConfiguration',
                         'getStoreCategoryDetails',
+                        'getCatalogProductEntities',
                     ];
                     if(in_array($method, $whitelistedMethodNames)) {
                         $response = $this->{$method}($params);
@@ -607,6 +615,20 @@ class TagalysApi implements TagalysManagementInterface
 
     public function getStoreCategoryDetails($params) {
         return $this->tagalysCategoryHelper->getStoreCategoryDetails($params['store_id'], $params['category_id']);
+    }
+
+    public function getCatalogProductEntities($params) {
+        $where = null;
+        $limit = null;
+        if(isset($params['product_ids'])) {
+            $where = [
+                "entity_id IN (?)",
+                $params['product_ids']
+            ];
+        } else {
+            $limit = Utils::fetchKey($params, 'limit', 10);
+        }
+        return $this->tableCrud->select('catalog_product_entity', $where, "updated_at DESC", $limit);
     }
 
 }
