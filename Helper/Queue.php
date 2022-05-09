@@ -251,13 +251,13 @@ class Queue extends \Magento\Framework\App\Helper\AbstractHelper
             }, $recentlyUpdatedRows);
             $response = $this->insertUnique($recentlyUpdatedProductIds);
 
-            // Data might be too large to fit into SQL column. So take max of 1k entries.
-            $logData['detected_ids'] = array_slice($recentlyUpdatedProductIds, 0, 1000);
-            $logData['insert_unique_response'] = $response;
-
             $lastDetected = $recentlyUpdatedRows[0]['updated_at'];
             $logData['new_last_detected'] = $lastDetected;
             $this->tagalysConfiguration->setConfig("sync:method:db.catalog_product_entity.updated_at:last_detected_change", $lastDetected);
+
+            $logData['insert_unique_response'] = $response;
+            // Data might be too large to fit into SQL column. So take max of 5k entries.
+            $logData['detected_ids'] = array_slice($recentlyUpdatedProductIds, 0, 5000);
         }
 
         $this->auditLog->logInfo('product_updated_at_detection', $logMessage, $logData);

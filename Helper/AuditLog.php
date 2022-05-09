@@ -77,7 +77,7 @@ class AuditLog
         if($this->configuration->getConfig('fallback:mute_audit_logs', true, true)) {
             return false;
         }
-        $data = ['service' => $service, 'message' => $message, 'payload' => $payload, 'timestamp' => Utils::now(), 'level' => $level];
+        $data = ['level' => $level, 'timestamp' => Utils::now(), 'service' => $service, 'message' => $message, 'payload' => $payload];
         $dataJson = json_encode($data);
         try {
             $sql = "INSERT INTO {$this->tableName()} (log_data) VALUES ('$dataJson')";
