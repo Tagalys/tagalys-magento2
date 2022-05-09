@@ -1142,7 +1142,6 @@ class Configuration extends \Magento\Framework\App\Helper\AbstractHelper
     public function emulateEnvironment($storeId, $callback) {
         $originalStoreId = null;
         $useMagentoEmulator = !$this->getConfig("fallback:dont_use_magento_emulator", true, true);
-        $useMagentoEmulator = false;
         if ($useMagentoEmulator) {
             $this->emulation->startEnvironmentEmulation($storeId, \Magento\Framework\App\Area::AREA_FRONTEND, true);
         } else {
