@@ -682,6 +682,9 @@ class Product extends \Magento\Framework\App\Helper\AbstractHelper
         $store = $this->storeManager->getStore();
         $baseCurrency = $store->getBaseCurrencyCode();
         $allowedCurrencies = $store->getAvailableCurrencyCodes(true);
+        if($this->tagalysConfiguration->getConfig('fallback:force_allowed_currencies_to_null', true, true)) {
+            $allowedCurrencies = null;
+        }
         $baseCurrencyNotAllowed = ($allowedCurrencies == null || !in_array($baseCurrency, $allowedCurrencies));
         $productDetails['scheduled_updates'] = [];
         if (Utils::isBundleProduct($product)) {
