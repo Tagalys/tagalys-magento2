@@ -681,7 +681,7 @@ class Product extends \Magento\Framework\App\Helper\AbstractHelper
     public function addPriceDetails($product, $productDetails) {
         $store = $this->storeManager->getStore();
         $baseCurrency = $store->getBaseCurrencyCode();
-        $allowedCurrencies = $store->getAvailableCurrencies(true);
+        $allowedCurrencies = $store->getAvailableCurrencyCodes(true);
         $baseCurrencyNotAllowed = ($allowedCurrencies == null || !in_array($baseCurrency, $allowedCurrencies));
         $productDetails['scheduled_updates'] = [];
         if (Utils::isBundleProduct($product)) {
