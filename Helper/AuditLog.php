@@ -79,8 +79,15 @@ class AuditLog
         }
         $data = ['service' => $service, 'message' => $message, 'payload' => $payload, 'timestamp' => Utils::now(), 'level' => $level];
         $dataJson = json_encode($data);
-        $sql = "INSERT INTO {$this->tableName()} (log_data) VALUES ('$dataJson')";
-        return $this->resourceConnection->getConnection()->query($sql);
+        try {
+            $sql = "INSERT INTO {$this->tableName()} (log_data) VALUES ('$dataJson')";
+            return $this->resourceConnection->getConnection()->query($sql);
+        } catch (\Exception $e) {
+            Utils::getLogger('tagalys_audit_logs.log')->err(json_encode([
+                'message' => $e->getMessage(),
+                'log_data' => $data
+            ]));
+        }
     }
 
     private function tableName() {
