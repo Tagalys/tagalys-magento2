@@ -493,6 +493,7 @@ class TagalysApi implements TagalysManagementInterface
                         'getStoreConfiguration',
                         'getStoreCategoryDetails',
                         'getCatalogProductEntities',
+                        'deleteTagalysCategoryEntries',
                     ];
                     if(in_array($method, $whitelistedMethodNames)) {
                         $response = $this->{$method}($params);
@@ -629,6 +630,13 @@ class TagalysApi implements TagalysManagementInterface
             $limit = Utils::fetchKey($params, 'limit', 10);
         }
         return $this->tableCrud->select('catalog_product_entity', $where, "updated_at DESC", $limit);
+    }
+
+    public function deleteTagalysCategoryEntries($params) {
+        foreach ($params['category_ids'] as $categoryId) {
+            $this->tagalysCategoryHelper->deleteCategoryEntries($params['store_id'], $categoryId);
+        }
+        return ['deleted' => true];
     }
 
 }
