@@ -260,6 +260,7 @@ class Configuration extends \Magento\Framework\App\Helper\AbstractHelper
         $config = $this->configFactory->create()->load($path);
         if ($config->getId() != null) {
             $config->delete();
+            return $config->getValue();
         }
     }
 
