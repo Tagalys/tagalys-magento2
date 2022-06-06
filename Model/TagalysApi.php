@@ -494,6 +494,7 @@ class TagalysApi implements TagalysManagementInterface
                         'getStoreCategoryDetails',
                         'getCatalogProductEntities',
                         'deleteTagalysCategoryEntries',
+                        'clearConfig',
                     ];
                     if(in_array($method, $whitelistedMethodNames)) {
                         $response = $this->{$method}($params);
@@ -637,6 +638,11 @@ class TagalysApi implements TagalysManagementInterface
             $this->tagalysCategoryHelper->deleteCategoryEntries($params['store_id'], $categoryId);
         }
         return ['deleted' => true];
+    }
+
+    public function clearConfig($params) {
+        $value = $this->tagalysConfiguration->clearConfig($params['path']);
+        return ['cleared' => true, 'value' => $value];
     }
 
 }
