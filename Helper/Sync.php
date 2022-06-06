@@ -215,14 +215,12 @@ class Sync extends \Magento\Framework\App\Helper\AbstractHelper
             //* do not remove before fixing importProductsToSync
             $this->queueHelper->migrateUpdatesQueueIfRequired();
 
-            // 5. check queue size and (clear_queue, trigger_feed) if required
-            $this->truncateQueueAndTriggerSyncIfRequired($stores);
-
             // 6. perform feed, updates sync (updates only if feed sync is finished)
             foreach($stores as $i => $storeId) {
                 if($this->shouldAbandonFeedAndUpdatesForStore($storeId)) {
                     $this->markFeedAsFinishedForStore($storeId);
                 } else {
+                    $this->truncateQueueAndTriggerSyncIfRequired($storeId);
                     $this->_syncForStore($storeId);
                 }
             }
@@ -1145,27 +1143,36 @@ class Sync extends \Magento\Framework\App\Helper\AbstractHelper
         }
     }
 
-    public function truncateQueueAndTriggerSyncIfRequired($stores) {
+    public function truncateQueueAndTriggerSyncIfRequired($storeId) {
         $maxAllowedUpdatesCount = (int) $this->tagalysConfiguration->getConfig("sync:threshold_to_abandon_updates_and_trigger_feed");
-        $resyncTriggeredStores = [];
-        foreach ($stores as $storeId) {
-            $updatesCount = $this->queueFactory->create()
-                ->getCollection()
-                ->addFieldToFilter('priority', 0)
-                ->addFieldToFilter('store_id', $storeId)
-                ->getSize();
-            if($updatesCount > $maxAllowedUpdatesCount) {
-                $totalProducts = $this->getProductsCount($storeId);
-                $cutoff = 0.33 * $totalProducts;
-                if ($updatesCount > $cutoff) {
-                    $resyncTriggeredStores[] = $storeId;
-                    $this->queueHelper->deleteByPriority(0, $storeId);
-                    $this->triggerFeedForStore($storeId, false, false, true);
-                    $this->tagalysApi->log('warn', 'Clearing updates queue and triggering full products sync', array('remainingProductUpdates' => $updatesCount));
-                }
+        $resyncTriggered = false;
+        $productIdsInQueue = $this->queueHelper->getProductIdsInQueueForStore($storeId);
+        if ($this->tagalysConfiguration->getConfig("fallback:use_all_products_count_for_truncating_queue", true, true)) {
+            $productIdsForUpdate = $productIdsInQueue;
+        } else {
+            $productIdsForUpdate = $this->filterProductIdsForUpdate($storeId, $productIdsInQueue);
+        }
+        $updatesCount = count($productIdsForUpdate);
+        if($updatesCount > $maxAllowedUpdatesCount) {
+            $totalProducts = $this->getProductsCount($storeId);
+            $cutoff = 0.33 * $totalProducts;
+            if ($updatesCount > $cutoff) {
+                $resyncTriggered = true;
+                $this->queueHelper->deleteByPriority(0, $storeId);
+                $this->triggerFeedForStore($storeId, false, false, true);
+                $this->tagalysApi->log('warn', 'Clearing updates queue and triggering full products sync', array('remainingProductUpdates' => $updatesCount));
             }
         }
-        return ['resyncTriggeredStores' => $resyncTriggeredStores];
+        return $resyncTriggered;
+    }
+
+    public function filterProductIdsForUpdate($storeId, $productIds) {
+        $productIdsForUpdate = [];
+        $results = $this->_getCollection($storeId, 'updates', $productIds)->toArray();
+        foreach ($results as $key => $value) {
+            $productIdsForUpdate[] = $value['entity_id'];
+        }
+        return $productIdsForUpdate;
     }
 
     public function shouldAbandonFeedAndUpdatesForStore($storeId) {
