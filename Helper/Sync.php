@@ -74,6 +74,7 @@ class Sync extends \Magento\Framework\App\Helper\AbstractHelper
         $this->syncRestrictedAction->setNamespace("sync_cron");
 
         $this->maxProducts = 500;
+        $this->maxProductsForUpdate = 500;
         $this->perPage = 50;
 
         $this->pid = $this->random->getRandomString(24);
@@ -176,8 +177,10 @@ class Sync extends \Magento\Framework\App\Helper\AbstractHelper
     public function sync($maxProducts = null) {
         if($maxProducts == null) {
             $this->maxProducts = (int) $this->tagalysConfiguration->getConfig("sync:max_products_per_cron");
+            $this->maxProductsForUpdate = (int) $this->tagalysConfiguration->getConfig("sync:max_products_per_cron_for_update");
         } else {
             $this->maxProducts = $maxProducts;
+            $this->maxProductsForUpdate = $maxProducts;
         }
         $this->perPage = (int) $this->tagalysConfiguration->getConfig("sync:feed_per_page");
         $this->perPage = min($this->maxProducts, $this->perPage);
@@ -327,7 +330,7 @@ class Sync extends \Magento\Framework\App\Helper\AbstractHelper
             ->getCollection()
             ->addFieldToFilter('store_id', $storeId)
             ->setOrder('id', 'ASC')
-            ->setPageSize($this->maxProducts);
+            ->setPageSize($this->maxProductsForUpdate);
         $productIdsFromUpdatesQueueForCronInstance = array();
         foreach ($queueCollection as $i => $queueItem) {
             $productId = $queueItem->getProductId();
@@ -1146,7 +1149,14 @@ class Sync extends \Magento\Framework\App\Helper\AbstractHelper
     public function truncateQueueAndTriggerSyncIfRequired($storeId) {
         $maxAllowedUpdatesCount = (int) $this->tagalysConfiguration->getConfig("sync:threshold_to_abandon_updates_and_trigger_feed");
         $resyncTriggered = false;
-        $productIdsInQueue = $this->queueHelper->getProductIdsInQueueForStore($storeId);
+        $entries = $this->queueFactory->create()
+            ->getCollection()
+            ->addFieldToFilter('priority', 0)
+            ->addFieldToFilter('store_id', $storeId)
+            ->toArray();
+        $productIdsInQueue = array_map(function($item){
+            return $item['product_id'];
+        }, $entries['items']);
         if ($this->tagalysConfiguration->getConfig("fallback:use_all_products_count_for_truncating_queue", true, true)) {
             $productIdsForUpdate = $productIdsInQueue;
         } else {

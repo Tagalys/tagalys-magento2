@@ -84,6 +84,7 @@ class Configuration extends \Magento\Framework\App\Helper\AbstractHelper
         "fallback:sync:add_price_data_to_product_collection" => 'false',
         // v2.4.1
         'sync:configurable_attributes_to_sync_all_tags' => '[]',
+        'sync:max_products_per_cron_for_update' => '500',
     ];
 
     /**
