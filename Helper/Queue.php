@@ -377,16 +377,6 @@ class Queue extends \Magento\Framework\App\Helper\AbstractHelper
         return $this->runSqlSelect($sql);
     }
 
-    public function getProductIdsInQueueForStore($storeId){
-        $queueTable = $this->resourceConnection->getTableName('tagalys_queue');
-        $sql = "SELECT product_id FROM $queueTable WHERE store_id = $storeId;";
-        $rows = $this->runSqlSelect($sql);
-        $productIds = array_map(function($row){
-            return $row['product_id'];
-        }, $rows);
-        return $productIds;
-    }
-
     public function getResourceColumnToJoin(){
         $edition = $this->productMetadataInterface->getEdition();
         if ($edition == "Community") {
