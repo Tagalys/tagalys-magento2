@@ -240,7 +240,7 @@ class Product extends \Magento\Framework\App\Helper\AbstractHelper
                     $items = array();
                     if ($fieldType == 'multiselect') {
                         $value = $product->getData($attribute->getAttributeCode());
-                        $ids = explode(',', $value);
+                        $ids = $value ? explode(',', $value) : [];
                         foreach ($ids as $id) {
                             $label = $attribute->setStoreId($storeId)->getSource()->getOptionText($id);
                             if ($id != null && $label != false) {

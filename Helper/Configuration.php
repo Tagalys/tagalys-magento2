@@ -4,6 +4,10 @@ namespace Tagalys\Sync\Helper;
 class Configuration extends \Magento\Framework\App\Helper\AbstractHelper
 {
 
+    // TODO: Support M 2.4.4
+    // - The Tagalys integration is showing as insecure, we have to check why.
+    // - The auth method has been changed from barrer token to oauth I think. We have to bring support for that.
+
     public $tagalysCoreFields = array("__id", "name", "sku", "link", "sale_price", "image_url", "introduced_at", "in_stock");
 
     public $cachedCategoryNames = [];
