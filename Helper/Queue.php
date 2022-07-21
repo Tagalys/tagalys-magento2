@@ -40,63 +40,49 @@ class Queue extends \Magento\Framework\App\Helper\AbstractHelper
         $this->tableName = $this->resourceConnection->getTableName('tagalys_queue');
     }
 
+    // insertPrimary: Insert all the primary products that are associated with the given product IDs.
+    // includeDeleted: Don't skip the product IDs which are no longer present in the system.
     public function insertUnique($productIds, $priority = 0, $stores = null, $insertPrimary = null, $includeDeleted = null) {
         $productIds = is_array($productIds) ? $productIds : [$productIds];
+        $productIds = array_unique(array_filter($productIds));
+
+        if (is_null($insertPrimary)){
+            $insertPrimary = $this->tagalysConfiguration->getConfig('sync:insert_primary_products_in_insert_unique', true, true);
+        }
+        if (is_null($includeDeleted)){
+            $includeDeleted = $this->tagalysConfiguration->getConfig('sync:include_deleted_products_in_insert_primary', true, true);
+        }
+        $insertOnlyForRequiredStores = !$this->tagalysConfiguration->getConfig('fallback:insert_product_ids_for_all_stores', true, true);
 
         $response = [
             'input_count' => count($productIds),
             'insert_primary' => $insertPrimary,
             'include_deleted' => $includeDeleted,
-            'count_after_filter' => null,
-            'errors' => false
+            'errors' => false,
+            'store_ops' => []
         ];
 
         try {
             $stores = (is_null($stores) ? $this->tagalysConfiguration->getStoresForTagalys() : $stores);
             $response['stores'] = $stores;
 
-            $productIds = array_filter($productIds);
-
-            $logInsert = $this->tagalysConfiguration->getConfig('sync:log_product_ids_during_insert_to_queue', true);
-            if($logInsert){
-                $this->tagalysLogger->info("insertUnique: ProductIds: ". json_encode($productIds));
-            }
-
-            if (is_null($insertPrimary)){
-                $insertPrimary = $this->tagalysConfiguration->getConfig('sync:insert_primary_products_in_insert_unique', true);
-                $response['insert_primary'] = $insertPrimary;
-            }
+            $options = [
+                'insert_primary' => $insertPrimary,
+                'include_deleted' => $includeDeleted,
+                'priority' => $priority,
+            ];
             if($insertPrimary) {
-                if (is_null($includeDeleted)){
-                    $includeDeleted = $this->tagalysConfiguration->getConfig('sync:include_deleted_products_in_insert_primary', true);
-                    $response['include_deleted'] = $includeDeleted;
-                }
-                $relevantProductIds = $this->getRelevantProductIds($productIds, $includeDeleted);
-            } else {
-                $relevantProductIds = array_unique($productIds);
+                $productIds = $this->getRelevantProductIds($productIds, $includeDeleted);
             }
-
-            $response['count_after_filter'] = count($relevantProductIds);
-            $response['ids_after_filter'] = array_values($relevantProductIds);
-            if(count($relevantProductIds) == 0) {
-                return $response;
-            }
-
-            $response['store_ops'] = [];
             foreach ($stores as $storeId) {
-                $response['store_ops'][$storeId] = [];
-                $response['store_ops'][$storeId]['ignored'] = 0;
-                $response['store_ops'][$storeId]['inserted'] = 0;
-                $response['store_ops'][$storeId]['updated'] = 0;
+                $productIdsForStore = ($insertOnlyForRequiredStores ? $this->getProductsVisibleInStores($productIds, [$storeId]) : $productIds);
 
-                $idsByOperation = $this->splitProductIdsByOperations($relevantProductIds, $priority, $storeId);
-                $response['store_ops'][$storeId]['ignored'] += count($idsByOperation['ignore']);
+                $response['store_ops'][$storeId] = $this->insertForStore($storeId, $productIdsForStore, $options);
 
-                $this->paginateSqlInsert($idsByOperation['insert'], $priority, $storeId);
-                $response['store_ops'][$storeId]['inserted'] += count($idsByOperation['insert']);
-
-                $this->paginateSqlUpdatePriority($storeId, $idsByOperation['update'], $priority);
-                $response['store_ops'][$storeId]['updated'] += count($idsByOperation['update']);
+                $logInsert = $this->tagalysConfiguration->getConfig('sync:log_product_ids_during_insert_to_queue', true, true);
+                if($logInsert){
+                    $this->tagalysLogger->info("insertUnique: Store ID: $storeId ProductIds: ". json_encode($productIdsForStore));
+                }
             }
 
             return $response;
@@ -105,6 +91,31 @@ class Queue extends \Magento\Framework\App\Helper\AbstractHelper
             $this->tagalysLogger->warn("insertUnique exception: " . json_encode(['message' => $e->getMessage(), 'product_ids' => $productIds, 'response' => $response, 'backtrace' => $e->getTrace()]));
             return $response;
         }
+    }
+
+    private function insertForStore($storeId, $productIds, $options = []) {
+        $response = [];
+        $response['count_after_filter'] = count($relevantProductIds);
+        $response['ids_after_filter'] = array_values($relevantProductIds);
+        if(count($relevantProductIds) == 0) {
+            return $response;
+        }
+
+        $response[$storeId] = [];
+        $response[$storeId]['ignored'] = 0;
+        $response[$storeId]['inserted'] = 0;
+        $response[$storeId]['updated'] = 0;
+
+        $idsByOperation = $this->splitProductIdsByOperations($relevantProductIds, $priority, $storeId);
+        $response[$storeId]['ignored'] += count($idsByOperation['ignore']);
+
+        $this->paginateSqlInsert($idsByOperation['insert'], $priority, $storeId);
+        $response[$storeId]['inserted'] += count($idsByOperation['insert']);
+
+        $this->paginateSqlUpdatePriority($storeId, $idsByOperation['update'], $priority);
+        $response[$storeId]['updated'] += count($idsByOperation['update']);
+
+        return $response;
     }
 
     public function splitProductIdsByOperations($productIds, $priority, $storeId) {
