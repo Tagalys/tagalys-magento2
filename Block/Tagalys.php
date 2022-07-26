@@ -1,6 +1,8 @@
 <?php
 namespace Tagalys\Sync\Block;
 
+use Tagalys\Sync\Helper\Utils;
+
 class Tagalys extends \Magento\Framework\View\Element\Template
 {
     /**
@@ -37,7 +39,7 @@ class Tagalys extends \Magento\Framework\View\Element\Template
     }
 
     public function isTagalysEnabled($module = false) {
-        $jsFileUrl = $this->getTagalysJsUrl();
+        $jsFileUrl = $this->getTagalysRequireJsUrl();
         if (empty($jsFileUrl)) {
             return false;
         }
@@ -49,8 +51,12 @@ class Tagalys extends \Magento\Framework\View\Element\Template
         return $enabled;
     }
 
-    public function getTagalysJsUrl() {
-        return $this->tagalysConfiguration->getTagalysJsUrl();
+    public function getTagalysRequireJsUrl() {
+        $fileUrl = $this->tagalysConfiguration->getTagalysJsUrl();
+        if(Utils::endsWith($fileUrl, '.js')) {
+            $fileUrl = substr($fileUrl, 0, -3);
+        }
+        return $fileUrl;
     }
 
     public function apiCredentials() {

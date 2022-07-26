@@ -1,8 +1,20 @@
+<script>
+    var onTagalysReady = function(callback) {
+        if (window.Tagalys) {
+            callback();
+            return;
+        }
+        document.addEventListener("tagalys:ready", function() {
+            callback();
+        });
+    };
+</script>
+
 <?php if ($this->isTagalysEnabled()) : ?>
     <?php
         $currency = $this->getCurrentCurrency();
         $apiCredentials = $this->apiCredentials();
-        $jsFileUrl = $this->getTagalysJsUrl();
+        $jsFileUrl = $this->getTagalysRequireJsUrl();
     ?>
     <script>
         var config = {
@@ -12,15 +24,6 @@
         };
         require.config(config);
 
-        var onTagalysReady = function(callback) {
-            if (window.Tagalys) {
-                callback();
-                return;
-            }
-            document.addEventListener("tagalys:ready", function() {
-                callback();
-            });
-        };
         require(['tagalys'], function() {
             try {
                 onTagalysReady(function () {

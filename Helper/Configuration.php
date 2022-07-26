@@ -16,7 +16,7 @@ class Configuration extends \Magento\Framework\App\Helper\AbstractHelper
         'max_product_thumbnail_width' => '400',
         'max_product_thumbnail_height' => '400',
         'cron_heartbeat_sent' => false,
-        'suggestions_align_to_parent_selector' => '',
+        'suggestions_align_to_selector' => '',
         'periodic_full_sync' => '1',
         'module:mpages:enabled' => '1',
         'categories'=> '[]',
@@ -1194,10 +1194,6 @@ class Configuration extends \Magento\Framework\App\Helper\AbstractHelper
     }
 
     public function getTagalysJsUrl() {
-        $fileUrl = $this->scopeConfigInterface->getValue('tagalys_js/tagalys_js/js_file_url', \Magento\Store\Model\ScopeInterface::SCOPE_STORE);
-        if(Utils::endsWith($fileUrl, '.js')) {
-            $fileUrl = substr($fileUrl, 0, -3);
-        }
-        return $fileUrl;
+        return $this->scopeConfigInterface->getValue('tagalys_frontend_js/general/js_file_url', \Magento\Store\Model\ScopeInterface::SCOPE_STORE);
     }
 }
