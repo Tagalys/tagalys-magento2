@@ -37,7 +37,16 @@ class Tagalys extends \Magento\Framework\View\Element\Template
     }
 
     public function isTagalysEnabled($module = false) {
-        return $this->tagalysConfiguration->isTagalysEnabledForStore($this->getCurrentStoreId(), $module);
+        $jsFileUrl = $this->getTagalysJsUrl();
+        if (empty($jsFileUrl)) {
+            return false;
+        }
+        $isTagalysHealthy = $this->tagalysConfiguration->isTagalysHealthy();
+        if(!$isTagalysHealthy) {
+            return false;
+        }
+        $enabled = $this->tagalysConfiguration->isTagalysEnabledForStore($this->getCurrentStoreId(), $module);
+        return $enabled;
     }
 
     public function getTagalysJsUrl() {
