@@ -17,7 +17,7 @@ if($this->isTagalysEnabled()) {
 
 <script>
     require(['jquery', 'jquery/ui'], function(jQuery){
-        jQuery(document).on('tagalys:ready', function() {
+        onTagalysReady(function () {
             try {
                 if (typeof(__tagalysRendered) == 'undefined' || !__tagalysRendered) {
                     var eventDetails = <?php echo json_encode($eventDetails) ?>;
@@ -28,6 +28,6 @@ if($this->isTagalysEnabled()) {
             } catch(error) {
                 console.error(error)
             }
-        });
+        })
     });
 </script>

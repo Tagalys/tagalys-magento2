@@ -21,6 +21,11 @@
             paths: {
                 "tagalys": "<?php echo $jsFileUrl ?>",
             },
+            shim: {
+                'tagalys': {
+                    'deps': ['jquery', 'jquery/ui']
+                }
+            }
         };
         require.config(config);
 

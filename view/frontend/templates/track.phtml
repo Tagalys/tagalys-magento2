@@ -17,18 +17,18 @@
                 }
                 if(eventJson) {
                     var track = true;
-                    jQuery(document).on('tagalys:ready', function() {
+                    onTagalysReady(function() {
                         if(clearEventCookie) {
-                            jQuery.fn.tagalys_analytics.deleteCookie('__ta_event')
+                            Tagalys.UIWidgets.cookie.delete('__ta_event')
                         }
                         var event = JSON.parse(eventJson);
                         var action = event[2];
                         if(action == 'buy') {
-                            var last_tracked_order_id = jQuery.fn.tagalys_analytics.getCookie('__ta_last_order_id');
+                            var last_tracked_order_id = Tagalys.UIWidgets.cookie.get('__ta_last_order_id');
                             if (last_tracked_order_id == event[4]) {
                                 track = false;
                             } else {
-                                jQuery.fn.tagalys_analytics.setCookie('__ta_last_order_id', event[4], 24*60*60*1000);
+                                Tagalys.UIWidgets.cookie.set('__ta_last_order_id', event[4], 24*60*60*1000);
                             }
                         }
                         if (track) {
@@ -54,7 +54,7 @@
                                 }
                             });
                         }
-                    });
+                    })
                 }
             }
             catch(err) {
@@ -63,19 +63,19 @@
         });
     </script>
     <script>
-        require(['jquery', 'jquery/ui'], function(jQuery){
-            try {
-                jQuery(document).on('tagalys:ready', function() {
-                    var logged_in_user_id = jQuery.fn.tagalys_analytics.getCookie('__ta_logged_in');
-                    if(logged_in_user_id != ""){
-                        jQuery.fn.tagalys_analytics.track_user(logged_in_user_id);
-                        jQuery.fn.tagalys_analytics.deleteCookie('__ta_logged_in');
-                    }
-                });
-            }
-            catch(err) {
+        // require(['jquery', 'jquery/ui'], function(jQuery){
+        //     try {
+        //         jQuery(document).on('tagalys:ready', function() {
+        //             var logged_in_user_id = jQuery.fn.tagalys_analytics.getCookie('__ta_logged_in');
+        //             if(logged_in_user_id != ""){
+        //                 jQuery.fn.tagalys_analytics.track_user(logged_in_user_id);
+        //                 jQuery.fn.tagalys_analytics.deleteCookie('__ta_logged_in');
+        //             }
+        //         });
+        //     }
+        //     catch(err) {
 
-            }
-        });
+        //     }
+        // });
     </script>
 <?php endif; ?>
