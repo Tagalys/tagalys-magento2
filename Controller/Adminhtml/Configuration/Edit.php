@@ -148,7 +148,7 @@ class Edit extends \Magento\Backend\App\Action
                         $redirectToTab = 'sync_settings';
                     }
                     break;
-                case 'Save Search Settings':
+                case 'Save Frontend Settings':
                     $this->tagalysConfiguration->setConfig('module:search:enabled', $params['enable_search']);
                     if (!array_key_exists('stores_for_search', $params)) {
                         $params['stores_for_search'] = [];
@@ -158,7 +158,9 @@ class Edit extends \Magento\Backend\App\Action
                     $this->tagalysConfiguration->setConfig('suggestions_align_to_parent_selector', $params['suggestions_align_to_parent_selector']);
                     $this->tagalysConfiguration->setConfig('search:override_layout_name', $params['search_override_layout_name']);
                     $this->tagalysApi->log('warn', 'search:enabled:'.$params['enable_search']);
-                    $redirectToTab = 'search';
+
+                    $this->tagalysConfiguration->setConfig('stores_for_category_js_rendering', Utils::fetchKey($params, 'stores_for_category_js_rendering', []), true);
+                    $redirectToTab = 'frontend';
                     break;
                 case 'Save Listing Pages Settings':
                     $this->tagalysConfiguration->setConfig('module:listingpages:enabled', $params['enable_listingpages']);

@@ -154,6 +154,7 @@
                 });
                 <?php if ($this->moduleManager->isEnabled('Tagalys_Frontend')) : ?>
                     tagalysRenderJsTree('stores-for-search');
+                    tagalysRenderJsTree('stores-for-category-js-rendering');
                 <?php endif; ?>
             }
         });
@@ -371,6 +372,10 @@
             } else if (tree_type == 'stores-for-search') {
                 multiselect = 'stores_for_search';
                 target_div = 'stores-for-search-jtree';
+                tgls_jq('#' + target_div + '-q').css('display', 'none');
+            } else if (tree_type == 'stores-for-category-js-rendering') {
+                multiselect = 'stores_for_category_js_rendering';
+                target_div = 'stores-for-category-js-rendering-jtree';
                 tgls_jq('#' + target_div + '-q').css('display', 'none');
             } else {
                 return;

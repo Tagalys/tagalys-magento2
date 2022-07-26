@@ -92,10 +92,10 @@ class Tabs extends \Magento\Backend\Block\Widget\Tabs
                 'content' => $this->getChildHtml('listingpages'),
             ));
             if ($this->moduleManager->isEnabled('Tagalys_Frontend')) {
-                $this->addTab('search', array(
-                    'label' => __('Search'),
-                    'title' => __('Search'),
-                    'content' => $this->getChildHtml('search'),
+                $this->addTab('frontend', array(
+                    'label' => __('Frontend'),
+                    'title' => __('Frontend'),
+                    'content' => $this->getChildHtml('frontend'),
                 ));
             }
             if ($this->moduleManager->isEnabled('Tagalys_Mystore')) {

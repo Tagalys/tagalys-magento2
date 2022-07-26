@@ -21,9 +21,6 @@
                 <container label="Sync" name="sync">
                     <block class="Tagalys\Sync\Block\Adminhtml\Configuration\Edit\Tab\Sync" as="sync"/>
                 </container>
-                <container label="Search" name="search">
-                    <block class="Tagalys\Sync\Block\Adminhtml\Configuration\Edit\Tab\Search" as="search"/>
-                </container>
                 <container label="Listingpages" name="listingpages">
                     <block class="Tagalys\Sync\Block\Adminhtml\Configuration\Edit\Tab\Listingpages" as="listingpages"/>
                 </container>
