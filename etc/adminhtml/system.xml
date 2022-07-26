@@ -59,6 +59,7 @@
             <field id="js_file_url" translate="label" type="text" sortOrder="1" showInDefault="1" showInWebsite="0" showInStore="0">
                 <label>JavaScript file URL</label>
                 <backend_model>Tagalys\Sync\Model\Config\Backend\JsConfig</backend_model>
+                <comment>Please whitelist the domain used for hosting the file in a custom module, if required.</comment>
             </field>
         </group>
     </section>
