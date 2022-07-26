@@ -166,6 +166,42 @@ class Configuration extends \Magento\Framework\App\Helper\AbstractHelper
         return false;
     }
 
+    public function isCategoryJsRenderingEnabledForStore($storeId) {
+        $storesForCategoryJsRendering = $this->getConfig('stores_for_category_js_rendering', true, true);
+        if (in_array($storeId, $storesForCategoryJsRendering)) {
+            return true;
+        }
+        return false;
+    }
+
+    public function isJsRenderingEnabledForCategory($storeId, $category) {
+        if ($category->getDisplayMode() != \Magento\Catalog\Model\Category::DM_PRODUCT) {
+            // enabled only for "product only page" for now
+            // return false;
+        }
+        if(!$this->isCategoryJsRenderingEnabledForStore($storeId)) {
+            return false;
+        }
+        $categoryEntry = $this->getTagalysCategoryEntry($storeId, $category->getId());
+        if($categoryEntry && $categoryEntry->getPositionsSyncedAt()) {
+            // even if the status is pending_sync or pending_disable, we will enable this category for JS rendering
+            // getPositionsSyncedAt value has to be present to denote that the category has been synced to tagalys at least once
+            // TODO: we need to introduce a separate column in the table to do the above check as we may never update positions for some stores and position synced at will always be bull.
+            return true;
+        }
+        return false;
+    }
+
+    public function getTagalysCategoryEntry($storeId, $categoryId) {
+        $categoryEntry = $this->tagalysCategoryFactory->create()->getCollection()
+            ->addFieldToFilter('category_id', $categoryId)
+            ->addFieldToFilter('store_id', $storeId)
+            ->getFirstItem();
+        if($categoryEntry->getId()) {
+            return $categoryEntry;
+        }
+    }
+
     public function checkStatusCompleted() {
         $setupStatus = $this->getConfig('setup_status');
         if ($setupStatus == 'sync') {

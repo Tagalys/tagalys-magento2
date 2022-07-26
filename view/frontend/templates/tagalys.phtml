@@ -1,52 +1,71 @@
-<?php if ($this->isTagalysEnabled()): ?>
+<?php if ($this->isTagalysEnabled()) : ?>
     <?php
         $currency = $this->getCurrentCurrency();
         $apiCredentials = $this->apiCredentials();
     ?>
     <script>
         var config = {
-            paths:{
-                "tagalys":"https://d3htxdwqp62ai4.cloudfront.net/tagalys-plugins-v6"
+            paths: {
+                // get from config
+                "tagalys": "https://storage.googleapis.com/tagalys-front-end-components/tagalys-ui-widgets-beta"
             },
-            shim:{
-                'tagalys':{
-                    'deps':['jquery', 'jquery/ui']
+            shim: {
+                'tagalys': {
+                    'deps': ['jquery', 'jquery/ui']
                 }
             }
         };
         require.config(config);
 
-        require(['jquery', 'jquery/ui', 'tagalys'], function(jQuery){ 
-            try {
-                jQuery.fn.tagalys_public_api.server = '<?php echo $apiCredentials['api_server'] ?>';
-                jQuery.fn.tagalys_public_api.identification = {"client_code":"<?php echo $apiCredentials['client_code'] ?>","api_key":"<?php echo $apiCredentials['public_api_key'] ?>","store_id":"<?php echo $this->getCurrentStoreId() ?>"};
-                var tagalys_context_opts = {
-                    api_server: '<?php echo $apiCredentials['api_server'] ?>',
-                    api_identification: {"client_code":"<?php echo $apiCredentials['client_code'] ?>","api_key":"<?php echo $apiCredentials['public_api_key'] ?>","store_id":"<?php echo $this->getCurrentStoreId() ?>","currency":"<?php echo $currency['id']; ?>"},
-                    currency: {
-                        label: "<?php echo $currency['label']; ?>",
-                        exchange_rate: "<?php echo  $currency['exchange_rate']; ?>",
-                        fractional_digits:"<?php echo  $currency['fractional_digits']; ?>"
-                    }
-                };
-                <?php
-                    $objectManager = \Magento\Framework\App\ObjectManager::getInstance();
-                    $urlInterface = $objectManager->create('\Magento\Framework\UrlInterface');
-                    $urlEncoder = $objectManager->create('\Magento\Framework\Url\EncoderInterface');
-                    $uenc = $urlEncoder->encode($urlInterface->getCurrentUrl());
-                    $formKey = $objectManager->get('Magento\Framework\Data\Form\FormKey')->getFormKey();
-                ?>
-                jQuery.fn.tagalys_platform_variables = jQuery.fn.tagalys_platform_variables || {};
-                jQuery.fn.tagalys_platform_variables.uenc = '<?php echo $uenc ?>';
-                jQuery.fn.tagalys_platform_variables.formKey = '<?php echo $formKey ?>';
-                var user_id = jQuery.fn.tagalys_analytics.getCookie('__ta_user_id');
-                if(user_id != ""){
-                  tagalys_context_opts.user_id = user_id;
-                }
-                jQuery('body').tagalys_context(tagalys_context_opts);
+        var onTagalysReady = function(callback) {
+            if (window.Tagalys) {
+                callback();
+                return;
             }
-            catch(err) {
-                
+            document.addEventListener("tagalys:ready", function() {
+                callback();
+            });
+        };
+        require(['tagalys'], function() {
+            try {
+                onTagalysReady(function () {
+                    Tagalys.setConfiguration({
+                        api: {
+                            serverUrl: '<?php echo $apiCredentials['api_server'] ?>',
+                            credentials: {
+                                clientCode: "<?php echo $apiCredentials['client_code'] ?>",
+                                apiKey: "<?php echo $apiCredentials['public_api_key'] ?>",
+                            },
+                            storeId: "<?php echo $this->getCurrentStoreId() ?>",
+                        },
+                        platform: "Magento",
+                        locale: "en-US",
+                        currency: {
+                            displayFormatter: "{{currencyLabel}}{{value}}",
+                            code: "<?php echo $currency['id']; ?>",
+                            label: "<?php echo $currency['label']; ?>",
+                            fractionalDigits: "<?php echo  $currency['fractional_digits']; ?>",
+                            forceFractionalDigits: true,
+                        },
+                        platformVariables: {
+                            uenc: "<?php echo $this->getUenc() ?>",
+                            formKey: "<?php echo $this->getFormKey() ?>"
+                        },
+                        analyticsStorageConsentProvided: function () {
+                            // return true/false based on user's consent settings
+                            return true;
+                        },
+                        track: true,
+                    });
+                    // ? Why do we need exchange_rate in the JS?
+                    // var tagalys_context_opts = {
+                    //     currency: {
+                            // exchange_rate: "<?php echo  $currency['exchange_rate']; ?>",
+                    //     }
+                    // };
+                });
+            } catch (err) {
+                console.error("Error while initializing Tagalys:", err);
             }
         });
     </script>

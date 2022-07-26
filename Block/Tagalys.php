@@ -1,14 +1,35 @@
 <?php
 namespace Tagalys\Sync\Block;
- 
+
 class Tagalys extends \Magento\Framework\View\Element\Template
 {
+    /**
+     * @var Magento\Framework\UrlInterface
+     */
+    private $urlInterface;
+
+    /**
+     * @var \Magento\Framework\Url\EncoderInterface
+     */
+    private $urlEncoderInterface;
+
+    /**
+     * @var \Magento\Framework\Data\Form\FormKey
+     */
+    private $formKey;
+
     public function __construct(
         \Magento\Framework\View\Element\Template\Context $context,
-        \Tagalys\Sync\Helper\Configuration $tagalysConfiguration
+        \Tagalys\Sync\Helper\Configuration $tagalysConfiguration,
+        \Magento\Framework\UrlInterface $urlInterface,
+        \Magento\Framework\Url\EncoderInterface $urlEncoderInterface,
+        \Magento\Framework\Data\Form\FormKey $formKey
     )
     {
         $this->tagalysConfiguration = $tagalysConfiguration;
+        $this->urlInterface = $urlInterface;
+        $this->urlEncoderInterface = $urlEncoderInterface;
+        $this->formKey = $formKey;
         $this->storeManager = $context->getStoreManager();
         parent::__construct($context);
     }
@@ -43,5 +64,13 @@ class Tagalys extends \Magento\Framework\View\Element\Template
 
     public function getTagalysConfig($path, $json_decode = false) {
       return $this->tagalysConfiguration->getConfig($path, $json_decode);
+    }
+
+    public function getUenc() {
+        return $this->urlEncoderInterface->encode($this->urlInterface->getCurrentUrl());
+    }
+
+    public function getFormKey() {
+        return $this->formKey->getFormKey();
     }
 }
