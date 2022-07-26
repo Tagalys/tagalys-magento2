@@ -100,6 +100,10 @@ class Utils
         return $uniques;
     }
 
+    public static function endsWith($haystack, $needle) {
+        return substr_compare($haystack, $needle, -strlen($needle)) === 0;
+    }
+
     // dev helpers
     public static function dj($data, $lineBreaker = "\n") {
         echo json_encode($data) . "$lineBreaker";

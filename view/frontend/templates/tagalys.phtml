@@ -6,14 +6,8 @@
     <script>
         var config = {
             paths: {
-                // get from config
-                "tagalys": "https://storage.googleapis.com/tagalys-front-end-components/tagalys-ui-widgets-beta"
+                "tagalys": "<?php echo $this->getTagalysJsUrl(); ?>",
             },
-            shim: {
-                'tagalys': {
-                    'deps': ['jquery', 'jquery/ui']
-                }
-            }
         };
         require.config(config);
 

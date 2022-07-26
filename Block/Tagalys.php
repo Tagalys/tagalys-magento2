@@ -18,6 +18,8 @@ class Tagalys extends \Magento\Framework\View\Element\Template
      */
     private $formKey;
 
+    private $tagalysConfiguration;
+
     public function __construct(
         \Magento\Framework\View\Element\Template\Context $context,
         \Tagalys\Sync\Helper\Configuration $tagalysConfiguration,
@@ -36,6 +38,10 @@ class Tagalys extends \Magento\Framework\View\Element\Template
 
     public function isTagalysEnabled($module = false) {
         return $this->tagalysConfiguration->isTagalysEnabledForStore($this->getCurrentStoreId(), $module);
+    }
+
+    public function getTagalysJsUrl() {
+        return $this->tagalysConfiguration->getTagalysJsUrl();
     }
 
     public function apiCredentials() {

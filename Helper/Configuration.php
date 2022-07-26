@@ -1191,4 +1191,12 @@ class Configuration extends \Magento\Framework\App\Helper\AbstractHelper
         }
         return $domains;
     }
+
+    public function getTagalysJsUrl() {
+        $fileUrl = $this->scopeConfigInterface->getValue('tagalys_js/tagalys_js/js_file_url', \Magento\Store\Model\ScopeInterface::SCOPE_STORE);
+        if(Utils::endsWith($fileUrl, '.js')) {
+            $fileUrl = substr($fileUrl, 0, -3);
+        }
+        return $fileUrl;
+    }
 }
