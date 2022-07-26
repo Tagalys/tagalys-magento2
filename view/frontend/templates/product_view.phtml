@@ -13,7 +13,7 @@
                 try {
                     jQuery(document).on('tagalys:ready', function() {
                         try {
-                            jQuery.fn.tagalys_analytics.track_event('product_action', <?php echo json_encode($eventDetails) ?>);
+                            Tagalys.UIWidgets.trackEvent('product_action', <?php echo json_encode($eventDetails) ?>);
                         }
                         catch(err) {}
                     });

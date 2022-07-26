@@ -1,6 +1,6 @@
 <?php
 namespace Tagalys\Sync\Block;
- 
+
 class Categoryview extends \Magento\Framework\View\Element\Template
 {
     private $_category = null;
@@ -35,5 +35,10 @@ class Categoryview extends \Magento\Framework\View\Element\Template
 
     public function isTagalysCreated(){
         return $this->tagalysCategory->isTagalysCreated($this->_category->getId());
+    }
+
+    public function isCategoryRenderedByTagalys() {
+        $category = $this->getCurrentCategory();
+        return $this->tagalysConfiguration->isJsRenderingEnabledForCategory($this->getCurrentStoreId(), $category);
     }
 }

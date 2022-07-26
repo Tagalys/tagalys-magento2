@@ -2,11 +2,12 @@
     <?php
         $currency = $this->getCurrentCurrency();
         $apiCredentials = $this->apiCredentials();
+        $jsFileUrl = $this->getTagalysJsUrl();
     ?>
     <script>
         var config = {
             paths: {
-                "tagalys": "<?php echo $this->getTagalysJsUrl(); ?>",
+                "tagalys": "<?php echo $jsFileUrl ?>",
             },
         };
         require.config(config);

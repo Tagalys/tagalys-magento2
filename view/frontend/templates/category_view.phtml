@@ -1,16 +1,20 @@
-<?php if($this->isTagalysEnabled()){ ?> 
 <?php
 $eventDetails = false;
-try{
-    $thisCategory = $this->getCurrentCategory();
-    $isTagalysCreated = $this->isTagalysCreated();
-    $eventDetails = [
-        'pl_type' => $isTagalysCreated ? 'page-tagalys' : 'page-platform',
-        'pl_details' => ['page_id' => $thisCategory->getId()],
-        'pl_products' => []
-    ];
-} catch (\Exception $e) { }
+if($this->isTagalysEnabled()) {
+    try{
+        $thisCategory = $this->getCurrentCategory();
+        if(!$this->isCategoryRenderedByTagalys($thisCategory)) {
+            $isTagalysCreated = $this->isTagalysCreated();
+            $eventDetails = [
+                'pl_type' => $isTagalysCreated ? 'page-tagalys' : 'page-platform',
+                'pl_details' => ['page_id' => $thisCategory->getId()],
+                'pl_products' => []
+            ];
+        }
+    } catch (\Exception $e) { }
+}
 ?>
+
 <script>
     require(['jquery', 'jquery/ui'], function(jQuery){
         jQuery(document).on('tagalys:ready', function() {
@@ -18,7 +22,7 @@ try{
                 if (typeof(__tagalysRendered) == 'undefined' || !__tagalysRendered) {
                     var eventDetails = <?php echo json_encode($eventDetails) ?>;
                     if(eventDetails){
-                        jQuery.fn.tagalys_analytics.track_event('product_list', eventDetails);
+                        Tagalys.UIWidgets.trackEvent('product_list', eventDetails);
                     }
                 }
             } catch(error) {
@@ -27,4 +31,3 @@ try{
         });
     });
 </script>
-<?php } ?>

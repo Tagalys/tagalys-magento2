@@ -42,10 +42,13 @@
                                 context: event,
                                 success: function(data, textStatus, jqXHR) {
                                     for (var i = 0; i < this[3].length; i++) {
+                                        var eventType = this[1];
                                         if (this[2] == 'buy') {
-                                            jQuery.fn.tagalys_analytics.track_event(this[1], jQuery.extend({ action: this[2], order_id: this[4] }, data[i]));
+                                            var eventData = jQuery.extend({ action: this[2], order_id: this[4] }, data[i]);
+                                            Tagalys.UIWidgets.trackEvent(eventType, eventData);
                                         } else {
-                                            jQuery.fn.tagalys_analytics.track_event(this[1], jQuery.extend({ action: this[2] }, data[i]));
+                                            var eventData = jQuery.extend({ action: this[2] }, data[i]);
+                                            Tagalys.UIWidgets.trackEvent(eventType, eventData);
                                         }
                                     }
                                 }

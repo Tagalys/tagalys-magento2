@@ -175,9 +175,10 @@ class Configuration extends \Magento\Framework\App\Helper\AbstractHelper
     }
 
     public function isJsRenderingEnabledForCategory($storeId, $category) {
-        if ($category->getDisplayMode() != \Magento\Catalog\Model\Category::DM_PRODUCT) {
+        if (in_array($category->getDisplayMode(), ['PAGE', 'PRODUCTS_AND_PAGE'])) {
             // enabled only for "product only page" for now
-            // return false;
+            // getDisplayMode can be blank. In that case it is products
+            return false;
         }
         if(!$this->isCategoryJsRenderingEnabledForStore($storeId)) {
             return false;
