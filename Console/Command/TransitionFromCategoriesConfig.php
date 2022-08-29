@@ -31,18 +31,5 @@ class TransitionFromCategoriesConfig extends Command
   }
   protected function execute(InputInterface $input, OutputInterface $output)
   {
-    try {
-      $this->appState->setAreaCode('adminhtml');
-    } catch (\Magento\Framework\Exception\LocalizedException $exception) {
-      // do nothing
-    }
-    $utcNow = new \DateTime("now", new \DateTimeZone('UTC'));
-    $timeNow = $utcNow->format(\DateTime::ATOM);
-    $this->tagalysConfiguration->setConfig('heartbeat:command:transition_from_categories_config', $timeNow);
-
-    $this->tagalysCategoryHelper->transitionFromCategoriesConfig();
-    // $this->tagalysCategoryHelper->syncAll(true);
-
-    $output->writeln("Done");
   }
 }

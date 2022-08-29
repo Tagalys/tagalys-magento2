@@ -20,7 +20,7 @@ class UpdateCaches extends Command
         $this->tagalysConfiguration = $tagalysConfiguration;
         parent::__construct();
     }
-    
+
     protected function configure()
     {
         $this->setName('tagalys:update_caches');
@@ -30,17 +30,5 @@ class UpdateCaches extends Command
     }
     protected function execute(InputInterface $input, OutputInterface $output)
     {
-        try {
-            $this->appState->setAreaCode('adminhtml');
-        } catch (\Magento\Framework\Exception\LocalizedException $exception) {
-            // do nothing
-        }
-        $utcNow = new \DateTime("now", new \DateTimeZone('UTC'));
-        $timeNow = $utcNow->format(\DateTime::ATOM);
-        $this->tagalysConfiguration->setConfig('heartbeat:command:update_caches', $timeNow);
-
-        $this->syncHelper->cachePopularSearches();
-        
-        $output->writeln("Done");
     }
 }
