@@ -49,6 +49,7 @@
                             label: "<?php echo $currency['label']; ?>",
                             fractionalDigits: "<?php echo  $currency['fractional_digits']; ?>",
                             forceFractionalDigits: true,
+                            exchangeRate: "<?php echo  $currency['exchange_rate']; ?>",
                         },
                         platformVariables: {
                             uenc: "<?php echo $this->getUenc() ?>",
@@ -60,12 +61,6 @@
                         },
                         track: true,
                     });
-                    // ? Why do we need exchange_rate in the JS?
-                    // var tagalys_context_opts = {
-                    //     currency: {
-                            // exchange_rate: "<?php echo  $currency['exchange_rate']; ?>",
-                    //     }
-                    // };
                 });
             } catch (err) {
                 console.error("Error while initializing Tagalys:", err);
