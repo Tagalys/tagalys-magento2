@@ -53,7 +53,7 @@ class Tagalys extends \Magento\Framework\View\Element\Template
 
     public function getTagalysRequireJsUrl() {
         $fileUrl = $this->tagalysConfiguration->getTagalysJsUrl();
-        if(Utils::endsWith($fileUrl, '.js')) {
+        if(isset($fileUrl) && Utils::endsWith($fileUrl, '.js')) {
             $fileUrl = substr($fileUrl, 0, -3);
         }
         return $fileUrl;
