@@ -1,12 +1,36 @@
 <script>
     var onTagalysReady = function(callback) {
         if (window.Tagalys) {
+            setTagalysConfiguration();
             callback();
             return;
         }
         document.addEventListener("tagalys:ready", function() {
+            setTagalysConfiguration();
             callback();
         });
+    };
+
+    var TagalysUtils = {}
+    TagalysUtils.ajax = function (params) {
+        var xhr = new XMLHttpRequest();
+        xhr.open(params.method, params.url);
+        xhr.setRequestHeader('Content-Type', params.contentType);
+        xhr.onload = function() {
+            if (xhr.status === 200) {
+            params.success(xhr.responseText, params.includeInCallbacks)
+            } else {
+            if(typeof(params.failure) != 'undefined') {
+                params.failure(xhr, params.includeInCallbacks);
+            }
+            }
+        };
+        xhr.onerror = function() {
+            if(typeof(params.failure) != 'undefined') {
+            params.failure(xhr, params.includeInCallbacks);
+            }
+        }
+        xhr.send(params.data);
     };
 </script>
 
@@ -18,8 +42,8 @@
     ?>
     <script src="<?php echo $jsFileUrl ?>" async></script>
     <script>
-        try {
-            onTagalysReady(function() {
+        var setTagalysConfiguration = function () {
+            try {
                 Tagalys.setConfiguration({
                     api: {
                         serverUrl: '<?php echo $apiCredentials['api_server'] ?>',
@@ -49,9 +73,9 @@
                     },
                     track: true,
                 });
-            });
-        } catch (err) {
-            console.error("Error while initializing Tagalys:", err);
+            } catch (err) {
+                console.error("Error while initializing Tagalys:", err);
+            }
         }
     </script>
 <?php endif; ?>

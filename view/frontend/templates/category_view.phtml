@@ -16,18 +16,16 @@ if($this->isTagalysEnabled()) {
 ?>
 
 <script>
-    require(['jquery', 'jquery/ui'], function(jQuery){
-        onTagalysReady(function () {
-            try {
-                if (typeof(__tagalysRendered) == 'undefined' || !__tagalysRendered) {
-                    var eventDetails = <?php echo json_encode($eventDetails) ?>;
-                    if(eventDetails){
-                        Tagalys.UIWidgets.trackEvent('product_list', eventDetails);
-                    }
+    onTagalysReady(function () {
+        try {
+            if (typeof(__tagalysRendered) == 'undefined' || !__tagalysRendered) {
+                var eventDetails = <?php echo json_encode($eventDetails) ?>;
+                if(eventDetails){
+                    Tagalys.UIWidgets.trackEvent('product_list', eventDetails);
                 }
-            } catch(error) {
-                console.error(error)
             }
-        })
-    });
+        } catch(error) {
+            console.error(error)
+        }
+    })
 </script>

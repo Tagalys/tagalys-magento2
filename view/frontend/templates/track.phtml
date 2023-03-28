@@ -6,76 +6,56 @@
         __tagalysEventJson = '<?php echo $analyticsBuyEvent ? json_encode($analyticsBuyEvent) : ''; ?>'
     </script>
     <script>
-        require(['jquery', 'jquery/ui', 'mage/cookies'], function(jQuery){
+        // Note: User login tracking automatically is done by the JS plugin by monitoring the __ta_logged_in cookie.
+        onTagalysReady(function() {
             try {
                 if(__tagalysEventJson) {
                     var clearEventCookie = false;
                     var eventJson = __tagalysEventJson;
                 } else {
-                    var eventJson = jQuery.cookie('__ta_event');
+                    var eventJson = decodeURIComponent(Tagalys.UIWidgets.cookie.get('__ta_event'));
                     var clearEventCookie = true;
                 }
                 if(eventJson) {
                     var track = true;
-                    onTagalysReady(function() {
-                        if(clearEventCookie) {
-                            Tagalys.UIWidgets.cookie.delete('__ta_event')
+                    var event = JSON.parse(eventJson);
+                    if(clearEventCookie) {
+                        Tagalys.UIWidgets.cookie.delete('__ta_event')
+                    }
+                    var action = event[2];
+                    if(action == 'buy') {
+                        var last_tracked_order_id = Tagalys.UIWidgets.cookie.get('__ta_last_order_id');
+                        if (last_tracked_order_id == event[4]) {
+                            track = false;
+                        } else {
+                            Tagalys.UIWidgets.cookie.set('__ta_last_order_id', event[4], 24*60*60*1000);
                         }
-                        var event = JSON.parse(eventJson);
-                        var action = event[2];
-                        if(action == 'buy') {
-                            var last_tracked_order_id = Tagalys.UIWidgets.cookie.get('__ta_last_order_id');
-                            if (last_tracked_order_id == event[4]) {
-                                track = false;
-                            } else {
-                                Tagalys.UIWidgets.cookie.set('__ta_last_order_id', event[4], 24*60*60*1000);
-                            }
-                        }
-                        if (track) {
-                            jQuery.ajax({
-                                url: "<?php echo $this->getProductDetailsUrl(); ?>",
-                                data: { event_json: eventJson },
-                                dataType: 'json',
-                                method: 'POST',
-                                type: 'POST',
-                                global: false,
-                                context: event,
-                                success: function(data, textStatus, jqXHR) {
-                                    for (var i = 0; i < this[3].length; i++) {
-                                        var eventType = this[1];
-                                        if (this[2] == 'buy') {
-                                            var eventData = jQuery.extend({ action: this[2], order_id: this[4] }, data[i]);
-                                            Tagalys.UIWidgets.trackEvent(eventType, eventData);
-                                        } else {
-                                            var eventData = jQuery.extend({ action: this[2] }, data[i]);
-                                            Tagalys.UIWidgets.trackEvent(eventType, eventData);
-                                        }
+                    }
+                    if (track) {
+                        TagalysUtils.ajax({
+                            url: "<?php echo $this->getProductDetailsUrl(); ?>",
+                            contentType: "application/x-www-form-urlencoded; charset=UTF-8",
+                            method: 'POST',
+                            data: "event_json="+encodeURIComponent(eventJson),
+                            success: function(data, _) {
+                                for (var i = 0; i < this[3].length; i++) {
+                                    var eventType = this[1];
+                                    if (this[2] == 'buy') {
+                                        var eventData = Object.assign({ action: this[2], order_id: this[4] }, data[i]);
+                                        Tagalys.UIWidgets.trackEvent(eventType, eventData);
+                                    } else {
+                                        var eventData = Object.assign({ action: this[2] }, data[i]);
+                                        Tagalys.UIWidgets.trackEvent(eventType, eventData);
                                     }
                                 }
-                            });
-                        }
-                    })
+                            }.bind(event)
+                        });
+                    }
                 }
             }
             catch(err) {
                 console.error(err);
             }
         });
-    </script>
-    <script>
-        // require(['jquery', 'jquery/ui'], function(jQuery){
-        //     try {
-        //         jQuery(document).on('tagalys:ready', function() {
-        //             var logged_in_user_id = jQuery.fn.tagalys_analytics.getCookie('__ta_logged_in');
-        //             if(logged_in_user_id != ""){
-        //                 jQuery.fn.tagalys_analytics.track_user(logged_in_user_id);
-        //                 jQuery.fn.tagalys_analytics.deleteCookie('__ta_logged_in');
-        //             }
-        //         });
-        //     }
-        //     catch(err) {
-
-        //     }
-        // });
     </script>
 <?php endif; ?>

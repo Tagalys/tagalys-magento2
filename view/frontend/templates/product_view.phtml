@@ -9,19 +9,14 @@
     ?>
     <?php if ($eventDetails != false): ?>
         <script>
-            require(['jquery', 'jquery/ui'], function(jQuery){
+            onTagalysReady(function () {
                 try {
-                    onTagalysReady(function () {
-                        try {
-                            Tagalys.UIWidgets.trackEvent('product_action', <?php echo json_encode($eventDetails) ?>);
-                        }
-                        catch(err) {
-                            console.error(err);
-                        }
-                    })
+                    Tagalys.UIWidgets.trackEvent('product_action', <?php echo json_encode($eventDetails) ?>);
                 }
-                catch(err) {}
-            });
+                catch(err) {
+                    console.error(err);
+                }
+            })
         </script>
     <?php endif; ?>
 <?php endif; ?>
