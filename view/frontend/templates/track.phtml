@@ -38,6 +38,7 @@
                             method: 'POST',
                             data: "event_json="+encodeURIComponent(eventJson),
                             success: function(data, _) {
+                                data = JSON.parse(data)
                                 for (var i = 0; i < this[3].length; i++) {
                                     var eventType = this[1];
                                     if (this[2] == 'buy') {

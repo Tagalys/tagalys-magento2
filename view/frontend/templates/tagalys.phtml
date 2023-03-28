@@ -18,16 +18,16 @@
         xhr.setRequestHeader('Content-Type', params.contentType);
         xhr.onload = function() {
             if (xhr.status === 200) {
-            params.success(xhr.responseText, params.includeInCallbacks)
+                params.success(xhr.responseText, params.includeInCallbacks)
             } else {
-            if(typeof(params.failure) != 'undefined') {
-                params.failure(xhr, params.includeInCallbacks);
-            }
+                if(typeof(params.failure) != 'undefined') {
+                    params.failure(xhr, params.includeInCallbacks);
+                }
             }
         };
         xhr.onerror = function() {
             if(typeof(params.failure) != 'undefined') {
-            params.failure(xhr, params.includeInCallbacks);
+                params.failure(xhr, params.includeInCallbacks);
             }
         }
         xhr.send(params.data);
