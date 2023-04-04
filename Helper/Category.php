@@ -392,7 +392,7 @@ class Category extends \Magento\Framework\App\Helper\AbstractHelper
     public function _setPositionSortOrder($storeId, $categoryId) {
         $mappedStoreIds = $this->tagalysConfiguration->getMappedStores($storeId, true);
         foreach ($mappedStoreIds as $mappedStoreId) {
-            $category = $this->categoryFactory->create()->setStoreId($mappedStoreId)->load($categoryId);
+            $category = $this->loadCategoryForUpdate($mappedStoreId, $categoryId);
             if ($category->getDefaultSortBy() != 'position') {
                 $category->setDefaultSortBy('position')->save();
             }
@@ -715,8 +715,22 @@ class Category extends \Magento\Framework\App\Helper\AbstractHelper
         return true;
     }
 
-    public function _updatePositions($storeId, $categoryId, $newPositions, $canPushDown) {
+    public function loadCategoryForUpdate($storeId, $categoryId) {
         $category = $this->categoryFactory->create()->setStoreId($storeId)->load($categoryId);
+
+        if($this->tagalysConfiguration->getConfig("apply_category_use_default_uncheck_fix", true, true)) {
+            // Assign NULL for all the attributes that are not overridden at the store level.
+            // Set `data['use_default'][key] = true` for the attributes that are not overridden
+            // If this is not done, the use default check box was getting unchecked for all the attributes at the store level
+            $populateWithValues = Utils::getInstanceOf('\Magento\Catalog\Model\CategoryRepository\PopulateWithValues');
+            $populateWithValues->execute($category, ['store_id' => $storeId]);
+        }
+
+        return $category;
+    }
+
+    public function _updatePositions($storeId, $categoryId, $newPositions, $canPushDown) {
+        $category = $this->loadCategoryForUpdate($storeId, $categoryId);
         $positions = $category->getProductsPosition();
         $productCount = count($positions);
         foreach ($positions as $productId => $position) {
@@ -881,7 +895,7 @@ class Category extends \Magento\Framework\App\Helper\AbstractHelper
                 $this->paginateSqlInsert($categoryId, $productPositions);
                 $this->_paginateSqlRemove($categoryId, $productsToRemove);
             } else {
-                $this->categoryFactory->create()->setStoreId($storeId)->load($categoryId)->setPostedProducts($productPositions)->save();
+                $this->loadCategoryForUpdate($storeId, $categoryId)->setPostedProducts($productPositions)->save();
             }
             $this->_setPositionSortOrder($storeId, $categoryId);
             $this->updateWithData($storeId, $categoryId, ['positions_sync_required' => 0, 'positions_synced_at' => date("Y-m-d H:i:s"), 'status' => 'powered_by_tagalys']);
