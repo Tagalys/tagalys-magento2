@@ -820,6 +820,7 @@ class Category extends \Magento\Framework\App\Helper\AbstractHelper
         }
         $categoryDetails['default_sort_by'] = 'position';
         foreach ($forStores as $storeId) {
+            // TODO: Use loadCategoryForUpdate to avoid overwriting the use default checkbox values
             $category = $this->categoryFactory->create()->setStoreId($storeId)->load($categoryId);
             $category->addData($categoryDetails)->save();
             $parentCategoryId = $this->getTagalysParentCategory($storeId);
