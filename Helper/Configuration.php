@@ -263,9 +263,9 @@ class Configuration extends \Magento\Framework\App\Helper\AbstractHelper
     }
 
     public function getStoresForTagalys($includeDefault = false, $debug = false) {
-        $storesForTagalys = $this->getConfig("stores", true, $debug);
+        $storesForTagalysNew = $this->getConfig("stores", true, $debug);
 
-        if ($storesForTagalys != NULL) {
+        if ($storesForTagalysNew != NULL) {
             if (!is_array($storesForTagalys)) {
                 $storesForTagalys = array($storesForTagalys);
             }
