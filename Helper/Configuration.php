@@ -262,8 +262,8 @@ class Configuration extends \Magento\Framework\App\Helper\AbstractHelper
         $connection->truncateTable($tableName);
     }
 
-    public function getStoresForTagalys($includeDefault = false) {
-        $storesForTagalys = $this->getConfig("stores", true);
+    public function getStoresForTagalys($includeDefault = false, $debug = false) {
+        $storesForTagalys = $this->getConfig("stores", true, $debug);
 
         if ($storesForTagalys != NULL) {
             if (!is_array($storesForTagalys)) {
