@@ -5,9 +5,14 @@ file_version: 1.1.2
 app_version: 1.7.2
 ---
 
-`getStoresForTagalys`<swm-token data-swm-token=":Helper/Configuration.php:265:5:5:`    public function getStoresForTagalys($includeDefault = false) {`"/> describes the list of stores enabled for Tagalys
+`getStoresForTagalys`<swm-token data-swm-token=":Helper/Configuration.php:265:5:5:`    public function getStoresForTagalys($includeDefault = false, $debug = false) {`"/> describes the list of stores enabled for Tagalys
 
-`$storesForTagalys`<swm-token data-swm-token=":Helper/Configuration.php:145:1:2:`        $storesForTagalys = $this-&gt;getStoresForTagalys();`"/>
+`$storesForTagalys`<swm-token data-swm-token=":Helper/Configuration.php:915:1:2:`        $storesForTagalys = $this-&gt;getStoresForTagalys();`"/>
+
+`timezoneInterface`<swm-token data-swm-token=":Helper/Configuration.php:121:4:4:`        $this-&gt;timezoneInterface = $timezoneInterface;`"/> imports the timezone interface from Magento
+
+```
+```
 
 <br/>
 
