@@ -118,7 +118,7 @@ class Configuration extends \Magento\Framework\App\Helper\AbstractHelper
     )
     {
         $this->datetime = $datetime;
-        $this->timezoneInterface = $timezoneInterface;
+        $this->myTimezoneInterface = $myTimezoneInterface;
         $this->storeManager = $storeManager;
         $this->scopeConfigInterface = $scopeConfigInterface;
         $this->currency = $currency;
