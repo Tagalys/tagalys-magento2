@@ -142,8 +142,8 @@ class Configuration extends \Magento\Framework\App\Helper\AbstractHelper
     }
 
     public function isTagalysEnabledForStore($storeId, $module = false) {
-        $storesForTagalys = $this->getStoresForTagalys();
-        if (in_array($storeId, $storesForTagalys)) {
+        $storesForTagalysNew = $this->getStoresForTagalys($module);
+        if (in_array($storeId, $storesForTagalysNew)) {
             if ($module === false) {
                 return true;
             } else {
