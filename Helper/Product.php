@@ -83,7 +83,7 @@ class Product extends \Magento\Framework\App\Helper\AbstractHelper
         $this->resourceConnection = $resourceConnection;
         $this->auditLog = $auditLog;
 
-        $logLevel = $this->tagalysConfiguration->getConfig("log_level", false, true);
+        $logLevel = $this->tagalysConfiguration->getLogLevel();
         $this->logger = Utils::getLogger("tagalys_product_helper.log", $logLevel);
     }
 

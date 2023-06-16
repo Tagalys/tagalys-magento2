@@ -94,6 +94,8 @@ class Configuration extends \Magento\Framework\App\Helper\AbstractHelper
      */
     private $productMetadataInterface;
 
+    private $_tagalysApi;
+
     /**
      * @param \Tagalys\Sync\Helper\Category
      */
@@ -115,7 +117,6 @@ class Configuration extends \Magento\Framework\App\Helper\AbstractHelper
         \Magento\Catalog\Model\ResourceModel\Product\Attribute\CollectionFactory $attributeCollectionFactory,
         \Magento\Review\Model\ResourceModel\Rating\CollectionFactory $ratingCollectionFactory,
         \Tagalys\Sync\Model\ConfigFactory $configFactory,
-        \Tagalys\Sync\Helper\Api $tagalysApi,
         \Magento\Catalog\Model\ResourceModel\Category\CollectionFactory $categoryCollection,
         \Tagalys\Sync\Model\CategoryFactory $tagalysCategoryFactory,
         \Magento\Integration\Model\IntegrationFactory $integrationFactory,
@@ -140,7 +141,6 @@ class Configuration extends \Magento\Framework\App\Helper\AbstractHelper
         $this->productFactory = $productFactory;
         $this->ratingCollectionFactory = $ratingCollectionFactory;
         $this->configFactory = $configFactory;
-        $this->tagalysApi = $tagalysApi;
         $this->categoryCollection = $categoryCollection;
         $this->tagalysCategoryFactory = $tagalysCategoryFactory;
         $this->integrationFactory = $integrationFactory;
@@ -150,6 +150,13 @@ class Configuration extends \Magento\Framework\App\Helper\AbstractHelper
         $this->eventManager = $eventManager;
         $this->productMetadataInterface = $productMetadataInterface;
         $this->emulation = $emulation;
+    }
+
+    public function tagalysApi() {
+        if ($this->_tagalysApi == null) {
+            $this->_tagalysApi = Utils::getInstanceOf('\Tagalys\Sync\Helper\Api');
+        }
+        return $this->_tagalysApi;
     }
 
     public function isTagalysEnabledForStore($storeId, $module = false) {
@@ -181,7 +188,7 @@ class Configuration extends \Magento\Framework\App\Helper\AbstractHelper
             }
             if ($allStoresCompleted) {
                 $this->setConfig("setup_status", 'completed');
-                $this->tagalysApi->log('info', 'All stores synced. Setup complete.', array());
+                $this->tagalysApi()->log('info', 'All stores synced. Setup complete.', array());
             }
         }
     }
@@ -254,7 +261,7 @@ class Configuration extends \Magento\Framework\App\Helper\AbstractHelper
                 $config->save();
             }
         } catch (\Exception $e){
-            $this->tagalysApi->log('error', 'Exception in setConfig', array('exception_message' => $e->getMessage()));
+            $this->tagalysApi()->log('error', 'Exception in setConfig', array('exception_message' => $e->getMessage()));
         }
     }
 
@@ -521,7 +528,7 @@ class Configuration extends \Magento\Framework\App\Helper\AbstractHelper
         foreach ($storeIds as $index => $storeId) {
             $clientConfiguration['stores'][] = $this->getStoreConfiguration($storeId);
         }
-        $tagalysResponse = $this->tagalysApi->clientApiCall('/v1/configuration', $clientConfiguration);
+        $tagalysResponse = $this->tagalysApi()->clientApiCall('/v1/configuration', $clientConfiguration);
         if ($tagalysResponse === false) {
             return false;
         }
@@ -564,7 +571,7 @@ class Configuration extends \Magento\Framework\App\Helper\AbstractHelper
             'domain' => $storeDomain,
             'base_url' => $storeUrl,
             'platform_details' => [
-                'plugin_version' => $this->tagalysApi->getPluginVersion(),
+                'plugin_version' => $this->tagalysApi()->getPluginVersion(),
                 'access_token' => $this->getAccessToken(),
                 'url_suffix' => $urlSuffix,
                 'platform_pages_rendering_method' => 'platform'
@@ -1133,7 +1140,7 @@ class Configuration extends \Magento\Framework\App\Helper\AbstractHelper
         $storesForTagalys = $this->getStoresForTagalys();
         if ($storesForTagalys != null) {
             foreach ($storesForTagalys as $storeId) {
-                $response = $this->tagalysApi->storeApiCall($storeId . '', '/v1/mpages/_health', array('timeout' => 10));
+                $response = $this->tagalysApi()->storeApiCall($storeId . '', '/v1/mpages/_health', array('timeout' => 10));
                 if ($response != false && $response['total'] > 0) {
                     $this->setConfig("tagalys:health", '1');
                     return true;
@@ -1155,5 +1162,9 @@ class Configuration extends \Magento\Framework\App\Helper\AbstractHelper
             $domains[$storeId] = $this->getStoreDomain($storeId);
         }
         return $domains;
+    }
+
+    public function getLogLevel() {
+        return (int) $this->getConfig("log_level", false, true);
     }
 }

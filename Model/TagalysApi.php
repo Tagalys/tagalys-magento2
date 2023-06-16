@@ -88,7 +88,7 @@ class TagalysApi implements TagalysManagementInterface
         $this->auditLogHelper = $auditLogHelper;
         $this->tableCrud = $tableCrud;
 
-        $logLevel = $this->tagalysConfiguration->getConfig("log_level", false, true);
+        $logLevel = $this->tagalysConfiguration->getLogLevel();
         $this->logger = Utils::getLogger("tagalys_rest_api.log", $logLevel);
     }
 
