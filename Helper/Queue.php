@@ -35,7 +35,8 @@ class Queue extends \Magento\Framework\App\Helper\AbstractHelper
         $this->tagalysApi = $tagalysApi;
         $this->auditLog = $auditLog;
 
-        $this->tagalysLogger = Utils::getLogger("tagalys_core.log");
+        $logLevel = $this->tagalysConfiguration->getConfig("log_level", false, true);
+        $this->tagalysLogger = Utils::getLogger("tagalys_core.log", $logLevel);
 
         $this->tableName = $this->resourceConnection->getTableName('tagalys_queue');
     }

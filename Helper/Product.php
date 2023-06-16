@@ -83,7 +83,8 @@ class Product extends \Magento\Framework\App\Helper\AbstractHelper
         $this->resourceConnection = $resourceConnection;
         $this->auditLog = $auditLog;
 
-        $this->logger = Utils::getLogger("tagalys_product_helper.log");
+        $logLevel = $this->tagalysConfiguration->getConfig("log_level", false, true);
+        $this->logger = Utils::getLogger("tagalys_product_helper.log", $logLevel);
     }
 
     public function getPlaceholderImageUrl($imageAttributeCode, $allowPlaceholder) {

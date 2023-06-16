@@ -74,7 +74,8 @@ class Category extends \Magento\Framework\App\Helper\AbstractHelper
         $this->tagalysQueue = $tagalysQueue;
 
         $this->restrictedAction->setNamespace("audit_log_transfer");
-        $this->logger = Utils::getLogger("tagalys_categories.log");
+        $logLevel = $this->tagalysConfiguration->getConfig("log_level", false, true);
+        $this->logger = Utils::getLogger("tagalys_categories.log", $logLevel);
     }
 
     public function truncate() {
