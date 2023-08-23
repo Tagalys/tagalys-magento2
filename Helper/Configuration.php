@@ -87,6 +87,7 @@ class Configuration extends \Magento\Framework\App\Helper\AbstractHelper
         'sync:max_products_per_cron_for_update' => '500',
         // v2.5.5
         "log_level" => \Zend_Log::INFO,
+        "consider_order_increment_id_as_order_id" => "false",
     ];
 
     /**
