@@ -88,6 +88,7 @@ class Configuration extends \Magento\Framework\App\Helper\AbstractHelper
         // v2.5.5
         "log_level" => \Zend_Log::INFO,
         'stores_for_category_js_rendering' => '[]',
+        "consider_order_increment_id_as_order_id" => "false",
     ];
 
     /**

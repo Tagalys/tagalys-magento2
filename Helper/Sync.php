@@ -821,6 +821,7 @@ class Sync extends \Magento\Framework\App\Helper\AbstractHelper
         }
         $data = [];
         $successStates = $this->tagalysConfiguration->getConfig('success_order_states', true);
+        $considerOrderIncrementIdAsOrderId = $this->tagalysConfiguration->getConfig('consider_order_increment_id_as_order_id', true, true);
         foreach($orders as $order){
             if (in_array($order->getState(), $successStates)) {
                 $items = $order->getAllVisibleItems();
@@ -829,8 +830,13 @@ class Sync extends \Magento\Framework\App\Helper\AbstractHelper
                     if(is_null($product)){
                         continue;
                     }
+                    if($considerOrderIncrementIdAsOrderId){
+                        $orderId = $order->getIncrementId();
+                    } else {
+                        $orderId = $order->getId();
+                    }
                     $data[] = [
-                        'order_id' => $order->getId(),
+                        'order_id' => $orderId,
                         'order_status' => $order->getStatus(),
                         'order_state' => $order->getState(),
                         'item_sku' => $item->getSku(),
