@@ -90,11 +90,6 @@ class Configuration extends \Magento\Framework\App\Helper\AbstractHelper
         "consider_order_increment_id_as_order_id" => "false",
     ];
 
-    /**
-     * @param \Magento\Framework\App\ProductMetadataInterface
-     */
-    private $productMetadataInterface;
-
     private $_tagalysApi;
 
     /**
@@ -103,6 +98,30 @@ class Configuration extends \Magento\Framework\App\Helper\AbstractHelper
     private $_tagalysCategoryHelper;
 
     private $cachedStoreDomains = [];
+
+    private $datetime;
+    private $timezoneInterface;
+    private $storeManager;
+    private $scopeConfigInterface;
+    private $currency;
+    private $currencyFactory;
+    private $attributeFactory;
+    private $attributeCollectionFactory;
+    private $configModel;
+    private $categoryModel;
+    private $productFactory;
+    private $ratingCollectionFactory;
+    private $configFactory;
+    private $categoryCollection;
+    private $tagalysCategoryFactory;
+    private $integrationFactory;
+    private $oauthToken;
+    private $authorizationService;
+    private $oauthService;
+    private $eventManager;
+    private $productMetadataInterface;
+    private $emulation;
+    private $resourceConnection;
 
     public function __construct(
         \Magento\Framework\Stdlib\DateTime\DateTime $datetime,
@@ -126,7 +145,8 @@ class Configuration extends \Magento\Framework\App\Helper\AbstractHelper
         \Magento\Integration\Model\OauthService $oauthService,
         \Magento\Framework\Event\Manager $eventManager,
         \Magento\Framework\App\ProductMetadataInterface $productMetadataInterface,
-        \Magento\Store\Model\App\Emulation $emulation
+        \Magento\Store\Model\App\Emulation $emulation,
+        \Magento\Framework\App\ResourceConnection $resourceConnection
     )
     {
         $this->datetime = $datetime;
@@ -151,6 +171,7 @@ class Configuration extends \Magento\Framework\App\Helper\AbstractHelper
         $this->eventManager = $eventManager;
         $this->productMetadataInterface = $productMetadataInterface;
         $this->emulation = $emulation;
+        $this->resourceConnection = $resourceConnection;
     }
 
     public function tagalysApi() {
@@ -1166,6 +1187,17 @@ class Configuration extends \Magento\Framework\App\Helper\AbstractHelper
     }
 
     public function getLogLevel() {
-        return (int) $this->getConfig("log_level", false, true);
+        if ($this->isTableExists('tagalys_core')) {
+            return (int) $this->getConfig("log_level", false, true);
+        } else {
+            return \Zend_Log::INFO;
+        }
+        
+    }
+    
+    private function isTableExists($tableName){
+        $tableName = $this->resourceConnection->getTableName($tableName);
+        $connection = $this->resourceConnection->getConnection();
+        return $connection->isTableExists($tableName);
     }
 }

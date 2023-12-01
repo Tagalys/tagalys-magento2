@@ -6,33 +6,26 @@ use Tagalys\Sync\Exception\LockException;
 
 class Sync extends \Magento\Framework\App\Helper\AbstractHelper
 {
-    /**
-     * @param \Tagalys\Sync\Helper\Configuration
-     */
     private $tagalysConfiguration;
-
-    const PRIORITY_UPDATES = 'priority_updates';
-    const QUICK_FEED = 'quick_feed';
-
-    /**
-     * @param \Tagalys\Sync\Helper\RestrictedAction
-     */
-    private $syncRestrictedAction;
-
-    /**
-     * @param \Tagalys\Sync\Helper\Queue
-     */
-    private $queueHelper;
-
-    /**
-     * @param \Tagalys\Sync\Helper\Api
-     */
     private $tagalysApi;
-
-    /**
-     * @param \Tagalys\Sync\Helper\Product
-     */
     private $tagalysProduct;
+    private $tagalysCategory;
+    private $productFactory;
+    private $random;
+    private $urlInterface;
+    private $storeManager;
+    private $frontUrlHelper;
+    private $queueFactory;
+    private $queueHelper;
+    private $resourceConnection;
+    private $indexerFactory;
+    private $syncRestrictedAction;
+    private $filesystem;
+    private $directory;
+    private $maxProducts;
+    private $maxProductsForUpdate;
+    private $perPage;
+    private $pid;
 
     public function __construct(
         \Magento\Framework\Filesystem $filesystem,
@@ -66,7 +59,6 @@ class Sync extends \Magento\Framework\App\Helper\AbstractHelper
         $this->resourceConnection = $resourceConnection;
         $this->indexerFactory = $indexerFactory;
         $this->syncRestrictedAction = $restrictedAction;
-        $this->tagalysProduct = $tagalysProduct;
 
         $this->filesystem = $filesystem;
         $this->directory = $filesystem->getDirectoryWrite(\Magento\Framework\App\Filesystem\DirectoryList::MEDIA);

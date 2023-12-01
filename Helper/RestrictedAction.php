@@ -5,20 +5,11 @@ namespace Tagalys\Sync\Helper;
 class RestrictedAction
 {
 
-    /**
-     * @param String $namespace
-     */
-    private $namespace;
-
-    /**
-     * @param \Tagalys\Sync\Helper\Configuration
-     */
     private $tagalysConfiguration;
-
-    /**
-     * @param \Tagalys\Sync\Helper\Api
-     */
     private $tagalysApi;
+    private $namespace;
+    private $lockId;
+    private $data;
 
     public function __construct(
         \Tagalys\Sync\Helper\Configuration $tagalysConfiguration,

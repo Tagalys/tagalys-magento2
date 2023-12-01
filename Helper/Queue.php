@@ -11,7 +11,16 @@ class Queue extends \Magento\Framework\App\Helper\AbstractHelper
     /**
      * @param \Tagalys\Sync\Helper\AuditLog
      */
+    private $queueFactory;
+    private $tagalysConfiguration;
+    private $storeManager;
+    private $configurableProduct;
+    private $productFactory;
+    private $resourceConnection;
+    private $productMetadataInterface;
+    private $tagalysApi;
     private $auditLog;
+    private $tagalysLogger;
 
     public function __construct(
         \Tagalys\Sync\Model\QueueFactory $queueFactory,
