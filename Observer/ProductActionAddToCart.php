@@ -3,6 +3,7 @@ namespace Tagalys\Sync\Observer;
 
 class ProductActionAddToCart implements \Magento\Framework\Event\ObserverInterface
 {
+    private $cookieManager;
     public function __construct(
         \Tagalys\Sync\CookieManager $cookieManager
     )

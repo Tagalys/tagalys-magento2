@@ -3,6 +3,10 @@ namespace Tagalys\Sync\Observer;
 
 class UpdateAttributes implements \Magento\Framework\Event\ObserverInterface
 {
+
+    private $queueHelper;
+    private $tagalysCategory;
+
     public function __construct(
         \Tagalys\Sync\Helper\Queue $queueHelper,
         \Tagalys\Sync\Helper\Category $tagalysCategory

@@ -3,6 +3,7 @@ namespace Tagalys\Sync\Observer;
 
 class Login implements \Magento\Framework\Event\ObserverInterface
 {
+    private $session;
     /**
      * @param \Magento\Store\Model\StoreManagerInterface
      */

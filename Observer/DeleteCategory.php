@@ -3,6 +3,12 @@
 namespace Tagalys\Sync\Observer;
 
 class DeleteCategory implements \Magento\Framework\Event\ObserverInterface {
+
+    private $queueHelper;
+    private $tagalysCategory;
+    private $_registry;
+    private $tagalysCategoryFactory;
+
     public function __construct(
         \Tagalys\Sync\Helper\Queue $queueHelper,
         \Tagalys\Sync\Helper\Category $tagalysCategory,

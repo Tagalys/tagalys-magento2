@@ -3,6 +3,10 @@ namespace Tagalys\Sync\Block;
  
 class Tagalys extends \Magento\Framework\View\Element\Template
 {
+
+    private $tagalysConfiguration;
+    private $storeManager;
+
     public function __construct(
         \Magento\Framework\View\Element\Template\Context $context,
         \Tagalys\Sync\Helper\Configuration $tagalysConfiguration

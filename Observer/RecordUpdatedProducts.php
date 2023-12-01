@@ -4,6 +4,7 @@ namespace Tagalys\Sync\Observer;
 
 class RecordUpdatedProducts implements \Magento\Framework\Event\ObserverInterface
 {
+  private $queueHelper;
   public function __construct(
       \Tagalys\Sync\Helper\Queue $queueHelper
   )

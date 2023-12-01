@@ -3,6 +3,12 @@ namespace Tagalys\Sync\Observer;
 
 class PostAction implements \Magento\Framework\Event\ObserverInterface
 {
+
+    private $requestInterface;
+    private $tagalysApi;
+    private $tagalysConfiguration;
+    private $tagalysSync;    
+
     public function __construct(
         \Magento\Framework\App\RequestInterface $requestInterface,
         \Tagalys\Sync\Helper\Api $tagalysApi,

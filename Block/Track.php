@@ -3,6 +3,12 @@ namespace Tagalys\Sync\Block;
  
 class Track extends \Magento\Framework\View\Element\Template
 {
+    private $cookieManager;
+    private $tagalysConfiguration;
+    private $storeManager;
+    private $registry;
+    private $frontUrlHelper;
+    
     public function __construct(
         \Tagalys\Sync\CookieManager $cookieManager,
         \Tagalys\Sync\Helper\Configuration $tagalysConfiguration,

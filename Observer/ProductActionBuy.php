@@ -3,6 +3,11 @@ namespace Tagalys\Sync\Observer;
 
 class ProductActionBuy implements \Magento\Framework\Event\ObserverInterface
 {
+    private $order;
+    private $configurableProduct;
+    private $productFactory;
+    private $registry;
+    
     public function __construct(
         \Magento\Sales\Model\Order $order,
         \Magento\ConfigurableProduct\Model\Product\Type\Configurable $configurableProduct,

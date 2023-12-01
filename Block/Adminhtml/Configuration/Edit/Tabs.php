@@ -18,6 +18,10 @@ namespace Tagalys\Sync\Block\Adminhtml\Configuration\Edit;
 class Tabs extends \Magento\Backend\Block\Widget\Tabs
 {
 
+    private $tagalysConfiguration;
+    public $moduleManager;
+    private $request;
+
     public function __construct(
         \Magento\Backend\Block\Template\Context $context,
         \Magento\Framework\Json\EncoderInterface $jsonEncoder,

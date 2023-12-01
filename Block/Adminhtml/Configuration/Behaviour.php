@@ -5,6 +5,10 @@ use Magento\Backend\Block\Template;
 class Behaviour extends Template
 {
 
+    private $urlInterface;
+    private $fronUrlHelper;
+    public $moduleManager;
+
     public function __construct(
         \Magento\Backend\Block\Widget\Context $context,
         \Magento\Backend\Model\UrlInterface $urlInterface,

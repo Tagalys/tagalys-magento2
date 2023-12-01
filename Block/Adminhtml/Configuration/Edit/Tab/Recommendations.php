@@ -25,15 +25,10 @@ use Magento\Framework\Registry;
  */
 class Recommendations extends Generic
 {
-    /**
-     * @var Yesno
-     */
     protected $_yesNo;
-
-    /**
-     * @var PropertyLocker
-     */
     private $propertyLocker;
+    private $tagalysConfiguration;
+    private $tagalysApi;
 
     /**
      * @param Context $context
