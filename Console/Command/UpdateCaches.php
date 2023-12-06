@@ -47,5 +47,7 @@ class UpdateCaches extends Command
         $this->syncHelper->cachePopularSearches();
         
         $output->writeln("Done");
+
+        return 1;
     }
 }

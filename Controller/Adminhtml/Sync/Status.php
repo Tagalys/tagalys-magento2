@@ -8,6 +8,8 @@
         */
         protected $jsonResultFactory;
 
+        private $tagalysSync;
+
         /**
          * Constructor
          *

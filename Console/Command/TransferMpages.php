@@ -107,5 +107,7 @@ class TransferMpages extends Command
         }
 
         $output->writeln("Done");
+
+        return 1;
     }
 }

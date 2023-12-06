@@ -46,5 +46,7 @@ class UpdateProductPositions extends Command
     {
         $this->positionUpdateCron->tryExecute(false);
         $output->writeln("Done");
+
+        return 1;
     }
 }

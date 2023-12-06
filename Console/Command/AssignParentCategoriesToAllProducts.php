@@ -46,5 +46,7 @@ class AssignParentCategoriesToAllProducts extends Command
         $this->tagalysCategoryHelper->assignParentCategoriesToAllProducts();
 
         $output->writeln("Done");
+
+        return 1;
     }
 }

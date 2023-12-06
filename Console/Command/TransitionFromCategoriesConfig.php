@@ -49,5 +49,7 @@ class TransitionFromCategoriesConfig extends Command
     // $this->tagalysCategoryHelper->syncAll(true);
 
     $output->writeln("Done");
+
+    return 1;
   }
 }

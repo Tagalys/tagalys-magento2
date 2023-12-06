@@ -8,6 +8,12 @@ class Details extends \Magento\Framework\App\Action\Action
 {
     protected $jsonResultFactory;
 
+    private $tagalysConfiguration;
+    private $tagalysProduct;
+    private $pageConfig;
+    private $productFactory;
+    private $storeManager;
+
     public function __construct(
         Context $context,
         \Magento\Framework\Controller\Result\JsonFactory $jsonResultFactory,

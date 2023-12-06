@@ -47,5 +47,7 @@ class TriggerFullSync extends Command
         $this->syncHelper->runMaintenance(true);
 
         $output->writeln("Done");
+
+        return 1;
     }
 }
