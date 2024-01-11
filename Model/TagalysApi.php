@@ -7,6 +7,13 @@ use Tagalys\Sync\Helper\Utils;
 
 class TagalysApi implements TagalysManagementInterface
 {
+    private $tagalysApi;
+    private $configFactory;
+    private $tagalysCategoryFactory;
+    private $filesystem;
+    private $_registry;
+    private $queueHelper;
+    private $logger;
 
     /**
      * @param \Tagalys\Sync\Helper\Product

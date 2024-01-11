@@ -3,6 +3,9 @@ namespace Tagalys\Sync\Observer;
 
 class ImportDelete implements \Magento\Framework\Event\ObserverInterface
 {
+
+    private $queueHelper;
+
     public function __construct(
         \Tagalys\Sync\Helper\Queue $queueHelper
     )

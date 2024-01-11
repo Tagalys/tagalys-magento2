@@ -3,7 +3,13 @@ namespace Tagalys\Sync\Block;
 
 class Categoryview extends \Magento\Framework\View\Element\Template
 {
-    private $_category = null;
+    private $tagalysConfiguration;
+    private $storeManager;
+    private $registry;
+    private $tagalysCategory;
+    private $_category;
+    private $pageTitle;
+    
     public function __construct(
         \Tagalys\Sync\Helper\Configuration $tagalysConfiguration,
         \Tagalys\Sync\Helper\Category $tagalysCategory,

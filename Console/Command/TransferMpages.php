@@ -10,6 +10,13 @@ class TransferMpages extends Command
 {
     const KEEP_OLD_URL = 'keep_old_url';
     const STORES = 'stores';
+
+    private $appState;
+    private $tagalysConfiguration;
+    private $tagalysSync;
+    private $tagalysCategory;
+    private $tagalysApi;
+    private $storeManagerInterface;
     
     public function __construct(
         \Magento\Framework\App\State $appState,
@@ -100,5 +107,7 @@ class TransferMpages extends Command
         }
 
         $output->writeln("Done");
+
+        return 1;
     }
 }

@@ -16,6 +16,22 @@ class Edit extends \Magento\Backend\App\Action
     */
     protected $resultPageFactory;
 
+    private $tagalysConfiguration;
+    private $tagalysCategoryHelper;
+    private $tagalysApi;
+    private $tagalysSync;
+    protected $messageManager;
+    private $queueHelper;
+    private $storeManager;
+    private $categoryRepository;
+    private $tagalysCategoryFactory;
+    private $indexerFactory;
+    private $categoryFactory;
+    private $scopeConfig;
+    private $logger;
+    private $platformDetailsToSend;
+    public $moduleManager;
+
     /**
      * Constructor
      *

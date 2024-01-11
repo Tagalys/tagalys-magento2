@@ -3,25 +3,33 @@ namespace Tagalys\Sync\Helper;
 
 class Category extends \Magento\Framework\App\Helper\AbstractHelper
 {
-    /**
-     * @param \Tagalys\Sync\Helper\Configuration
-     */
-    private $tagalysConfiguration;
-
-    private $logger;
-
     const PLATFORM_CREATED = 'platform_created';
     const TAGALYS_CREATED = 'tagalys_created';
 
-    /**
-     * @param \Tagalys\Sync\Helper\AuditLog
-     */
+    private $tagalysConfiguration;
+    private $random;
+    private $_registry;
+    private $tagalysApi;
+    private $categoryCollection;
+    private $categoryCollectionFactory;
+    private $tagalysCategoryFactory;
+    private $productFactory;
+    private $categoryFactory;
+    private $storeManagerInterface;
+    private $resourceConnection;
+    private $resourceModelIterator;
+    private $categoryProductLinkInterfaceFactory;
+    private $categoryLinkRepositoryInterface;
+    private $cacheInterface;
+    private $eventManager;
+    private $productMetadataInterface;
+    private $indexerFactory;
+    private $urlRewriteFactory;
+    private $urlRewriteCollection;
     private $auditLog;
-
-    /**
-     * @param \Tagalys\Sync\Helper\RestrictedAction
-     */
     private $restrictedAction;
+    private $tagalysQueue;
+    private $logger;
 
     public function __construct(
         \Tagalys\Sync\Helper\Configuration $tagalysConfiguration,

@@ -59,5 +59,7 @@ class Sync extends Command
         $this->categorySync->tryExecute(false);
         $this->syncCron->tryExecute(false);
         $output->writeln("Done");
+
+        return 1;
     }
 }

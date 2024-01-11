@@ -5,6 +5,10 @@ use Tagalys\Sync\Helper\Utils;
 
 class OrderCancel
 {
+
+    private $tagalysQueue;
+    private $orderRepository;
+    
     public function __construct(
         \Tagalys\Sync\Helper\Queue $tagalysQueue,
         \Magento\Sales\Model\OrderRepository $orderRepository

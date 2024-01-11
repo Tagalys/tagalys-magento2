@@ -25,15 +25,13 @@ use Magento\Framework\Registry;
  */
 class Listingpages extends Generic
 {
-    /**
-     * @var Yesno
-     */
     protected $_yesNo;
-
-    /**
-     * @var PropertyLocker
-     */
     private $propertyLocker;
+    private $tagalysConfiguration;
+    private $tagalysCategory;
+    private $tagalysApi;
+    private $storeManagerInterface;
+    private $categoryFactory;
 
     /**
      * @param Context $context

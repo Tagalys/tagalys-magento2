@@ -3,6 +3,11 @@ namespace Tagalys\Sync\Observer;
 
 class UpdateProduct implements \Magento\Framework\Event\ObserverInterface
 {
+
+    private $queueHelper;
+    private $tagalysCategory;
+    private $tagalysConfiguration;
+
     public function __construct(
         \Tagalys\Sync\Helper\Queue $queueHelper,
         \Tagalys\Sync\Helper\Category $tagalysCategory,

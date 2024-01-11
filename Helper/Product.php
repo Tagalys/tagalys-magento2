@@ -5,25 +5,36 @@ class Product extends \Magento\Framework\App\Helper\AbstractHelper
 {
     private $productsToReindex = array();
     private $parentCategoryAssignments = array();
-    /**
-     * @param \Magento\Framework\App\ResourceConnection
-     */
-    private $resourceConnection;
-
-    /**
-     * @param \Tagalys\Sync\Helper\Configuration
-     */
+    
+    private $productFactory;
+    private $linkManagement;
+    private $grouped;
+    private $datetime;
+    private $timezoneInterface;
+    private $directoryList;
+    protected $scopeConfig;
+    private $productMediaConfig;
+    private $storeManager;
+    private $imageFactory;
+    private $reviewCollectionFactory;
+    private $ratingCollectionFactory;
+    private $filesystem;
+    private $categoryRepository;
     private $tagalysConfiguration;
-
-    /**
-     * @param \Tagalys\Sync\Helper\Category
-     */
     private $tagalysCategory;
-
-    /**
-     * @param \Tagalys\Sync\Helper\AuditLog
-     */
+    private $swatchesHelper;
+    private $swatchesMediaHelper;
+    private $productAttributeRepository;
+    private $eventManager;
+    private $indexerRegistry;
+    private $stockRegistry;
+    private $priceCurrency;
+    private $productMetadata;
+    private $configurableProduct;
+    private $resourceConnection;
     private $auditLog;
+    private $logger;
+
 
     public function __construct(
         \Magento\Catalog\Model\ProductFactory $productFactory,

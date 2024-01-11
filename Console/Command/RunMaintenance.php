@@ -33,5 +33,7 @@ class RunMaintenance extends Command
     {
         $this->runMaintenanceCron->tryExecute(false);
         $output->writeln("Done");
+
+        return 1;
     }
 }

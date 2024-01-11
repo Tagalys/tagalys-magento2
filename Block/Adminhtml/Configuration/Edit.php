@@ -13,19 +13,11 @@ namespace Tagalys\Sync\Block\Adminhtml\Configuration;
  */
 class Edit extends \Magento\Backend\Block\Widget\Form\Container
 {
-    /**
-     * Block group name
-     *
-     * @var string
-     */
     protected $_blockGroup = 'Tagalys_Sync';
-
-    /**
-     * Core registry
-     *
-     * @var \Magento\Framework\Registry
-     */
     protected $_coreRegistry = null;
+
+    protected $_objectId;
+    protected $_controller;
 
     /**
      * @param \Magento\Backend\Block\Widget\Context $context

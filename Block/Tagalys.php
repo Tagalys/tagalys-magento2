@@ -5,6 +5,9 @@ use Tagalys\Sync\Helper\Utils;
 
 class Tagalys extends \Magento\Framework\View\Element\Template
 {
+
+    private $tagalysConfiguration;
+
     /**
      * @var Magento\Framework\UrlInterface
      */
@@ -20,7 +23,7 @@ class Tagalys extends \Magento\Framework\View\Element\Template
      */
     private $formKey;
 
-    private $tagalysConfiguration;
+    private $storeManager;
 
     public function __construct(
         \Magento\Framework\View\Element\Template\Context $context,

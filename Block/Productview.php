@@ -3,6 +3,12 @@ namespace Tagalys\Sync\Block;
 
 class Productview extends \Magento\Framework\View\Element\Template
 {
+
+    private $tagalysConfiguration;
+    private $tagalysProductHelper;
+    private $storeManager;
+    private $registry;
+
     public function __construct(
         \Tagalys\Sync\Helper\Configuration $tagalysConfiguration,
         \Tagalys\Sync\Helper\Product $tagalysProductHelper,

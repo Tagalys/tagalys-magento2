@@ -7,6 +7,7 @@ class TableCrud
      * @param \Magento\Framework\App\ResourceConnection
      */
     private $resourceConnection;
+    private $writableTables;
 
     public function __construct(
         \Magento\Framework\App\ResourceConnection $resourceConnection

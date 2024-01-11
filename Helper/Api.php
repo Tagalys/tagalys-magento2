@@ -8,6 +8,18 @@ class Api extends \Magento\Framework\App\Helper\AbstractHelper
      */
     private $_tagalysConfiguration;
 
+    private $timeout;
+    private $productMetadataInterface;
+    private $moduleListInterface;
+    private $configFactory;
+    private $storeManager;
+    private $tagalysLogger;
+    private $pluginVersion;
+    private $apiServer;
+    private $clientCode;
+    private $privateApiKey;
+    private $publicApiKey;
+
     public function __construct(
         \Magento\Framework\App\ProductMetadataInterface $productMetadataInterface,
         \Magento\Framework\Module\ModuleListInterface $moduleListInterface,
@@ -20,6 +32,7 @@ class Api extends \Magento\Framework\App\Helper\AbstractHelper
         $this->moduleListInterface = $moduleListInterface;
         $this->configFactory = $configFactory;
         $this->storeManager = $storeManager;
+
 
         $logLevel = $this->tagalysConfiguration()->getLogLevel();
         $this->tagalysLogger = Utils::getLogger("tagalys_log.log", $logLevel);

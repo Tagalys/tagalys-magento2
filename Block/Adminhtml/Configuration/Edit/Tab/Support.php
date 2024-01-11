@@ -25,15 +25,14 @@ use Magento\Framework\Registry;
  */
 class Support extends Generic
 {
-    /**
-     * @var Yesno
-     */
     protected $_yesNo;
-
-    /**
-     * @var PropertyLocker
-     */
     private $propertyLocker;
+    private $tagalysConfiguration;
+    private $tagalysApi;
+    private $configFactory;
+    private $filesystem;
+    private $productMediaConfig;
+    public $moduleManager;
 
     /**
      * @param Context $context

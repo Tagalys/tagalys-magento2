@@ -11,6 +11,12 @@ class Details extends \Magento\Framework\App\Action\Action implements CsrfAwareA
 {
     protected $jsonResultFactory;
 
+    private $tagalysConfiguration;
+    private $tagalysProduct;
+    private $pageConfig;
+    private $productFactory;
+    private $storeManager;
+
     public function createCsrfValidationException(RequestInterface $request): ?InvalidRequestException
     {
         return null;

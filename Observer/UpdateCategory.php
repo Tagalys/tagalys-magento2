@@ -3,9 +3,12 @@ namespace Tagalys\Sync\Observer;
 
 class UpdateCategory implements \Magento\Framework\Event\ObserverInterface
 {
-    /**
-     * @param \Tagalys\Sync\Helper\AuditLog
-     */
+    
+    private $queueHelper;
+    private $tagalysCategory;
+    private $_registry;
+    private $tagalysCategoryFactory;
+    private $tagalysConfiguration;
     private $auditLog;
 
     public function __construct(

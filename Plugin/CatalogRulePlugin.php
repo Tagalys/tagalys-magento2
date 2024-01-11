@@ -3,6 +3,10 @@ namespace Tagalys\Sync\Plugin;
 
 class CatalogRulePlugin {
 
+  private $tagalysSync;
+  private $tagalysConfiguration;
+  private $tagalysQueue;
+
   public function __construct(
     \Tagalys\Sync\Helper\Sync $tagalysSync,
     \Tagalys\Sync\Helper\Configuration $tagalysConfiguration,

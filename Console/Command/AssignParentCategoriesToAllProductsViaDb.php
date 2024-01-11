@@ -10,6 +10,10 @@ use Symfony\Component\Console\Formatter\OutputFormatterStyle;
 
 class AssignParentCategoriesToAllProductsViaDb extends Command
 {
+    private $appState;
+    private $tagalysCategoryHelper;
+    private $tagalysConfiguration;
+    
     public function __construct(
         \Magento\Framework\App\State $appState,
         \Tagalys\Sync\Helper\Category $tagalysCategoryHelper,
@@ -42,5 +46,7 @@ class AssignParentCategoriesToAllProductsViaDb extends Command
         $this->tagalysCategoryHelper->assignParentCategoriesToAllProducts(true);
 
         $output->writeln("Done");
+
+        return 1;
     }
 }

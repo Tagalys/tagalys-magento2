@@ -3,6 +3,11 @@ namespace Tagalys\Sync\Observer;
 
 class ImportSave implements \Magento\Framework\Event\ObserverInterface
 {
+
+    private $product;
+    private $queueHelper;
+    private $tagalysCategory;
+
     public function __construct(
         \Magento\Catalog\Model\Product $product,
         \Tagalys\Sync\Helper\Queue $queueHelper,

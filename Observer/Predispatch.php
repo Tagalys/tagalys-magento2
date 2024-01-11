@@ -3,6 +3,7 @@ namespace Tagalys\Sync\Observer;
 
 class Predispatch implements \Magento\Framework\Event\ObserverInterface
 {
+    private $session;
     /**
      * @param \Magento\Store\Model\StoreManagerInterface
      */

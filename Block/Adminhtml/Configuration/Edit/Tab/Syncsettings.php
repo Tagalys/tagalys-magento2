@@ -25,15 +25,11 @@ use Magento\Framework\Registry;
  */
 class Syncsettings extends Generic
 {
-    /**
-     * @var Yesno
-     */
     protected $_yesNo;
-
-    /**
-     * @var PropertyLocker
-     */
     private $propertyLocker;
+    private $tagalysConfiguration;
+    private $tagalysApi;
+    private $attributeCollectionFactory;
 
     /**
      * @param Context $context

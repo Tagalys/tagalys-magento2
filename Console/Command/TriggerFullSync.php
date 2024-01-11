@@ -10,6 +10,11 @@ use Symfony\Component\Console\Formatter\OutputFormatterStyle;
 
 class TriggerFullSync extends Command
 {
+
+    private $appState;
+    private $syncHelper;
+    private $tagalysConfiguration;
+
     public function __construct(
         \Magento\Framework\App\State $appState,
         \Tagalys\Sync\Helper\Sync $syncHelper,
@@ -42,5 +47,7 @@ class TriggerFullSync extends Command
         $this->syncHelper->runMaintenance(true);
 
         $output->writeln("Done");
+
+        return 1;
     }
 }
