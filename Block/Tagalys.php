@@ -86,6 +86,11 @@ class Tagalys extends \Magento\Framework\View\Element\Template
       return $this->tagalysConfiguration->getConfig($path, $json_decode);
     }
 
+    public function getUseLegacyJavaScript() {
+        return $this->tagalysConfiguration->getConfig('useLegacyJavaScript');
+    }
+}
+
     public function getUenc() {
         return $this->urlEncoderInterface->encode($this->urlInterface->getCurrentUrl());
     }

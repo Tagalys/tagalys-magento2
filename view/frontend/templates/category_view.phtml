@@ -1,31 +1,22 @@
-<?php
-$eventDetails = false;
-if($this->isTagalysEnabled()) {
-    try{
-        $thisCategory = $this->getCurrentCategory();
-        if(!$this->isCategoryRenderedByTagalys($thisCategory)) {
-            $isTagalysCreated = $this->isTagalysCreated();
-            $eventDetails = [
-                'pl_type' => $isTagalysCreated ? 'page-tagalys' : 'page-platform',
-                'pl_details' => ['page_id' => $thisCategory->getId()],
-                'pl_products' => []
-            ];
-        }
-    } catch (\Exception $e) { }
-}
-?>
-
-<script>
-    onTagalysReady(function () {
-        try {
-            if (typeof(__tagalysRendered) == 'undefined' || !__tagalysRendered) {
-                var eventDetails = <?php echo json_encode($eventDetails) ?>;
-                if(eventDetails){
-                    Tagalys.UIWidgets.trackEvent('product_list', eventDetails);
+<?php if ($this->isTagalysEnabled()): ?> 
+    <?php
+        $useLegacyJavaScript = $this->getUseLegacyJavaScript();
+        $thisCategory = false;
+        try{
+            $thisCategory = $this->getCurrentCategory();
+        } catch (\Exception $e) { }
+    ?>
+    <?php if($thisCategory != false): ?>
+        <script>
+            onTagalysReady(function() {
+                try {
+                    if (typeof(__tagalysRendered) == 'undefined' || !__tagalysRendered) {
+                        Tagalys.Analytics.trackProductListingPageView("<?php echo $thisCategory->getId(); ?>")
+                    }
+                } catch(error) {
+                    console.error(error)
                 }
-            }
-        } catch(error) {
-            console.error(error)
-        }
-    })
-</script>
+            });
+        </script>
+    <?php endif; ?>
+<?php endif; ?>

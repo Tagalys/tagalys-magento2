@@ -1,27 +1,28 @@
 <?php
 namespace Tagalys\Sync\Block;
+
+use Tagalys\Sync\Helper\Utils;
  
 class Track extends \Magento\Framework\View\Element\Template
 {
-    private $cookieManager;
     private $tagalysConfiguration;
     private $storeManager;
-    private $registry;
+    private $cookieManager;
     private $frontUrlHelper;
+    private $logger;
     
     public function __construct(
-        \Tagalys\Sync\CookieManager $cookieManager,
         \Tagalys\Sync\Helper\Configuration $tagalysConfiguration,
         \Magento\Framework\View\Element\Template\Context $context,
         \Magento\Framework\Url $frontUrlHelper,
-        \Magento\Framework\Registry $registry
+        \Tagalys\Sync\CookieManager $cookieManager
     )
     {
-        $this->cookieManager = $cookieManager;
         $this->tagalysConfiguration = $tagalysConfiguration;
         $this->storeManager = $context->getStoreManager();
-        $this->registry = $registry;
+        $this->cookieManager = $cookieManager;
         $this->frontUrlHelper = $frontUrlHelper;
+        $this->logger = Utils::getLogger("tagalys_custom.log");
         parent::__construct($context);
     }
 
@@ -33,19 +34,11 @@ class Track extends \Magento\Framework\View\Element\Template
         return $this->storeManager->getStore()->getId();
     }
 
-    public function getEvent() {
-        try {
-            $event = $this->registry->registry('tagalys_analytics_event');
-            if ($event != false) {
-                $event = json_decode($event, true);
-            }
-            return $event;
-        } catch (\Exception $e) {
-            return false;
-        }
-    }
-
     public function getProductDetailsUrl() {
         return $this->frontUrlHelper->getUrl('tanalytics/product/details/');
+    }
+
+    public function getUseLegacyJavaScript() {
+        return $this->tagalysConfiguration->getConfig('useLegacyJavaScript');
     }
 }

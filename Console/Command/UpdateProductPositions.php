@@ -44,7 +44,7 @@ class UpdateProductPositions extends Command
     }
     protected function execute(InputInterface $input, OutputInterface $output)
     {
-        $this->positionUpdateCron->tryExecute(false);
+        $this->positionUpdateCron->tryExecute(true);
         $output->writeln("Done");
 
         return 1;

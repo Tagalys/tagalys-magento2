@@ -1,0 +1,8 @@
+<?php
+    $useLegacyJavaScript = $this->getUseLegacyJavaScript();
+?>
+<?php if($useLegacyJavaScript): ?>
+    <?= $block->getChildHtml('product_view_legacy') ?>
+<?php else: ?>
+    <?= $block->getChildHtml('product_view') ?>
+<?php endif; ?>

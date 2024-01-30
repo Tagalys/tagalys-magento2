@@ -7,19 +7,19 @@ class Productview extends \Magento\Framework\View\Element\Template
     private $tagalysConfiguration;
     private $tagalysProductHelper;
     private $storeManager;
-    private $registry;
+    private $catalogHelper;
 
     public function __construct(
         \Tagalys\Sync\Helper\Configuration $tagalysConfiguration,
         \Tagalys\Sync\Helper\Product $tagalysProductHelper,
         \Magento\Framework\View\Element\Template\Context $context,
-        \Magento\Framework\Registry $registry
+        \Magento\Catalog\Helper\Data $catalogHelper
     )
     {
         $this->tagalysConfiguration = $tagalysConfiguration;
         $this->tagalysProductHelper = $tagalysProductHelper;
         $this->storeManager = $context->getStoreManager();
-        $this->registry = $registry;
+        $this->catalogHelper = $catalogHelper;
         parent::__construct($context);
     }
 
@@ -31,9 +31,22 @@ class Productview extends \Magento\Framework\View\Element\Template
         return $this->storeManager->getStore()->getId();
     }
 
+    public function getProductIdentifier() {
+        $product = $this->catalogHelper->getProduct();
+        if (is_object($product)) {
+            return $product->getSku();
+        }
+        else {
+            return false;
+        }
+    }
+
+    public function getUseLegacyJavaScript() {
+        return $this->tagalysConfiguration->getConfig('useLegacyJavaScript');
+    }
+
     public function getEventDetails() {
-        // FIXME: registry is deprecated
-        $product = $this->registry->registry('product');
+        $product = $this->catalogHelper->getProduct();
         if (is_object($product)) {
             $eventDetails = ['action' => 'view'];
             if($product->getTypeId() == 'configurable' && $this->tagalysConfiguration->areChildSimpleProductsVisibleIndividually()) {

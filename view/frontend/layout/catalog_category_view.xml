@@ -1,7 +1,10 @@
 <page xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="urn:magento:framework:View/Layout/etc/page_configuration.xsd">
     <body>
         <referenceContainer name="before.body.end">
-            <block class="Tagalys\Sync\Block\Categoryview" name="category_view" template="category_view.phtml"/>
+            <block class="Tagalys\Sync\Block\Categoryview" name="category_view_handler" template="category_view_handler.phtml">
+                <block class="Tagalys\Sync\Block\Categoryview" name="category_view" template="category_view.phtml"/>
+                <block class="Tagalys\Sync\Block\Categoryview" name="category_view_legacy" template="category_view_legacy.phtml"/>
+            </block>
         </referenceContainer>
     </body>
 </page>

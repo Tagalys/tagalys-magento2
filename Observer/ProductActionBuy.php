@@ -6,19 +6,19 @@ class ProductActionBuy implements \Magento\Framework\Event\ObserverInterface
     private $order;
     private $configurableProduct;
     private $productFactory;
-    private $registry;
+    private $sessionManager;
     
     public function __construct(
         \Magento\Sales\Model\Order $order,
         \Magento\ConfigurableProduct\Model\Product\Type\Configurable $configurableProduct,
         \Magento\Catalog\Model\ProductFactory $productFactory,
-        \Magento\Framework\Registry $registry
+        \Magento\Framework\Session\SessionManager $sessionManager
     )
     {
         $this->order = $order;
         $this->configurableProduct = $configurableProduct;
         $this->productFactory = $productFactory;
-        $this->registry = $registry;
+        $this->sessionManager = $sessionManager;
     }
 
     public function execute(\Magento\Framework\Event\Observer $observer)
@@ -30,7 +30,7 @@ class ProductActionBuy implements \Magento\Framework\Event\ObserverInterface
             }
             $orderId = $orderIds[0];
             $order = $this->order->load($orderId);
-            $analyticsCookieData = array(1 /* cookie format version */, 'product_action', 'buy', array(), $orderId);
+            $analyticsData = array(1 /* cookie format version */, 'product_action', 'buy', array(), $orderId);
 
             $returnItems = array();
             foreach($order->getAllItems() as $item){
@@ -40,13 +40,13 @@ class ProductActionBuy implements \Magento\Framework\Event\ObserverInterface
                     $parentId = $this->configurableProduct->getParentIdsByChild($product->getId());
                     if(isset($parentId[0])) {
                         $configurableProduct = $this->productFactory->create()->load($parentId[0]);
-                        $analyticsCookieData[3][] = array((int)$item->getQtyOrdered(), $configurableProduct->getId(), $product->getId());
+                        $analyticsData[3][] = array((int)$item->getQtyOrdered(), $configurableProduct->getId(), $product->getId());
                     } else {
-                        $analyticsCookieData[3][] = array((int)$item->getQtyOrdered(), $product->getId());
+                        $analyticsData[3][] = array((int)$item->getQtyOrdered(), $product->getId());
                     }
                 }
             }
-            $this->registry->register('tagalys_analytics_event', json_encode($analyticsCookieData));
+            $this->sessionManager->setData('__tagalys_event', json_encode($analyticsData));
         } catch (\Throwable $e) {
 
         }

@@ -1,0 +1,8 @@
+<?php
+    $useLegacyJavaScript = $this->getUseLegacyJavaScript();
+?>
+<?php if($useLegacyJavaScript): ?>
+    <?= $block->getChildHtml('tagalys_legacy') ?>
+<?php else: ?>
+    <?= $block->getChildHtml('tagalys') ?>
+<?php endif; ?>

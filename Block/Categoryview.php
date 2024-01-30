@@ -5,25 +5,20 @@ class Categoryview extends \Magento\Framework\View\Element\Template
 {
     private $tagalysConfiguration;
     private $storeManager;
-    private $registry;
     private $tagalysCategory;
-    private $_category;
-    private $pageTitle;
+    private $layerResolver;
     
     public function __construct(
         \Tagalys\Sync\Helper\Configuration $tagalysConfiguration,
         \Tagalys\Sync\Helper\Category $tagalysCategory,
         \Magento\Framework\View\Element\Template\Context $context,
-        \Magento\Framework\Registry $registry,
-        \Magento\Framework\View\Page\Title $pageTitle
+        \Magento\Catalog\Model\Layer\Resolver $layerResolver
     )
     {
         $this->tagalysConfiguration = $tagalysConfiguration;
         $this->storeManager = $context->getStoreManager();
-        $this->registry = $registry;
         $this->tagalysCategory = $tagalysCategory;
-        $this->_category = $this->registry->registry('current_category');
-        $this->pageTitle = $pageTitle;
+        $this->layerResolver = $layerResolver;
         parent::__construct($context);
     }
 
@@ -36,11 +31,17 @@ class Categoryview extends \Magento\Framework\View\Element\Template
     }
 
     public function getCurrentCategory() {
-        return $this->_category;
+        $category = $this->layerResolver->get()->getCurrentCategory();
+        return $category;
     }
 
     public function isTagalysCreated(){
-        return $this->tagalysCategory->isTagalysCreated($this->_category->getId());
+        $category = $this->layerResolver->get()->getCurrentCategory();
+        return $this->tagalysCategory->isTagalysCreated($category->getId());
+    }
+
+    public function getUseLegacyJavaScript() {
+        return $this->tagalysConfiguration->getConfig('useLegacyJavaScript');
     }
 
     public function isCategoryRenderedByTagalys() {

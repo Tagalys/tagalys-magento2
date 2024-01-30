@@ -1,0 +1,53 @@
+<?php if ($this->isTagalysEnabled()): ?>
+    <?php
+        $currency = $this->getCurrentCurrency();
+        $apiCredentials = $this->apiCredentials();
+    ?>
+    <script>
+        var config = {
+            paths:{
+                "tagalys":"https://d3htxdwqp62ai4.cloudfront.net/tagalys-plugins-v6"
+            },
+            shim:{
+                'tagalys':{
+                    'deps':['jquery', 'jquery/ui']
+                }
+            }
+        };
+        require.config(config);
+
+        require(['jquery', 'jquery/ui', 'tagalys'], function(jQuery){ 
+            try {
+                jQuery.fn.tagalys_public_api.server = '<?php echo $apiCredentials['api_server'] ?>';
+                jQuery.fn.tagalys_public_api.identification = {"client_code":"<?php echo $apiCredentials['client_code'] ?>","api_key":"<?php echo $apiCredentials['public_api_key'] ?>","store_id":"<?php echo $this->getCurrentStoreId() ?>"};
+                var tagalys_context_opts = {
+                    api_server: '<?php echo $apiCredentials['api_server'] ?>',
+                    api_identification: {"client_code":"<?php echo $apiCredentials['client_code'] ?>","api_key":"<?php echo $apiCredentials['public_api_key'] ?>","store_id":"<?php echo $this->getCurrentStoreId() ?>","currency":"<?php echo $currency['id']; ?>"},
+                    currency: {
+                        label: "<?php echo $currency['label']; ?>",
+                        exchange_rate: "<?php echo  $currency['exchange_rate']; ?>",
+                        fractional_digits:"<?php echo  $currency['fractional_digits']; ?>"
+                    }
+                };
+                <?php
+                    $objectManager = \Magento\Framework\App\ObjectManager::getInstance();
+                    $urlInterface = $objectManager->create('\Magento\Framework\UrlInterface');
+                    $urlEncoder = $objectManager->create('\Magento\Framework\Url\EncoderInterface');
+                    $uenc = $urlEncoder->encode($urlInterface->getCurrentUrl());
+                    $formKey = $objectManager->get('Magento\Framework\Data\Form\FormKey')->getFormKey();
+                ?>
+                jQuery.fn.tagalys_platform_variables = jQuery.fn.tagalys_platform_variables || {};
+                jQuery.fn.tagalys_platform_variables.uenc = '<?php echo $uenc ?>';
+                jQuery.fn.tagalys_platform_variables.formKey = '<?php echo $formKey ?>';
+                var user_id = jQuery.fn.tagalys_analytics.getCookie('__ta_user_id');
+                if(user_id != ""){
+                  tagalys_context_opts.user_id = user_id;
+                }
+                jQuery('body').tagalys_context(tagalys_context_opts);
+            }
+            catch(err) {
+                
+            }
+        });
+    </script>
+<?php endif; ?>

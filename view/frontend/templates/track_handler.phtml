@@ -1,0 +1,8 @@
+<?php
+    $useLegacyJavaScript = $this->getUseLegacyJavaScript();
+?>
+<?php if($useLegacyJavaScript): ?>
+    <?= $block->getChildHtml('track_legacy') ?>
+<?php else: ?>
+    <?= $block->getChildHtml('track') ?>
+<?php endif; ?>

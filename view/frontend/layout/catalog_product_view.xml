@@ -1,7 +1,10 @@
 <page xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="urn:magento:framework:View/Layout/etc/page_configuration.xsd">
     <body>
         <referenceContainer name="content">
-            <block class="Tagalys\Sync\Block\Productview" name="product_view" template="product_view.phtml" />
+            <block class="Tagalys\Sync\Block\Productview" name="product_view_handler" template="product_view_handler.phtml">
+                <block class="Tagalys\Sync\Block\Productview" name="product_view" template="product_view.phtml">
+                <block class="Tagalys\Sync\Block\Productview" name="product_view_legacy" template="product_view_legacy.phtml">
+            </block>
         </referenceContainer>
     </body>
 </page>

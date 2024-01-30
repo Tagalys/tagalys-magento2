@@ -577,13 +577,12 @@ class Sync extends \Magento\Framework\App\Helper\AbstractHelper
 
             $triggerDatetime = strtotime($syncFileStatus['triggered_at']);
             $utcNow = new \DateTime("now", new \DateTimeZone('UTC'));
-            $storeUrl = $this->storeManager->getStore($storeId)->getBaseUrl(\Magento\Framework\UrlInterface::URL_TYPE_WEB, true);
-            $storeDomain = parse_url($storeUrl)['host'];
+            $storeDomainWithPort = $this->tagalysConfiguration->getStoreDomainForId($storeId);
             $data = array(
                 'link' => $linkToFile,
                 'updates_count' => $syncFileStatus['products_count'],
                 'store' => $storeId,
-                'store_domain' => $storeDomain,
+                'store_domain' => $storeDomainWithPort,
                 'seconds_since_reference' => ($utcNow->getTimestamp() - $triggerDatetime),
                 'callback_url' => $this->frontUrlHelper->getUrl('tagalys/sync/callback/'),
                 'sync_type' => $type

@@ -1,55 +1,42 @@
 <?php if ($this->isTagalysEnabled()): ?>
-    <?php
-        $analyticsBuyEvent = $this->getEvent('__ta_event');
-    ?>
     <script>
-        __tagalysEventJson = '<?php echo $analyticsBuyEvent ? json_encode($analyticsBuyEvent) : ''; ?>'
-    </script>
-    <script>
-        // Note: User login tracking automatically is done by the JS plugin by monitoring the __ta_logged_in cookie.
         onTagalysReady(function() {
             try {
-                if(__tagalysEventJson) {
-                    var clearEventCookie = false;
-                    var eventJson = __tagalysEventJson;
-                } else {
-                    var eventJson = decodeURIComponent(Tagalys.UIWidgets.cookie.get('__ta_event'));
-                    var clearEventCookie = true;
+                var _tagalysEvent = Tagalys.UIWidgets.cookie.get('_tagalys_event');
+                if (_tagalysEvent != '') {
+                    _tagalysEvent = JSON.parse(decodeURIComponent(_tagalysEvent));
                 }
-                if(eventJson) {
+                if (_tagalysEvent != '') {
                     var track = true;
-                    var event = JSON.parse(eventJson);
-                    if(clearEventCookie) {
-                        Tagalys.UIWidgets.cookie.delete('__ta_event')
-                    }
-                    var action = event[2];
+                    Tagalys.UIWidgets.cookie.delete('_tagalys_event');
+                    var action = _tagalysEvent[2];
                     if(action == 'buy') {
                         var last_tracked_order_id = Tagalys.UIWidgets.cookie.get('__ta_last_order_id');
-                        if (last_tracked_order_id == event[4]) {
+                        if (last_tracked_order_id == _tagalysEvent[4]) {
                             track = false;
                         } else {
                             Tagalys.UIWidgets.cookie.set('__ta_last_order_id', event[4], 24*60*60*1000);
                         }
                     }
                     if (track) {
-                        TagalysUtils.ajax({
+                        TagalysCustomisations.Utils.ajax({
                             url: "<?php echo $this->getProductDetailsUrl(); ?>",
-                            contentType: "application/x-www-form-urlencoded; charset=UTF-8",
                             method: 'POST',
-                            data: "event_json="+encodeURIComponent(eventJson),
-                            success: function(data, _) {
-                                data = JSON.parse(data)
-                                for (var i = 0; i < this[3].length; i++) {
-                                    var eventType = this[1];
-                                    if (this[2] == 'buy') {
-                                        var eventData = Object.assign({ action: this[2], order_id: this[4] }, data[i]);
+                            contentType: "application/x-www-form-urlencoded; charset=UTF-8",
+                            data: "event_json="+encodeURIComponent(JSON.stringify(_tagalysEvent)),
+                            success: function(response, _) {
+                                var parsedResponse = JSON.parse(response)
+                                for (var i = 0; i < _tagalysEvent[3].length; i++) {
+                                    var eventType = _tagalysEvent[1];
+                                    if (_tagalysEvent[2] == 'buy') {
+                                        var eventData = Object.assign({ action: _tagalysEvent[2], order_id: _tagalysEvent[4] }, parsedResponse[i]);
                                         Tagalys.UIWidgets.trackEvent(eventType, eventData);
                                     } else {
-                                        var eventData = Object.assign({ action: this[2] }, data[i]);
+                                        var eventData = Object.assign({ action: _tagalysEvent[2] }, parsedResponse[i]);
                                         Tagalys.UIWidgets.trackEvent(eventType, eventData);
                                     }
                                 }
-                            }.bind(event)
+                            }
                         });
                     }
                 }

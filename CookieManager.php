@@ -82,7 +82,7 @@ class CookieManager
         $this->cookieManager->deleteCookie(
             $cookieName,
             $this->cookieMetadataFactory
-                ->createCookieMetadata()
+                ->createPublicCookieMetadata()
                 ->setPath('/')
                 ->setSecure($this->storeManager->getStore()->isFrontUrlSecure())
                 ->setDomain($this->sessionManager->getCookieDomain())

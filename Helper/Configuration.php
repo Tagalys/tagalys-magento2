@@ -89,6 +89,8 @@ class Configuration extends \Magento\Framework\App\Helper\AbstractHelper
         "log_level" => \Zend_Log::INFO,
         'stores_for_category_js_rendering' => '[]',
         "consider_order_increment_id_as_order_id" => "false",
+        // v2.6.0
+        "useLegacyJavaScript" => true
     ];
 
     private $_tagalysApi;
@@ -602,10 +604,22 @@ class Configuration extends \Magento\Framework\App\Helper\AbstractHelper
         return $tagalysResponse;
     }
 
+    public function getStoreUrlForId($storeId) {
+        $storeUrl = $this->storeManager->getStore($storeId)->getBaseUrl(\Magento\Framework\UrlInterface::URL_TYPE_WEB, true);
+        return $storeUrl;
+    }
+    public function getStoreDomainForId($storeId) {
+        $storeUrl = $this->getStoreUrlForId($storeId);
+        $parsedUrl = parse_url($storeUrl);
+        $storeDomain = $parsedUrl['host'];
+        $storePort = isset($parsedUrl['port']) ? ':' . $parsedUrl['port'] : '';
+        $storeDomainWithPort = $storeDomain . $storePort;
+        return $storeDomainWithPort;
+    }
+
     public function getStoreDomain($storeId) {
         if(empty($this->cachedStoreDomains[$storeId])) {
-            $storeUrl = $this->storeManager->getStore($storeId)->getBaseUrl(\Magento\Framework\UrlInterface::URL_TYPE_WEB, true);
-            $this->cachedStoreDomains[$storeId] = parse_url($storeUrl)['host'];
+            $this->cachedStoreDomains[$storeId] = $this->getStoreDomainForId($storeId);
         }
         return $this->cachedStoreDomains[$storeId];
     }
@@ -614,8 +628,8 @@ class Configuration extends \Magento\Framework\App\Helper\AbstractHelper
         $store = $this->storeManager->getStore($storeId);
         $tagSetsAndCustomFields = $this->getTagSetsAndCustomFields($store->getId());
         $productsCount = $this->productFactory->create()->getCollection()->setStoreId($storeId)->addStoreFilter($storeId)->addAttributeToFilter('status', 1)->addAttributeToFilter('visibility', array("neq" => 1))->count();
-        $storeUrl = $this->storeManager->getStore($storeId)->getBaseUrl(\Magento\Framework\UrlInterface::URL_TYPE_WEB, true);
-        $storeDomain = parse_url($storeUrl)['host'];
+        $storeUrl = $this->getStoreUrlForId($storeId);
+        $storeDomainWithPort = $this->getStoreDomainForId($storeId);
         $urlSuffix = $this->scopeConfigInterface->getValue('catalog/seo/category_url_suffix', \Magento\Store\Model\ScopeInterface::SCOPE_STORE, $storeId);
         $configuration = array(
             'id' => $storeId,
@@ -628,7 +642,7 @@ class Configuration extends \Magento\Framework\App\Helper\AbstractHelper
             'tag_sets' => $tagSetsAndCustomFields['tag_sets'],
             'sort_options' =>  $this->getSortOptions($storeId),
             'products_count' => $productsCount,
-            'domain' => $storeDomain,
+            'domain' => $storeDomainWithPort,
             'base_url' => $storeUrl,
             'platform_details' => [
                 'plugin_version' => $this->tagalysApi()->getPluginVersion(),

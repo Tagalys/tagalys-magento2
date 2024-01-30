@@ -14,6 +14,9 @@
             <values>
                 <value id="tagalys-dev-frontend-js-client-specific" type="host">http://d3fzz8zsf83ont.cloudfront.net</value>
             </values>
+            <values>
+                <value id="tagalys-js-sdk" type="host">https://storage.googleapis.com</value>
+            </values>
         </policy>
         <policy id="style-src">
             <values>
@@ -54,6 +57,9 @@
             </values>
             <values>
                 <value id="tagalys-staging-api-r2" type="host">https://staging-api-r2.tagalys.com</value>
+            </values>
+            <values>
+                <value id="tagalys-localhost-api" type="host">http://tagalys-api.docker:3000</value>
             </values>
         </policy>
     </policies>

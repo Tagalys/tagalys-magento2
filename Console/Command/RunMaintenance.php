@@ -31,7 +31,7 @@ class RunMaintenance extends Command
     }
     protected function execute(InputInterface $input, OutputInterface $output)
     {
-        $this->runMaintenanceCron->tryExecute(false);
+        $this->runMaintenanceCron->tryExecute(true);
         $output->writeln("Done");
 
         return 1;
