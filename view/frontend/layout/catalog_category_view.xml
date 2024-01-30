@@ -2,8 +2,8 @@
     <body>
         <referenceContainer name="before.body.end">
             <block class="Tagalys\Sync\Block\Categoryview" name="category_view_handler" template="category_view_handler.phtml">
-                <block class="Tagalys\Sync\Block\Categoryview" name="category_view" template="category_view.phtml"/>
-                <block class="Tagalys\Sync\Block\Categoryview" name="category_view_legacy" template="category_view_legacy.phtml"/>
+                <block class="Tagalys\Sync\Block\Categoryview" name="category_view" template="category_view.phtml" />
+                <block class="Tagalys\Sync\Block\Categoryview" name="category_view_legacy" template="category_view_legacy.phtml" />
             </block>
         </referenceContainer>
     </body>

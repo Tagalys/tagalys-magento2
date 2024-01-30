@@ -41,7 +41,7 @@ class Categoryview extends \Magento\Framework\View\Element\Template
     }
 
     public function getUseLegacyJavaScript() {
-        return $this->tagalysConfiguration->getConfig('useLegacyJavaScript');
+        return $this->tagalysConfiguration->getConfig('use_legacy_javascript');
     }
 
     public function isCategoryRenderedByTagalys() {

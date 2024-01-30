@@ -42,20 +42,12 @@ class Tagalys extends \Magento\Framework\View\Element\Template
     }
 
     public function isTagalysEnabled($module = false) {
-        $jsFileUrl = $this->tagalysConfiguration->getTagalysJsUrl();
-        if (empty($jsFileUrl)) {
-            return false;
-        }
         $isTagalysHealthy = $this->tagalysConfiguration->isTagalysHealthy();
         if(!$isTagalysHealthy) {
             return false;
         }
         $enabled = $this->tagalysConfiguration->isTagalysEnabledForStore($this->getCurrentStoreId(), $module);
         return $enabled;
-    }
-
-    public function getTagalysJsUrl() {
-        return $this->tagalysConfiguration->getTagalysJsUrl();
     }
 
     public function apiCredentials() {
@@ -87,9 +79,8 @@ class Tagalys extends \Magento\Framework\View\Element\Template
     }
 
     public function getUseLegacyJavaScript() {
-        return $this->tagalysConfiguration->getConfig('useLegacyJavaScript');
+        return $this->tagalysConfiguration->getConfig('use_legacy_javascript');
     }
-}
 
     public function getUenc() {
         return $this->urlEncoderInterface->encode($this->urlInterface->getCurrentUrl());

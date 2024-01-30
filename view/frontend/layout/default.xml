@@ -9,8 +9,8 @@
         </referenceContainer>
         <referenceContainer name="before.body.end">
             <block class="Tagalys\Sync\Block\Track" name="track_handler" template="track_handler.phtml">
-                <block class="Tagalys\Sync\Block\Track" name="track" template="track.phtml"/>
-                <block class="Tagalys\Sync\Block\Track" name="track_legacy" template="track_legacy.phtml"/>
+                <block class="Tagalys\Sync\Block\Track" name="track" template="track.phtml" />
+                <block class="Tagalys\Sync\Block\Track" name="track_legacy" template="track_legacy.phtml" />
             </block>
         </referenceContainer>
     </body>
