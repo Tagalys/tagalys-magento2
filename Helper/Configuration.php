@@ -90,7 +90,7 @@ class Configuration extends \Magento\Framework\App\Helper\AbstractHelper
         'stores_for_category_js_rendering' => '[]',
         "consider_order_increment_id_as_order_id" => "false",
         // v2.6.0-beta7
-        "use_legacy_javascript" => false
+        "use_legacy_javascript" => 'false',
     ];
 
     private $_tagalysApi;

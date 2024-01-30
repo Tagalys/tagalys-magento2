@@ -42,7 +42,7 @@ class Productview extends \Magento\Framework\View\Element\Template
     }
 
     public function getUseLegacyJavaScript() {
-        return $this->tagalysConfiguration->getConfig('use_legacy_javascript');
+        return $this->tagalysConfiguration->getConfig('use_legacy_javascript', true);
     }
 
     public function getEventDetails() {
