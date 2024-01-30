@@ -416,6 +416,7 @@ class Sync extends \Magento\Framework\App\Helper\AbstractHelper
                 $cronCurrentlyCompleted = 0;
 
                 $timeStart = time();
+                $silencedException = false;
                 if ($productsCount == 0) {
                     $fileGenerationCompleted = true;
                 } else {
@@ -487,6 +488,7 @@ class Sync extends \Magento\Framework\App\Helper\AbstractHelper
                     } catch(LockException $e) {
                         throw $e;
                     } catch (\Exception $e) {
+                        $silencedException = true;
                         $this->tagalysApi->logExceptionToTagalys($e, 'Exception in generateFilePart', ['storeId' => $storeId, 'syncFileStatus' => $syncFileStatus]);
                         try {
                             $this->tagalysProduct->reindexRequiredProducts();
@@ -495,7 +497,9 @@ class Sync extends \Magento\Framework\App\Helper\AbstractHelper
                         }
                     }
                 }
-                $updatesPerformed = true;
+                if ($silencedException == false) {
+                    $updatesPerformed = true;
+                }
                 // close file outside of try/catch
                 $stream->unlock();
                 $stream->close();
