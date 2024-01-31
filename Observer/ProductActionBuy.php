@@ -6,19 +6,19 @@ class ProductActionBuy implements \Magento\Framework\Event\ObserverInterface
     private $order;
     private $configurableProduct;
     private $productFactory;
-    private $sessionManager;
+    private $cookieManager;
     
     public function __construct(
         \Magento\Sales\Model\Order $order,
         \Magento\ConfigurableProduct\Model\Product\Type\Configurable $configurableProduct,
         \Magento\Catalog\Model\ProductFactory $productFactory,
-        \Magento\Framework\Session\SessionManager $sessionManager
+        \Tagalys\Sync\CookieManager $cookieManager
     )
     {
         $this->order = $order;
         $this->configurableProduct = $configurableProduct;
         $this->productFactory = $productFactory;
-        $this->sessionManager = $sessionManager;
+        $this->cookieManager = $cookieManager;
     }
 
     public function execute(\Magento\Framework\Event\Observer $observer)
@@ -46,7 +46,7 @@ class ProductActionBuy implements \Magento\Framework\Event\ObserverInterface
                     }
                 }
             }
-            $this->sessionManager->setData('__tagalys_event', json_encode($analyticsData));
+            $this->cookieManager->set('__ta_event', json_encode($analyticsData));
         } catch (\Throwable $e) {
 
         }

@@ -56,10 +56,10 @@ class Sync extends Command
     }
     protected function execute(InputInterface $input, OutputInterface $output)
     {
-        $this->categorySync->tryExecute(true);
-        $this->syncCron->tryExecute(true);
+        $this->categorySync->tryExecute(false);
+        $this->syncCron->tryExecute(false);
         $output->writeln("Done");
 
-        return 1;
+        return 0;
     }
 }

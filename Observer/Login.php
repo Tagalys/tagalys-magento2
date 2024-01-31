@@ -3,27 +3,20 @@ namespace Tagalys\Sync\Observer;
 
 class Login implements \Magento\Framework\Event\ObserverInterface
 {
-    private $session;
-    /**
-     * @param \Magento\Store\Model\StoreManagerInterface
-     */
-    private $storeManager;
+    private $cookieManager;
 
     public function __construct(
-        \Magento\Customer\Model\Session $session,
-        \Magento\Store\Model\StoreManagerInterface $storeManager
+        \Tagalys\Sync\CookieManager $cookieManager
     )
     {
-        $this->session = $session;
-        $this->storeManager = $storeManager;
+        $this->cookieManager = $cookieManager;
     }
 
     public function execute(\Magento\Framework\Event\Observer $observer)
     {
         try {
             $customerId = $observer->getCustomer()->getId();
-            // don't use magento's cookie helper as it sets httponly header to true
-            setcookie('__ta_logged_in', $customerId, time()+60*60*24*3, '/', $_SERVER['HTTP_HOST'], $this->storeManager->getStore()->isFrontUrlSecure());
+            $this->cookieManager->set('__ta_logged_in', $customerId);
         } catch (\Throwable $e) {
 
         }

@@ -2,13 +2,13 @@
     <script>
         require(['jquery', 'jquery/ui', 'tagalys'], function(jQuery){
             try {
-                var _tagalysEvent = jQuery.fn.tagalys_analytics.getCookie('_tagalys_event');
+                var _tagalysEvent = jQuery.fn.tagalys_analytics.getCookie('__ta_event');
                 if (_tagalysEvent != '') {
                     _tagalysEvent = JSON.parse(decodeURIComponent(_tagalysEvent));
                 }
                 if (_tagalysEvent != '') {
                     var track = true;
-                    jQuery.fn.tagalys_analytics.deleteCookie('_tagalys_event');
+                    jQuery.fn.tagalys_analytics.deleteCookie('__ta_event');
                     jQuery(document).on('tagalys:ready', function() {
                         var action = _tagalysEvent[2];
                         if(action == 'buy') {

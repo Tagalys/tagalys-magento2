@@ -2,20 +2,32 @@
     <script>
         onTagalysReady(function() {
             try {
-                var _tagalysEvent = Tagalys.UIWidgets.cookie.get('_tagalys_event');
+                // logged in user event
+                var _tagalysLoggedInUserId = Tagalys.Utilities.cookie.get('__ta_logged_in');
+                if (_tagalysLoggedInUserId != '') {
+                    Tagalys.Utilities.cookie.set('__ta_user_id', _tagalysLoggedInUserId, 7*24*60*60*1000);
+                    Tagalys.Analytics.track("analytics/users/track", {
+                        user_id: _tagalysLoggedInUserId
+                    });
+                    Tagalys.Utilities.cookie.delete('__ta_logged_in');
+                }
+                
+                // add to carts and buy events
+
+                var _tagalysEvent = Tagalys.Utilities.cookie.get('__ta_event');
                 if (_tagalysEvent != '') {
                     _tagalysEvent = JSON.parse(decodeURIComponent(_tagalysEvent));
                 }
                 if (_tagalysEvent != '') {
                     var track = true;
-                    Tagalys.UIWidgets.cookie.delete('_tagalys_event');
+                    Tagalys.Utilities.cookie.delete('__ta_event');
                     var action = _tagalysEvent[2];
                     if(action == 'buy') {
-                        var last_tracked_order_id = Tagalys.UIWidgets.cookie.get('__ta_last_order_id');
+                        var last_tracked_order_id = Tagalys.Utilities.cookie.get('__ta_last_order_id');
                         if (last_tracked_order_id == _tagalysEvent[4]) {
                             track = false;
                         } else {
-                            Tagalys.UIWidgets.cookie.set('__ta_last_order_id', event[4], 24*60*60*1000);
+                            Tagalys.Utilities.cookie.set('__ta_last_order_id', _tagalysEvent[4], 24*60*60*1000);
                         }
                     }
                     if (track) {
@@ -30,10 +42,10 @@
                                     var eventType = _tagalysEvent[1];
                                     if (_tagalysEvent[2] == 'buy') {
                                         var eventData = Object.assign({ action: _tagalysEvent[2], order_id: _tagalysEvent[4] }, parsedResponse[i]);
-                                        Tagalys.UIWidgets.trackEvent(eventType, eventData);
+                                        Tagalys.Analytics.trackEvent(eventType, eventData);
                                     } else {
                                         var eventData = Object.assign({ action: _tagalysEvent[2] }, parsedResponse[i]);
-                                        Tagalys.UIWidgets.trackEvent(eventType, eventData);
+                                        Tagalys.Analytics.trackEvent(eventType, eventData);
                                     }
                                 }
                             }

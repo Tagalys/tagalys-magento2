@@ -47,6 +47,6 @@ class AssignParentCategoriesToAllProductsViaDb extends Command
 
         $output->writeln("Done");
 
-        return 1;
+        return 0;
     }
 }
