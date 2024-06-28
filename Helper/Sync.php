@@ -27,6 +27,9 @@ class Sync extends \Magento\Framework\App\Helper\AbstractHelper
     private $perPage;
     private $pid;
 
+    const PRIORITY_UPDATES = 'priority_updates';
+    const QUICK_FEED = 'quick_feed';
+
     public function __construct(
         \Magento\Framework\Filesystem $filesystem,
         \Tagalys\Sync\Helper\Configuration $tagalysConfiguration,

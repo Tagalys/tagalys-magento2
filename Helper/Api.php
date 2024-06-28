@@ -37,7 +37,7 @@ class Api extends \Magento\Framework\App\Helper\AbstractHelper
         $logLevel = $this->tagalysConfiguration()->getLogLevel();
         $this->tagalysLogger = Utils::getLogger("tagalys_log.log", $logLevel);
 
-        $this->pluginVersion = '2.6.0-beta7';
+        $this->pluginVersion = '2.6.0-beta8';
 
         $this->cacheApiCredentials();
     }
