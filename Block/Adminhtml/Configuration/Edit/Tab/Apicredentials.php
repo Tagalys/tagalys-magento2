@@ -76,18 +76,12 @@ class Apicredentials extends Generic
         );
         $dashboardFieldset->addField('note', 'note', array(
             'label' => __('Your Tagalys account'),
-            'text' => '<img src=\'https://www.tagalys.com/wp-content/themes/tagalys/img/logo.png\' alt="" width="125" />'.'<br>',
+            // 'text' => '<img src=\'https://www.tagalys.com/wp-content/themes/tagalys/img/logo.png\' alt="" width="125" />'.'<br>',
         ));
-        $setupStatus = $this->tagalysConfiguration->getConfig('setup_status');
-        if ($setupStatus == 'api_credentials') {
-            $dashboardFieldset->addField('note_dashboard', 'note', array(
-                'text' => '<a href="https://next.tagalys.com/signup?platform='. $this->tagalysApi->platformIdentifier() .'" target="_blank" class="tagalys-button-important">Sign up for a Tagalys account</a>'
-            ));
-        } else {
-            $dashboardFieldset->addField('note_dashboard', 'note', array(
-                'text' => '<a href="https://next.tagalys.com" target="_blank" class="tagalys-button-important">Access your Tagalys Dashboard</a>'
-            ));
-        }
+
+        $dashboardFieldset->addField('note_dashboard', 'note', array(
+            'text' => '<a href="https://next.tagalys.com" target="_blank" class="tagalys-button-important">Access your Tagalys Dashboard</a>'
+        ));
 
         $mainFieldset = $form->addFieldset(
             'main_fieldset',

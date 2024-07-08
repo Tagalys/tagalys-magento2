@@ -92,6 +92,15 @@ class Configuration extends \Magento\Framework\App\Helper\AbstractHelper
         "audit_logs:enabled" => "false",
         "audit_logs:batch_size" => 200,
         "sync:threshold_to_abandon_updates_and_trigger_feed_percentage" => "0.33",
+        "category_pages_configuration_enabled" => "false",
+
+        // To control UI components in the Tagalys configuration section
+        // 0 - Allowing manual category selection in all stores
+        // 1 - Allowing manual category selection only in the primary store (primary: store_id_for_category_pages)
+        // The power all categories config does not consider these preferences,
+        //  consider using: 'category_pages_store_mapping' config instead of this
+        "listing_pages:same_or_similar_products_across_all_stores" => '0',
+        "listing_pages:store_id_for_category_pages" => '0',
     ];
 
     private $_tagalysApi;
