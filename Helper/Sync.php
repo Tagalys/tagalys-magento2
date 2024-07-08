@@ -486,7 +486,6 @@ class Sync extends \Magento\Framework\App\Helper\AbstractHelper
                                 break;
                             }
                         }
-                        $this->tagalysProduct->logParentCategoryAssignments();
                         $this->tagalysProduct->reindexRequiredProducts();
                     } catch(LockException $e) {
                         throw $e;
@@ -1043,7 +1042,6 @@ class Sync extends \Magento\Framework\App\Helper\AbstractHelper
             $this->writeToFile($fileName, $rowsToWrite);
             $this->updateCompletedCount($statusPath, $completedCount);
         }
-        $this->tagalysProduct->logParentCategoryAssignments();
         $this->tagalysProduct->reindexRequiredProducts();
     }
 

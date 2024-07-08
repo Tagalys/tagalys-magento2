@@ -4,8 +4,7 @@ namespace Tagalys\Sync\Helper;
 class Product extends \Magento\Framework\App\Helper\AbstractHelper
 {
     private $productsToReindex = array();
-    private $parentCategoryAssignments = array();
-    
+
     private $productFactory;
     private $linkManagement;
     private $grouped;
@@ -360,24 +359,6 @@ class Product extends \Magento\Framework\App\Helper\AbstractHelper
             if ($category->getIsActive()) {
                 $path = $category->getPath();
                 $activeCategoryPaths[] = $path;
-
-                // assign to parent categories
-                if($this->tagalysConfiguration->canPerformParentCategoryAssignment($storeId)) {
-                    $relevantCategories = array_slice(explode('/', $path), 2); // ignore level 0 and 1
-                    $idsToAssign = array_diff($relevantCategories, $categoryIds);
-                    foreach ($idsToAssign as $key => $categoryId) {
-                        if (!in_array($categoryId, $categoriesAssigned) && $this->tagalysCategory->canPerformParentCategoryAssignment($storeId, $categoryId)) {
-                            if ($this->tagalysCategory->assignProductToCategoryViaDb($categoryId, $product)){
-                                if(!array_key_exists($categoryId, $this->parentCategoryAssignments)) {
-                                    $this->parentCategoryAssignments[$categoryId] = [];
-                                }
-                                $this->parentCategoryAssignments[$categoryId][] = $product->getId();
-                                $this->tagalysCategory->markPositionsSyncRequired($storeId, $categoryId);
-                            }
-                            array_push($categoriesAssigned, $categoryId);
-                        }
-                    }
-                }
             }
         }
         if (count($categoriesAssigned) > 0) {
@@ -1049,9 +1030,4 @@ class Product extends \Magento\Framework\App\Helper\AbstractHelper
         return $this->runSqlSelect($select);
     }
 
-    public function logParentCategoryAssignments() {
-        if(!empty($this->parentCategoryAssignments)) {
-            $this->auditLog->logInfo('parent_category_assignment', "Parent category assignment done for the given category => products", ['parent_category_assignment' => $this->parentCategoryAssignments]);
-        }
-    }
 }

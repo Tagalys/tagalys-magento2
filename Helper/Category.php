@@ -554,67 +554,6 @@ class Category extends \Magento\Framework\App\Helper\AbstractHelper
     }
 
     public function assignParentCategoriesToAllProducts($viaDb = false){
-        $productCollection = $this->productFactory->create()->getCollection()
-            ->addAttributeToFilter('status', 1)
-            ->addAttributeToFilter('visibility', array("neq" => 1))
-            ->addAttributeToSelect('entity_id, product_id')
-            ->load();
-        $this->resourceModelIterator->walk($productCollection->getSelect(), array(array($this, 'assignParentCategoriesToProductHandler')), array('viaDb' => $viaDb));
-    }
-
-    public function assignParentCategoriesToProductHandler($args){
-        $this->assignParentCategoriesToProductId($args['row']['entity_id'], $args['viaDb']);
-    }
-
-    public function assignParentCategoriesToProductId($productId, $viaDb = false) {
-        $this->logger->info( "assignParentCategoriesToProductId: $productId");
-        $product = $this->productFactory->create()->load($productId);
-        $categoryIds = $product->getCategoryIds();
-        $assignedParents = array();
-        foreach($categoryIds as $categoryId){
-            $category = $this->categoryFactory->create()->load($categoryId);
-            foreach($category->getParentCategories() as $parent){
-                if ((int)$parent->getLevel() > 1) {
-                    if(!in_array($parent->getId(), $categoryIds) and !in_array($parent->getId(), $assignedParents)){
-                        array_push($assignedParents, $parent->getId());
-                        if ($viaDb) {
-                            $this->assignProductToCategoryViaDb($parent->getId(), $product);
-                        } else {
-                            $this->assignProductToCategory($parent->getId(), $product);
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    public function assignProductToCategory($categoryId, $product, $viaDb = false){
-        $this->logger->info("assignProductToCategory: {$categoryId}");
-        $productSku = $product->getSku();
-        $categoryProductLink = $this->categoryProductLinkInterfaceFactory->create();
-        $categoryProductLink->setSku($productSku);
-        $categoryProductLink->setCategoryId($categoryId);
-        $categoryProductLink->setPosition(999);
-        $this->categoryLinkRepositoryInterface->save($categoryProductLink);
-    }
-    public function assignProductToCategoryViaDb($categoryId, $product){
-        $allowed = $this->tagalysConfiguration->getConfig("sync:allow_parent_category_assignment_during_sync", true, true);
-        if (!$allowed) {
-            return false;
-        }
-        try {
-            $this->logger->info("assignProductToCategoryViaDb: {$categoryId}");
-            $conn = $this->resourceConnection->getConnection();
-            $table = $this->resourceConnection->getTableName('catalog_category_product');
-
-            $sortDirection = $this->tagalysConfiguration->getConfig('listing_pages:position_sort_direction');
-            $positionToAssign = ($sortDirection == 'desc' ? 1 : 9999);
-            $assignData = array('category_id'=>(int)$categoryId, 'product_id'=>(int)($product->getId()), 'position' => $positionToAssign);
-            $conn->insert($table, $assignData);
-            return true;
-        } catch (\Throwable $e) {
-            $this->logger->err("assignProductToCategoryViaDb failed for: {$categoryId} message: {$e->getMessage()}");
-        }
         return false;
     }
 
@@ -1416,13 +1355,5 @@ class Category extends \Magento\Framework\App\Helper\AbstractHelper
             "is_active" => $categoryEnabled,
             "include_in_menu" => $categoryIncludedInMenu
         ];
-    }
-
-    public function canPerformParentCategoryAssignment($storeId, $categoryId) {
-        return ($this->tagalysCategoryFactory->create()->getCollection()
-            ->addFieldToFilter('store_id', $storeId)
-            ->addFieldToFilter('category_id', $categoryId)
-            ->addFieldToFilter('tagalys_managed_products', 1)
-            ->getSize() == 0);
     }
 }
