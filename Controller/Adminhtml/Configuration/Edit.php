@@ -180,15 +180,19 @@ class Edit extends \Magento\Backend\App\Action
                     break;
                 case 'Save Listing Pages Settings':
                     $this->tagalysConfiguration->setConfig('module:listingpages:enabled', $params['enable_listingpages']);
-                    if ($params['enable_listingpages'] != '0' && $params['understand_and_agree'] == 'I agree') {
+                    if ($params['enable_listingpages'] != '0') {
                         $this->messageManager->addNoticeMessage("Settings have been saved. Selected categories will be visible in your Tagalys Dashboard depending on your cron configuration.");
                         if (!array_key_exists('category_pages_rendering_method', $params)){
                             $params['category_pages_rendering_method'] = 'platform';
                         }
                         $this->tagalysConfiguration->setConfig('listing_pages:rendering_method', $params['category_pages_rendering_method']);
-                        $this->tagalysConfiguration->setConfig('listing_pages:position_sort_direction', $params['position_sort_direction']);
-                        $this->tagalysConfiguration->setConfig('listing_pages:understand_and_agree', $params['understand_and_agree']);
+
+                        //** DEPRECATED
+                        if (!array_key_exists('enable_smart_pages', $params)) {
+                            $params["enable_smart_pages"] = 0;
+                        }
                         $this->tagalysConfiguration->setConfig("enable_smart_pages", $params["enable_smart_pages"]);
+
                         $categoryProductIndexer = $this->indexerFactory->create()->load('catalog_category_product');
                         foreach($params['stores_for_tagalys'] as $storeId) {
                             $this->platformDetailsToSend['platform_pages_rendering_method'] = $params['category_pages_rendering_method'];
@@ -234,34 +238,6 @@ class Edit extends \Magento\Backend\App\Action
                             }
                             $this->storeManager->setCurrentStore($originalStoreId);
                         }
-                        if ($params['category_pages_rendering_method'] == 'platform') {
-                            $this->tagalysConfiguration->setConfig('listing_pages:categories_via_tagalys_js_enabled', '0');
-                            if (array_key_exists('same_or_similar_products_across_all_stores', $params)) {
-                                $this->tagalysConfiguration->setConfig('listing_pages:same_or_similar_products_across_all_stores', $params['same_or_similar_products_across_all_stores']);
-                                $this->tagalysConfiguration->setConfig('listing_pages:store_id_for_category_pages', $params['store_id_for_category_pages']);
-                            }
-                            foreach($params['stores_for_tagalys'] as $storeId) {
-                                $originalStoreId = $this->storeManager->getStore()->getId();
-                                $this->storeManager->setCurrentStore($storeId);
-                                if (
-                                    array_key_exists('same_or_similar_products_across_all_stores', $params) && $params['same_or_similar_products_across_all_stores'] == '1' &&
-                                    $storeId.'' != $params['store_id_for_category_pages'].''
-                                ) {
-                                    $this->tagalysCategoryHelper->markStoreCategoryIdsForDeletionExcept($storeId, array());
-                                    continue;
-                                }
-                                $this->storeManager->setCurrentStore($originalStoreId);
-                            }
-                        } else {
-                            $this->tagalysConfiguration->setConfig('listing_pages:categories_via_tagalys_js_enabled', '1');
-                            $this->tagalysConfiguration->setConfig('listing_pages:override_layout', $params['override_layout_for_listing_pages']);
-                            $this->tagalysConfiguration->setConfig('listing_pages:override_layout_name', $params['override_layout_name_for_listing_pages']);
-                        }
-                    } else {
-                        if ($params['enable_listingpages'] != '0') {
-                            $this->messageManager->addErrorMessage("Settings have not been updated because you did not type 'I agree'.");
-                        }
-                        $this->tagalysConfiguration->setConfig('listing_pages:categories_via_tagalys_js_enabled', '0');
                     }
                     $redirectToTab = 'listingpages';
                     break;

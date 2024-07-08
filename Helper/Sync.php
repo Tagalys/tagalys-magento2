@@ -486,7 +486,6 @@ class Sync extends \Magento\Framework\App\Helper\AbstractHelper
                                 break;
                             }
                         }
-                        $this->tagalysProduct->logParentCategoryAssignments();
                         $this->tagalysProduct->reindexRequiredProducts();
                     } catch(LockException $e) {
                         throw $e;
@@ -1043,7 +1042,6 @@ class Sync extends \Magento\Framework\App\Helper\AbstractHelper
             $this->writeToFile($fileName, $rowsToWrite);
             $this->updateCompletedCount($statusPath, $completedCount);
         }
-        $this->tagalysProduct->logParentCategoryAssignments();
         $this->tagalysProduct->reindexRequiredProducts();
     }
 
@@ -1152,6 +1150,7 @@ class Sync extends \Magento\Framework\App\Helper\AbstractHelper
 
     public function truncateQueueAndTriggerSyncIfRequired($storeId) {
         $maxAllowedUpdatesCount = (int) $this->tagalysConfiguration->getConfig("sync:threshold_to_abandon_updates_and_trigger_feed");
+        $cutOffThresholdPercentage = (float) $this->tagalysConfiguration->getConfig("sync:threshold_to_abandon_updates_and_trigger_feed_percentage");
         $resyncTriggered = false;
         $entries = $this->queueFactory->create()
             ->getCollection()
@@ -1169,7 +1168,7 @@ class Sync extends \Magento\Framework\App\Helper\AbstractHelper
         $updatesCount = count($productIdsForUpdate);
         if($updatesCount > $maxAllowedUpdatesCount) {
             $totalProducts = $this->getProductsCount($storeId);
-            $cutoff = 0.33 * $totalProducts;
+            $cutoff = $cutOffThresholdPercentage * $totalProducts;
             if ($updatesCount > $cutoff) {
                 $resyncTriggered = true;
                 $this->queueHelper->deleteByPriority(0, $storeId);

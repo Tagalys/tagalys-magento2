@@ -21,8 +21,6 @@ class Configuration extends \Magento\Framework\App\Helper\AbstractHelper
         'module:mpages:enabled' => '1',
         'categories'=> '[]',
         'category_ids'=> '[]',
-        'listing_pages:override_layout'=> '1',
-        'listing_pages:override_layout_name'=> '1column',
         'listing_pages:position_sort_direction' => 'asc',
         'listing_pages:rendering_method' => 'platform',
         'product_image_attribute' => 'small_image',
@@ -41,11 +39,11 @@ class Configuration extends \Magento\Framework\App\Helper\AbstractHelper
         */
         'listing_pages:allow_reindex_for_mcc' => 'false',
         'listing_pages:allow_cache_clear_for_mcc' => 'false',
-        'listing_pages:allow_reindex_for_tcc' => 'true',
-        'listing_pages:allow_cache_clear_for_tcc' => 'true',
+        'listing_pages:allow_reindex_for_tcc' => 'false',
+        'listing_pages:allow_cache_clear_for_tcc' => 'false',
         'listing_pages:reindex_category_flat_after_updates' => 'false',
         'listing_pages:update_position_via_db_for_mcc' => 'false',
-        'listing_pages:update_position_via_db_for_tcc' => 'true',
+        'listing_pages:update_position_via_db_for_tcc' => 'false',
         'listing_pages:update_position_async' => 'true',
         // Don't need to set "true" for Multi store M 2.3+ since magento handles this internally
         'listing_pages:consider_multi_store_during_position_updates' => 'false',
@@ -80,7 +78,6 @@ class Configuration extends \Magento\Framework\App\Helper\AbstractHelper
         'sync:consider_single_value_field_as_custom_field_too' => 'true',
         // v2.4.0
         'sync:avoid_parallel_sync_crons' => 'false',
-        'sync:always_perform_parent_category_assignment' => 'false',
         "fallback:sync:add_price_data_to_product_collection" => 'false',
         // v2.4.1
         'sync:configurable_attributes_to_sync_all_tags' => '[]',
@@ -91,6 +88,19 @@ class Configuration extends \Magento\Framework\App\Helper\AbstractHelper
         "consider_order_increment_id_as_order_id" => "false",
         // v2.6.0-beta7
         "use_legacy_javascript" => 'false',
+        // v2.6.0-beta9
+        "audit_logs:enabled" => "false",
+        "audit_logs:batch_size" => 200,
+        "sync:threshold_to_abandon_updates_and_trigger_feed_percentage" => "0.33",
+        "category_pages_configuration_enabled" => "false",
+
+        // To control UI components in the Tagalys configuration section
+        // 0 - Allowing manual category selection in all stores
+        // 1 - Allowing manual category selection only in the primary store (primary: store_id_for_category_pages)
+        // The power all categories config does not consider these preferences,
+        //  consider using: 'category_pages_store_mapping' config instead of this
+        "listing_pages:same_or_similar_products_across_all_stores" => '0',
+        "listing_pages:store_id_for_category_pages" => '0',
     ];
 
     private $_tagalysApi;
@@ -1226,10 +1236,6 @@ class Configuration extends \Magento\Framework\App\Helper\AbstractHelper
         }
     }
 
-    public function canPerformParentCategoryAssignment($storeId) {
-        return ($this->getConfig("sync:always_perform_parent_category_assignment", true, true) || $this->getConfig("store:$storeId:setup_complete", false, true) != '1');
-    }
-
     public function getStoreDomains() {
         $domains = [];
         foreach ($this->getStoresForTagalys() as $storeId) {
@@ -1244,9 +1250,8 @@ class Configuration extends \Magento\Framework\App\Helper\AbstractHelper
         } else {
             return \Zend_Log::INFO;
         }
-        
     }
-    
+
     private function isTableExists($tableName){
         $tableName = $this->resourceConnection->getTableName($tableName);
         $connection = $this->resourceConnection->getConnection();

@@ -91,11 +91,6 @@ class Support extends Generic
             'text' => '<a href="http://support.tagalys.com" target="_blank">http://support.tagalys.com</a>',
         ));
 
-        $supportfieldset->addField('support_ticket', 'note', array(
-            'label' => __('Support Tickets'),
-            'text' => '<a href="http://support.tagalys.com/support/tickets/new" target="_blank">Submit a new Ticket</a><br><a href="http://support.tagalys.com/support/tickets" target="_blank">Check status</a>',
-        ));
-
         $setupStatus = $this->tagalysConfiguration->getConfig('setup_status');
         if (in_array($setupStatus, array('sync', 'completed'))) {
             $tagalysCategoriesFieldset = $form->addFieldset('tagalys_categories_fieldset', array('legend' => __('Tagalys Categories')));
@@ -243,7 +238,6 @@ class Support extends Generic
             'readonly' => true,
             'value' => json_encode($info),
             'style' => "width:100%; height: 100px;",
-            'after_element_html' => 'Please copy and send the above content to <a href="mailto:support@tagalys.com">support@tagalys.com</a> to help us troubleshoot issues.',
             'tabindex' => 1
         ));
 

@@ -82,6 +82,17 @@ class Listingpages extends Generic
             ['legend' => __('Category Pages'),  'collapsable' => true]
         );
 
+        $categoryPagesConfigurationEnabled = $this->tagalysConfiguration->getConfig("category_pages_configuration_enabled", true);
+        if(!$categoryPagesConfigurationEnabled){
+            $enableFieldSet->addField('category_pages_ui_not_enabled', 'note', array(
+                'label' => __('Note'),
+                'text' => '<div class="tagalys-note">This feature requires further configuration. Please contact your Tagalys team to enable category merchandising.</div>'
+            ));
+
+            $this->setForm($form);
+            return parent::_prepareForm();
+        }
+
         $enableFieldSet->addField('enable_listingpages', 'select', array(
             'name' => 'enable_listingpages',
             'label' => 'Use Tagalys to power Category pages',
@@ -96,57 +107,36 @@ class Listingpages extends Generic
             'value' => $this->tagalysConfiguration->getConfig("module:listingpages:enabled")
         ));
 
-        $enableFieldSet->addField("enable_smart_pages", 'select', array(
-            'name' => "enable_smart_pages",
-            'label' => "Allow Tagalys to create new pages",
-            'options' => array(
-                '1' => __('Yes'),
-                '0' => __('No')
-            ),
-            'after_element_html' => '<p><small id="smart-pages-info" style="font-weight: bold">This will allow you to create new categories from the Tagalys Dashboard whose products are dynamically managed by Tagalys based on various conditions.</small></p>',
-            'data-store-id' => 3,
-            'style' => 'width:100%',
-            'value'  => $this->tagalysConfiguration->getConfig("enable_smart_pages"),
+        $magentoNote = '<p>Tagalys operates by updating the category-product positions on the Magento Admin for the categories enabled for Merchandising with Tagalys. Your current product-position values will be overwritten.</p>';
+        $enableFieldSet->addField('rendering_method_note_platform', 'note', array(
+            'label' => __('Note'),
+            'text' => '<div class="tagalys-note visible-for-rendering-method visible-for-rendering-method-platform">' . $magentoNote . '</div>'
         ));
 
-        $technicalConsiderationsFieldset = $form->addFieldset(
-            'technical_considerations_fieldset',
-            ['legend' => __('Technical Considerations'), 'collapsable' => true]
-        );
-
-        $renderingMethod = $this->tagalysConfiguration->getConfig("listing_pages:rendering_method");
-        if($renderingMethod == 'tagalys_js'){
-            $technicalConsiderationsFieldset->addField('category_pages_rendering_method', 'select', array(
-                'name' => 'category_pages_rendering_method',
-                'label' => 'Render category pages UI using',
-                'title' => 'Render category pages UI using',
+        //** DEPRECATED
+        $smartPagesAlreadyEnabled = (int) $this->tagalysConfiguration->getConfig("enable_smart_pages");
+        if ($smartPagesAlreadyEnabled) {
+            $enableFieldSet->addField("enable_smart_pages", 'select', array(
+                'name' => "enable_smart_pages",
+                'label' => "Allow Tagalys to create new pages",
                 'options' => array(
-                    'platform' => __('Magento'),
-                    'tagalys_js' => __('JavaScript (Not recommended)')
+                    '1' => __('Yes'),
+                    '0' => __('No')
                 ),
-                'required' => true,
+                'after_element_html' => '<p><small id="smart-pages-info" style="font-weight: bold">This will allow you to create new categories from the Tagalys Dashboard whose products are dynamically managed by Tagalys based on various conditions.</small></p>',
+                'data-store-id' => 3,
                 'style' => 'width:100%',
-                'value' => $renderingMethod
+                'value'  => $this->tagalysConfiguration->getConfig("enable_smart_pages"),
             ));
         }
 
-        //Magento Render mode
-        $multiStoreWarningRequired = $this->tagalysCategory->isMultiStoreWarningRequired();
-        $magentoNote = '<p>Tagalys operates by updating Magento product positions for the categories selected below. Your current values will be overwritten.</p>';
-        if ($multiStoreWarningRequired) {
-            $magentoNote .= "
-                <p><strong>Important:</strong> You have multiple stores with common categories. Since Magento does not allow specifying separate product positions per store, please review the following:</p>
-                <ul>
-                    <li>If all or most of your products are common across all your stores, choose a single store below. Your category pages will be listed under this store on the Tagalys Dashboard and positions will be updated based on that store, but will apply to all your stores.</li>
-                    <li>If you have different products across stores or have a more complex setup, please contact us on how best to choose categories below.</li>
-                </ul>
-            ";
-        }
-        $technicalConsiderationsFieldset->addField('rendering_method_note_platform', 'note', array(
-            'label' => __('Notes for the tech team'),
-            'text' => '<div class="tagalys-note visible-for-rendering-method visible-for-rendering-method-platform">'.$magentoNote.'</div>'
-        ));
-        if($multiStoreWarningRequired){
+        $platformHasMultipleStores = $this->tagalysCategory->platformHasMultipleStores();
+        if($platformHasMultipleStores){
+            $technicalConsiderationsFieldset = $form->addFieldset(
+                'technical_considerations_fieldset',
+                ['legend' => __('Technical Considerations'), 'collapsable' => true]
+            );
+
             $technicalConsiderationsFieldset->addField('same_or_similar_products_across_all_stores', 'select',  array(
                 'label' => 'Are all or most of your products common across all stores?',
                 'name' => 'same_or_similar_products_across_all_stores',
@@ -177,67 +167,6 @@ class Listingpages extends Generic
                 'value' => $this->tagalysConfiguration->getConfig("listing_pages:store_id_for_category_pages")
             ));
         }
-        $technicalConsiderationsFieldset->addField('position_sort_direction', 'select',  array(
-            'label' => 'What direction of the Position field are category pages sorted by?',
-            'name' => 'position_sort_direction',
-            'options' => array(
-                'asc' => 'Ascending (default)',
-                'desc' => 'Descending'
-            ),
-            'required' => true,
-            'style' => 'width:100%',
-            'class' => 'visible-for-rendering-method visible-for-rendering-method-platform',
-            'value' => $this->tagalysConfiguration->getConfig("listing_pages:position_sort_direction")
-        ));
-
-        // Tagalys Render mode
-        $technicalConsiderationsFieldset->addField('note', 'note', array(
-            'label' => __('Notes for the tech team'),
-            'text' => '<ul class="tagalys-note visible-for-rendering-method visible-for-rendering-method-tagalys_js">
-                <li>Tagalys will replace the template used to render the <em>category.products</em> block, so make sure that this is present in your layout</li>
-                <li>Since Tagalys renders filters and products within this block, recommended settings are to override the layout and use <em>1column</em></li>
-                <li>Overriding will make the page appear like categories for Tagalys are not Anchors and don\'t have children</li>
-                <li>If you have some custom UI rules common to all Tagalys pages, then you could create a separate custom layout and override that instead of <em>1column</em></li>
-                <li>If you need control over each page, avoid overriding the layout and use Magento controls under Catalog&nbsp;>&nbsp;Category for each page to specify the layout and any updates you need</li>
-                <li>You may have to clear your Magento cache after updating these settings</li>
-                <li>Please contact support@tagalys.com if you have any questions</li>
-            </ul>'
-        ));
-
-        $technicalConsiderationsFieldset->addField('override_layout_for_listing_pages', 'select', array(
-            'name' => 'override_layout_for_listing_pages',
-            'label' => 'Override layout for Tagalys powered category pages',
-            'title' => 'Override layout for Tagalys powered category pages',
-            'options' => array(
-                '0' => __('No'),
-                '1' => __('Yes')
-            ),
-            'required' => true,
-            'style' => 'width:100%',
-            'class' => 'visible-for-rendering-method visible-for-rendering-method-tagalys_js',
-            'value' => $this->tagalysConfiguration->getConfig("listing_pages:override_layout")
-        ));
-
-        $technicalConsiderationsFieldset->addField('override_layout_name_for_listing_pages', 'text', array(
-            'name'      => 'override_layout_name_for_listing_pages',
-            'label'     => __('Layout name to override with'),
-            'value'  => $this->tagalysConfiguration->getConfig("listing_pages:override_layout_name"),
-            'required'  => true,
-            'style'   => "width:100%",
-            'class' => 'visible-for-rendering-method visible-for-rendering-method-tagalys_js',
-            'tabindex' => 1
-        ));
-
-        // Common
-        $technicalConsiderationsFieldset->addField('understand_and_agree', 'text', array(
-            'name'      => 'understand_and_agree',
-            'label'     => 'Do you understand the above settings and agree to allow Tagalys to power category pages? Please verify with your tech team.',
-            'value'  => $this->tagalysConfiguration->getConfig("listing_pages:understand_and_agree"),
-            'required'  => true,
-            'style'   => "width:100%",
-            'after_element_html' => '<p><small style="font-weight: bold">Contact support@tagalys.com if you have any questions. <span style="color: #aa0000">Type "I agree" above to choose categories.</span></small></p>',
-            'tabindex' => 1
-        ));
 
         foreach ($this->tagalysConfiguration->getStoresForTagalys() as $key => $storeId) {
             if (!$this->tagalysConfiguration->isPrimaryStore($storeId)) {
@@ -255,20 +184,22 @@ class Listingpages extends Generic
                 'store_'.$storeId.'_listing_pages',
                 ['legend' => 'Categories for store: '.$storeDisplayLabel, 'collapsable' => true]
             );
-            $storeListingPagesFieldset->addField("smart_page_parent_category_name_store_$storeId", 'text', array(
-                'name' => "smart_page_parent_category_name_store_$storeId",
-                'label' => "Smart Categories parent category name",
-                'value'  => $smartPageParentCategory->getName(),
-                'placeholder' => 'Buy (default)',
-                'after_element_html' => '<p><small>For your reference, not shown in the front-end.</small></p>',
-            ));
-            $storeListingPagesFieldset->addField("smart_page_parent_category_url_key_store_$storeId", 'text', array(
-                'name' => "smart_page_parent_category_url_key_store_$storeId",
-                'label' => "Smart Categories parent category url_key",
-                'value'  => $smartPageParentCategory->getUrlKey(),
-                'placeholder' => 'buy (default)',
-                'disabled' => $smartPageEnabled
-            ));
+            if ($smartPagesAlreadyEnabled) {
+                $storeListingPagesFieldset->addField("smart_page_parent_category_name_store_$storeId", 'text', array(
+                    'name' => "smart_page_parent_category_name_store_$storeId",
+                    'label' => "Smart Categories parent category name",
+                    'value'  => $smartPageParentCategory->getName(),
+                    'placeholder' => 'Buy (default)',
+                    'after_element_html' => '<p><small>For your reference, not shown in the front-end.</small></p>',
+                ));
+                $storeListingPagesFieldset->addField("smart_page_parent_category_url_key_store_$storeId", 'text', array(
+                    'name' => "smart_page_parent_category_url_key_store_$storeId",
+                    'label' => "Smart Categories parent category url_key",
+                    'value'  => $smartPageParentCategory->getUrlKey(),
+                    'placeholder' => 'buy (default)',
+                    'disabled' => $smartPageEnabled
+                ));
+            }
             $categorySelectionDisplayData = $this->tagalysConfiguration->getCategorySelectionDisplayData($storeId);
             $storeListingPagesFieldset->addField("categories_for_tagalys_store_$storeId", 'multiselect', array(
                 'name' => "categories_for_tagalys_store_$storeId",
@@ -295,7 +226,7 @@ class Listingpages extends Generic
         );
         $submitFieldset->addField('save-delay-note', 'note', array(
             'label' => '',
-            'text' => '<div class="tagalys-note">Once saved, selected categories will be visible in your Tagalys Dashboard within 10 minutes and product positions on these categories will be updated within 15 minutes unless otherwise mentioned.</div>'
+            'text' => '<div class="tagalys-note">Once saved, selected categories will be become available on your Tagalys Dashboard for merchandising and the product positions on these categories will be updated.</div>'
         ));
         $submitFieldset->addField('submit', 'submit', array(
             'name' => 'tagalys_submit_action',
