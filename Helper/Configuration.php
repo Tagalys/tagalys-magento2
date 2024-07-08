@@ -21,8 +21,6 @@ class Configuration extends \Magento\Framework\App\Helper\AbstractHelper
         'module:mpages:enabled' => '1',
         'categories'=> '[]',
         'category_ids'=> '[]',
-        'listing_pages:override_layout'=> '1',
-        'listing_pages:override_layout_name'=> '1column',
         'listing_pages:position_sort_direction' => 'asc',
         'listing_pages:rendering_method' => 'platform',
         'product_image_attribute' => 'small_image',
@@ -80,7 +78,6 @@ class Configuration extends \Magento\Framework\App\Helper\AbstractHelper
         'sync:consider_single_value_field_as_custom_field_too' => 'true',
         // v2.4.0
         'sync:avoid_parallel_sync_crons' => 'false',
-        'sync:always_perform_parent_category_assignment' => 'false',
         "fallback:sync:add_price_data_to_product_collection" => 'false',
         // v2.4.1
         'sync:configurable_attributes_to_sync_all_tags' => '[]',
