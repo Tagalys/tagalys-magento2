@@ -44,7 +44,8 @@ class AuditLog
 
     public function syncToTagalys() {
         $logIds = $this->getAllIds();
-        Utils::forEachChunk($logIds, 2000, function($idsChunk) {
+        $batchSize = (int) $this->configuration->getConfig('audit_logs:batch_size');
+        Utils::forEachChunk($logIds, $batchSize, function($idsChunk) {
             $entries = $this->getEntries($idsChunk);
             $response = $this->tagalysApi->clientApiCall('/v1/clients/audit_log', ['log_entries' => $entries]);
             if($response) {
@@ -74,7 +75,7 @@ class AuditLog
     }
 
     private function log($level, $service, $message, $payload) {
-        if($this->configuration->getConfig('fallback:mute_audit_logs', true, true)) {
+        if(!$this->configuration->getConfig('audit_logs:enabled', true, true)) {
             return false;
         }
         $data = ['level' => $level, 'timestamp' => Utils::now(), 'service' => $service, 'message' => $message, 'payload' => $payload];

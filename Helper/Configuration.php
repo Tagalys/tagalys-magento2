@@ -91,6 +91,9 @@ class Configuration extends \Magento\Framework\App\Helper\AbstractHelper
         "consider_order_increment_id_as_order_id" => "false",
         // v2.6.0-beta7
         "use_legacy_javascript" => 'false',
+        // v2.6.0-beta9
+        "audit_logs:enabled" => "false",
+        "audit_logs:batch_size" => 200,
     ];
 
     private $_tagalysApi;
