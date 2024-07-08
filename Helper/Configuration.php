@@ -41,11 +41,11 @@ class Configuration extends \Magento\Framework\App\Helper\AbstractHelper
         */
         'listing_pages:allow_reindex_for_mcc' => 'false',
         'listing_pages:allow_cache_clear_for_mcc' => 'false',
-        'listing_pages:allow_reindex_for_tcc' => 'true',
-        'listing_pages:allow_cache_clear_for_tcc' => 'true',
+        'listing_pages:allow_reindex_for_tcc' => 'false',
+        'listing_pages:allow_cache_clear_for_tcc' => 'false',
         'listing_pages:reindex_category_flat_after_updates' => 'false',
         'listing_pages:update_position_via_db_for_mcc' => 'false',
-        'listing_pages:update_position_via_db_for_tcc' => 'true',
+        'listing_pages:update_position_via_db_for_tcc' => 'false',
         'listing_pages:update_position_async' => 'true',
         // Don't need to set "true" for Multi store M 2.3+ since magento handles this internally
         'listing_pages:consider_multi_store_during_position_updates' => 'false',
@@ -1244,9 +1244,8 @@ class Configuration extends \Magento\Framework\App\Helper\AbstractHelper
         } else {
             return \Zend_Log::INFO;
         }
-        
     }
-    
+
     private function isTableExists($tableName){
         $tableName = $this->resourceConnection->getTableName($tableName);
         $connection = $this->resourceConnection->getConnection();
