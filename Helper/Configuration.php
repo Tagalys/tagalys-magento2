@@ -94,6 +94,7 @@ class Configuration extends \Magento\Framework\App\Helper\AbstractHelper
         // v2.6.0-beta9
         "audit_logs:enabled" => "false",
         "audit_logs:batch_size" => 200,
+        "sync:threshold_to_abandon_updates_and_trigger_feed_percentage" => "0.33",
     ];
 
     private $_tagalysApi;
