@@ -75,14 +75,6 @@ class Sync extends Generic
         $setupStatus = $this->tagalysConfiguration->getConfig('setup_status');
         $setupComplete = ($setupStatus == 'completed');
 
-        $syncNoteFieldset = $form->addFieldset('sync_note_fieldset', array(
-            'legend' => __('Sync Instructions'),
-            'style'   => "width:100%",
-        ));
-        $syncNoteFieldset->addField('sync_note', 'note', array(
-            'after_element_html' => '<b>Please run the sync Commands via your crontab to sync automatically. Instructions are <a href="https://www.tagalys.com/docs/platforms/magento2/v2/installation-setup/#cron" target="_blank">here</a>.<br><br>If you have any issues, please <a href="mailto:support@tagalys.com">email us</a>.</b>' 
-        ));
-
         $syncFieldset = $form->addFieldset(
             'sync_fieldset',
             ['legend' => __('Sync Status'), 'collapsable' => $this->getRequest()->has('popup')]
@@ -116,8 +108,6 @@ class Sync extends Generic
                 'text' => '<span id="store_'.$storeId.'_note_listing_pages_status"></span>'
             ));
         }
-
-        
 
         $this->setForm($form);
         // $this->propertyLocker->lock($form);

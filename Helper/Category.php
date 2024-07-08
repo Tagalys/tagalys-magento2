@@ -170,7 +170,7 @@ class Category extends \Magento\Framework\App\Helper\AbstractHelper
         }
     }
 
-    public function isMultiStoreWarningRequired()
+    public function platformHasMultipleStores()
     {
         $allStores = $this->tagalysConfiguration->getAllWebsiteStores();
         if (count($allStores) > 1) {

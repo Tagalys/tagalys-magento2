@@ -69,7 +69,7 @@ class Edit extends \Magento\Backend\Block\Widget\Form\Container
      */
     public function getHeaderText()
     {
-        return $this->__('Configuration - Need help? Visit <a href="http://support.tagalys.com" target="_blank">http://support.tagalys.com</a>');
+        return $this->__('Configuration');
     }
 
     /**

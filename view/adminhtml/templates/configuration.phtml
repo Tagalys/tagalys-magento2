@@ -448,56 +448,29 @@
         tgls_jq('#enable_smart_pages').change(function() {
             checkIfSmartPagesEnabled();
         });
-        tgls_jq('#understand_and_agree').keyup(function() {
-            updateFromIAgree()
-        }).bind('paste', function() {
-            updateFromIAgree()
-        });
 
-        checkTagalysEnabled(false);
-        onRenderingModeChange(false);
+        checkTagalysEnabled();
+        onRenderingModeChange();
 
-        function updateFromIAgree() {
-            if (storesVisibilityTimer) {
-                clearTimeout(storesVisibilityTimer);
-            }
-            storesVisibilityTimer = setTimeout(function() {
-                updateStoreCategoriesVisibility();
-            }, 250);
-        }
-
-        function checkTagalysEnabled(resetIAgree) {
-            if (typeof(resetIAgree) == 'undefined') {
-                resetIAgree = true;
-            }
+        function checkTagalysEnabled() {
+            tgls_jq('#technical_considerations_fieldset-wrapper').hide();
             if (tgls_jq('#enable_listingpages').val() == '0') {
-                tgls_jq('#technical_considerations_fieldset-wrapper').hide();
                 tgls_jq.each(tgls_jq('#stores_for_tagalys').val(), function(i, storeId) {
                     var selectorVal = tgls_jq('#store_' + storeId + '_listing_pages-wrapper').hide();
                 });
             } else {
-                tgls_jq('#technical_considerations_fieldset-wrapper').show();
                 tgls_jq.each(tgls_jq('#stores_for_tagalys').val(), function(i, storeId) {
                     var selectorVal = tgls_jq('#store_' + storeId + '_listing_pages-wrapper').show();
                 });
-                onRenderingModeChange(resetIAgree);
+                onRenderingModeChange();
             }
         }
 
-        function onRenderingModeChange(resetIAgree) {
-            if (typeof(resetIAgree) == 'undefined') {
-                resetIAgree = true;
-            }
-            if (resetIAgree) {
-                tgls_jq('#understand_and_agree').val('');
-            }
-            var renderingMethod = tgls_jq('#category_pages_rendering_method').val();
-            renderingMethod = renderingMethod ? renderingMethod : 'platform';
+        function onRenderingModeChange() {
+            var renderingMethod = 'platform';
             tgls_jq('.visible-for-rendering-method').parents('.admin__field').hide();
             tgls_jq('.visible-for-rendering-method-' + renderingMethod).parents('.admin__field').show();
-            if (renderingMethod == 'platform') {
-                onSameProductsAcrossStoresChange();
-            }
+            onSameProductsAcrossStoresChange();
             updateStoreCategoriesVisibility();
         }
 
@@ -509,30 +482,20 @@
         }
 
         function updateStoreCategoriesVisibility() {
-            var agreeValue = tgls_jq('#understand_and_agree').val();
-            if (agreeValue) {
-                agreeValue = agreeValue.trim();
-            }
-            if (agreeValue == 'I agree') {
-                var renderingMethod = tgls_jq('#category_pages_rendering_method').val();
-                renderingMethod = renderingMethod ? renderingMethod : 'platform';
-                var sameProductsAcrossStores = tgls_jq('#same_or_similar_products_across_all_stores').val();
-                if (tgls_jq('#enable_listingpages').val() == '1') {
-                    tgls_jq('div[class*="field-jtree_wrap_store"]').show();
-                    if (renderingMethod == 'platform' && sameProductsAcrossStores == '1') {
-                        var storeIdForCategoryPages = tgls_jq('#store_id_for_category_pages').val();
-                        tgls_jq('.categories-for-tagalys-store').parents('.fieldset-wrapper').hide();
-                        tgls_jq('#store_' + storeIdForCategoryPages + '_listing_pages-wrapper').show();
-                    } else {
-                        tgls_jq('.categories-for-tagalys-store').parents('.fieldset-wrapper').show();
-                    }
-                } else if (tgls_jq('#enable_listingpages').val() == '2') {
-                    tgls_jq('div[class*="field-jtree_wrap_store"]').hide();
+            var sameProductsAcrossStores = tgls_jq('#same_or_similar_products_across_all_stores').val();
+            if (tgls_jq('#enable_listingpages').val() == '1') {
+                tgls_jq('div[class*="field-jtree_wrap_store"]').show();
+                if (sameProductsAcrossStores == '1') {
+                    var storeIdForCategoryPages = tgls_jq('#store_id_for_category_pages').val();
+                    tgls_jq('.categories-for-tagalys-store').parents('.fieldset-wrapper').hide();
+                    tgls_jq('#store_' + storeIdForCategoryPages + '_listing_pages-wrapper').show();
+                } else {
+                    tgls_jq('.categories-for-tagalys-store').parents('.fieldset-wrapper').show();
                 }
-                checkIfSmartPagesEnabled();
-            } else {
-                tgls_jq('.categories-for-tagalys-store').parents('.fieldset-wrapper').hide();
+            } else if (tgls_jq('#enable_listingpages').val() == '2') {
+                tgls_jq('div[class*="field-jtree_wrap_store"]').hide();
             }
+            checkIfSmartPagesEnabled();
         }
 
         function checkIfSmartPagesEnabled() {
