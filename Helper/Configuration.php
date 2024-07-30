@@ -101,6 +101,10 @@ class Configuration extends \Magento\Framework\App\Helper\AbstractHelper
         //  consider using: 'category_pages_store_mapping' config instead of this
         "listing_pages:same_or_similar_products_across_all_stores" => '0',
         "listing_pages:store_id_for_category_pages" => '0',
+
+        // 3.0.1
+        "sync:whitelisted_leaf_product_types" => '["simple","virtual"]',
+        "sync:default_product_inventory_quantity" => '0',
     ];
 
     private $_tagalysApi;

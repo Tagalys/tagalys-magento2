@@ -194,6 +194,9 @@ class InstallSchema implements InstallSchemaInterface
             $installer->getConnection()->createTable($categoryTable);
         }
 
+        // ** Don't add anymore code in this class. Directly use UpgradeSchema.php for future schema changes **
+        // Reason: https://magento.stackexchange.com/a/194631
+
         $installer->endSetup();
     }
 }

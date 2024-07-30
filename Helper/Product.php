@@ -482,7 +482,7 @@ class Product extends \Magento\Framework\App\Helper\AbstractHelper
         $tagItems = array();
         foreach($associatedProducts as $associatedProduct){
             $totalAssociatedProducts += 1;
-            $inventoryDetails = $this->getSimpleProductInventoryDetails($associatedProduct);
+            $inventoryDetails = $this->getAssociatedProductInventoryDetails($associatedProduct);
 
             // Getting tag sets
             if ($inventoryDetails['in_stock']) {
@@ -800,8 +800,8 @@ class Product extends \Magento\Framework\App\Helper\AbstractHelper
 
             $productDetails = array_merge($productDetails, $this->getProductFields($product));
 
-            if ($productDetails['__magento_type'] == 'simple') {
-                $inventoryDetails = $this->getSimpleProductInventoryDetails($product, $stockItem);
+            if ($this->isWhitelistedLeafProduct($product)) {
+                $inventoryDetails = $this->getProductInventoryDetails($product, $stockItem);
                 $productDetails['in_stock'] = $inventoryDetails['in_stock'];
                 $productDetails['__inventory_total'] = $inventoryDetails['qty'];
                 $productDetails['__inventory_average'] = $inventoryDetails['qty'];
@@ -919,33 +919,46 @@ class Product extends \Magento\Framework\App\Helper\AbstractHelper
         return $amount;
     }
 
-    public function getSimpleProductInventoryDetails($product, $stockItem = false) {
-        if($product->getTypeId() == 'simple' || $product->getTypeId() == 'virtual') {
-            $magentoVersion = $this->productMetadata->getVersion();
-            $msiUsed = $this->tagalysConfiguration->getConfig('sync:multi_source_inventory_used', true);
-            if(version_compare($magentoVersion, '2.3.0', '>=') && $msiUsed) {
-                // only do this if MSI is used, coz the else part will work for non MSI stores and is faster too.
-                $websiteCode = $this->storeManager->getWebsite()->getCode();
-                $stockResolver = Utils::getInstanceOf("\Magento\InventorySalesApi\Api\StockResolverInterface");
-                $isProductSalableInterface = Utils::getInstanceOf("\Magento\InventorySalesApi\Api\IsProductSalableInterface");
-                $getProductSalableQty = Utils::getInstanceOf("\Magento\InventorySalesApi\Api\GetProductSalableQtyInterface");
-                $stockId = $stockResolver->execute(\Magento\InventorySalesApi\Api\Data\SalesChannelInterface::TYPE_WEBSITE, $websiteCode)->getStockId();
+    public function isWhitelistedLeafProduct($product) {
+        $whitelistedLeafProductTypes = $this->tagalysConfiguration->getConfig('sync:whitelisted_leaf_product_types', true, true);
+        return in_array($product->getTypeId(), $whitelistedLeafProductTypes);
+    }
 
-                $stockQty = $getProductSalableQty->execute($product->getSku(), $stockId);
-                $inStock = $isProductSalableInterface->execute($product->getSku(), $stockId);
-            } else {
-                if($stockItem == false) {
-                    $stockItem = $this->stockRegistry->getStockItem($product->getId());
-                }
-                $stockQty = $stockItem->getQty();
-                $inStock = $stockItem->getIsInStock();
-            }
-            return [
-                'in_stock' => $inStock,
-                'qty' => (int)$stockQty
-            ];
+    public function getAssociatedProductInventoryDetails($associatedProduct) {
+        if ($this->isWhitelistedLeafProduct($associatedProduct)) {
+            return $this->getProductInventoryDetails($associatedProduct);
         }
-        return false;
+        $defaultProductInventoryQuantity = (int) $this->tagalysConfiguration->getConfig('sync:default_product_inventory_quantity', false, true);
+        return [
+            'in_stock' => ($defaultProductInventoryQuantity > 0),
+            'qty' => $defaultProductInventoryQuantity
+        ];
+    }
+
+    public function getProductInventoryDetails($product, $stockItem = false) {
+        $magentoVersion = $this->productMetadata->getVersion();
+        $msiUsed = $this->tagalysConfiguration->getConfig('sync:multi_source_inventory_used', true);
+        if(version_compare($magentoVersion, '2.3.0', '>=') && $msiUsed) {
+            // only do this if MSI is used, coz the else part will work for non MSI stores and is faster too.
+            $websiteCode = $this->storeManager->getWebsite()->getCode();
+            $stockResolver = Utils::getInstanceOf("\Magento\InventorySalesApi\Api\StockResolverInterface");
+            $isProductSalableInterface = Utils::getInstanceOf("\Magento\InventorySalesApi\Api\IsProductSalableInterface");
+            $getProductSalableQty = Utils::getInstanceOf("\Magento\InventorySalesApi\Api\GetProductSalableQtyInterface");
+            $stockId = $stockResolver->execute(\Magento\InventorySalesApi\Api\Data\SalesChannelInterface::TYPE_WEBSITE, $websiteCode)->getStockId();
+
+            $stockQty = $getProductSalableQty->execute($product->getSku(), $stockId);
+            $inStock = $isProductSalableInterface->execute($product->getSku(), $stockId);
+        } else {
+            if($stockItem == false) {
+                $stockItem = $this->stockRegistry->getStockItem($product->getId());
+            }
+            $stockQty = $stockItem->getQty();
+            $inStock = $stockItem->getIsInStock();
+        }
+        return [
+            'in_stock' => $inStock,
+            'qty' => (int)$stockQty
+        ];
     }
 
     // called while getting product details during "add to cart" or "buy", from Details.php

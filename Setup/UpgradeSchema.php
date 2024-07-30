@@ -62,8 +62,9 @@ class UpgradeSchema implements UpgradeSchemaInterface
         }
 
         if (version_compare($context->getVersion(), '1.1.5', '<')) {
-            $queueTable = $setup->getConnection()
-                ->newTable('tagalys_audit_log')
+            $auditLogTableName = $setup->getTable('tagalys_audit_log');
+            $auditLogTable = $setup->getConnection()
+                ->newTable($auditLogTableName)
                 ->addColumn(
                     'id',
                     Table::TYPE_INTEGER,
@@ -89,7 +90,7 @@ class UpgradeSchema implements UpgradeSchemaInterface
                 ->setComment('Tagalys Audit Log Table')
                 ->setOption('type', 'InnoDB')
                 ->setOption('charset', 'utf8');
-            $setup->getConnection()->createTable($queueTable);
+            $setup->getConnection()->createTable($auditLogTable);
         }
 
         $setup->endSetup();

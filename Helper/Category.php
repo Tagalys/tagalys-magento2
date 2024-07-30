@@ -468,9 +468,11 @@ class Category extends \Magento\Framework\App\Helper\AbstractHelper
 
         $this->tagalysConfiguration->updateTagalysHealth();
 
-        $this->restrictedAction->tryExecute(function() {
-            $this->auditLog->syncToTagalys();
-        });
+        if($this->tagalysConfiguration->getConfig('audit_logs:enabled', true, true)) {
+            $this->restrictedAction->tryExecute(function() {
+                $this->auditLog->syncToTagalys();
+            });
+        }
 
         if($max == null) {
             $max = (int) $this->tagalysConfiguration->getConfig("sync:max_categories_per_cron");
