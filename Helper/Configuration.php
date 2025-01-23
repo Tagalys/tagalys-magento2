@@ -736,7 +736,7 @@ class Configuration extends \Magento\Framework\App\Helper\AbstractHelper
 
     public function getTagSetsAndCustomFields($storeId) {
         $tag_sets = array();
-        $tag_sets[] = array("id" =>"__categories", "label" => "Categories", "filters" => true, "search" => true);
+        $tag_sets[] = array("id" =>"__categories", "label" => "Categories", "filters" => true, "search" => false);
         $custom_fields = array();
         $custom_fields[] = array(
             'name' => '__new',
