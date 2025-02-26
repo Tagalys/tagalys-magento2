@@ -587,8 +587,11 @@ class Product extends \Magento\Framework\App\Helper\AbstractHelper
     }
 
     public function getProfitAndMargin($price, $costPrice) {
+        if (empty($costPrice) || $costPrice == 0) {
+            return array('profit' => 0, 'margin' => 0);
+        }
         $profit = $price - $costPrice;
-        $margin = ($costPrice > 0) ? ($profit / $costPrice) * 100 : 0;
+        $margin = ($profit / $price) * 100;
         return array('profit' => $profit, 'margin' => $margin);
     }
 
