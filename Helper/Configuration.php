@@ -786,6 +786,24 @@ class Configuration extends \Magento\Framework\App\Helper\AbstractHelper
             'filters' => false,
             'search' => false
         );
+        $custom_fields[] = array(
+            'name' => '__average_profit',
+            'label' => 'Profit - Average',
+            'type' => 'float',
+            'currency' => false,
+            'display' => false,
+            'filters' => false,
+            'search' => false
+        );
+        $custom_fields[] = array(
+            'name' => '__average_margin',
+            'label' => 'Margin (%) - Average',
+            'type' => 'float',
+            'currency' => false,
+            'display' => false,
+            'filters' => false,
+            'search' => false
+        );
         foreach($this->ratingCollectionFactory->create() as $rating) {
             $custom_fields[] = array(
                 'name' => ('__magento_avg_rating_id_'.$rating->getId()),
