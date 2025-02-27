@@ -793,7 +793,8 @@ class Configuration extends \Magento\Framework\App\Helper\AbstractHelper
             'currency' => false,
             'display' => false,
             'filters' => false,
-            'search' => false
+            'search' => false,
+            'dashboard_filters' => true,
         );
         $custom_fields[] = array(
             'name' => '__average_margin',
@@ -802,7 +803,8 @@ class Configuration extends \Magento\Framework\App\Helper\AbstractHelper
             'currency' => false,
             'display' => false,
             'filters' => false,
-            'search' => false
+            'search' => false,
+            'dashboard_filters' => true,
         );
         foreach($this->ratingCollectionFactory->create() as $rating) {
             $custom_fields[] = array(
