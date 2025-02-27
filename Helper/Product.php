@@ -487,17 +487,23 @@ class Product extends \Magento\Framework\App\Helper\AbstractHelper
             $totalAssociatedProducts += 1;
             $inventoryDetails = $this->getAssociatedProductInventoryDetails($associatedProduct);
 
-            // Getting tag sets
+            $salePrice = null;
+            $costPrice = $associatedProduct->getCost();
+            if ($costPrice != null && $costPrice > 0) {
+                $salePrice = $associatedProduct->getPriceInfo()->getPrice('final_price')->getAmount()->getValue();
+
+                $totalProductsWithCostPrice += 1;
+                $profitAndMargin = $this->getProfitAndMargin($salePrice, $costPrice);
+                $totalProfit += $profitAndMargin['profit'];
+                $totalMargin += $profitAndMargin['margin'];
+            }
+
             if ($inventoryDetails['in_stock']) {
                 $anyAssociatedProductInStock = true;
-                $salePrice = $associatedProduct->getPriceInfo()->getPrice('final_price')->getAmount()->getValue();
-                $costPrice = $associatedProduct->getCost();
-                if ($costPrice != null && $costPrice > 0) {
-                    $totalProductsWithCostPrice += 1;
-                    $profitAndMargin = $this->getProfitAndMargin($salePrice, $costPrice);
-                    $totalProfit += $profitAndMargin['profit'];
-                    $totalMargin += $profitAndMargin['margin'];
+                if ($salePrice == null) {
+                    $salePrice = $associatedProduct->getPriceInfo()->getPrice('final_price')->getAmount()->getValue();
                 }
+
                 if($minSalePrice > $salePrice) {
                     $minSalePrice = $salePrice;
                     $productForPrice = $associatedProduct;
