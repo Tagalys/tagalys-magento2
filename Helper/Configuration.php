@@ -736,7 +736,7 @@ class Configuration extends \Magento\Framework\App\Helper\AbstractHelper
 
     public function getTagSetsAndCustomFields($storeId) {
         $tag_sets = array();
-        $tag_sets[] = array("id" =>"__categories", "label" => "Categories", "filters" => true, "search" => true);
+        $tag_sets[] = array("id" =>"__categories", "label" => "Categories", "filters" => true, "search" => false);
         $custom_fields = array();
         $custom_fields[] = array(
             'name' => '__new',
@@ -785,6 +785,26 @@ class Configuration extends \Magento\Framework\App\Helper\AbstractHelper
             'display' => true,
             'filters' => false,
             'search' => false
+        );
+        $custom_fields[] = array(
+            'name' => '__average_profit',
+            'label' => 'Profit - Average',
+            'type' => 'float',
+            'currency' => false,
+            'display' => false,
+            'filters' => false,
+            'search' => false,
+            'dashboard_filters' => true,
+        );
+        $custom_fields[] = array(
+            'name' => '__average_margin',
+            'label' => 'Margin (%) - Average',
+            'type' => 'float',
+            'currency' => false,
+            'display' => false,
+            'filters' => false,
+            'search' => false,
+            'dashboard_filters' => true,
         );
         foreach($this->ratingCollectionFactory->create() as $rating) {
             $custom_fields[] = array(

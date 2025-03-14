@@ -37,6 +37,9 @@ class Utils
         ];
     }
 
+    public static function isSimpleProduct($product) {
+        return ($product->getTypeId() == 'simple');
+    }
     public static function isConfigurableProduct($product) {
         return ($product->getTypeId() == 'configurable');
     }

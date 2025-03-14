@@ -478,16 +478,32 @@ class Product extends \Magento\Framework\App\Helper\AbstractHelper
             // adding this configuration just in case if we face any side effects by removing this
             $associatedProducts->addFinalPrice();
         }
+        $totalProfit = 0;
+        $totalMargin = 0;
+        $totalProductsWithCostPrice = 0;
 
         $tagItems = array();
         foreach($associatedProducts as $associatedProduct){
             $totalAssociatedProducts += 1;
             $inventoryDetails = $this->getAssociatedProductInventoryDetails($associatedProduct);
 
-            // Getting tag sets
+            $salePrice = null;
+            $costPrice = $associatedProduct->getCost();
+            if ($costPrice != null && $costPrice > 0) {
+                $salePrice = $associatedProduct->getPriceInfo()->getPrice('final_price')->getAmount()->getValue();
+
+                $totalProductsWithCostPrice += 1;
+                $profitAndMargin = $this->getProfitAndMargin($salePrice, $costPrice);
+                $totalProfit += $profitAndMargin['profit'];
+                $totalMargin += $profitAndMargin['margin'];
+            }
+
             if ($inventoryDetails['in_stock']) {
                 $anyAssociatedProductInStock = true;
-                $salePrice = $associatedProduct->getPriceInfo()->getPrice('final_price')->getAmount()->getValue();
+                if ($salePrice == null) {
+                    $salePrice = $associatedProduct->getPriceInfo()->getPrice('final_price')->getAmount()->getValue();
+                }
+
                 if($minSalePrice > $salePrice) {
                     $minSalePrice = $salePrice;
                     $productForPrice = $associatedProduct;
@@ -568,7 +584,21 @@ class Product extends \Magento\Framework\App\Helper\AbstractHelper
                 array_push($productDetails['__tags'], $tagSetData);
             }
         }
-        return array('details' => $productDetails, 'product_for_price'=>$productForPrice);
+        return array(
+            'details' => $productDetails,
+            'product_for_price' => $productForPrice,
+            'average_profit' => ($totalProductsWithCostPrice > 0 ? $totalProfit / $totalProductsWithCostPrice : 0),
+            'average_margin' => ($totalProductsWithCostPrice > 0 ? $totalMargin / $totalProductsWithCostPrice : 0)
+        );
+    }
+
+    public function getProfitAndMargin($price, $costPrice) {
+        if (empty($costPrice) || $costPrice == 0) {
+            return array('profit' => 0, 'margin' => 0);
+        }
+        $profit = $price - $costPrice;
+        $margin = ($profit / $price) * 100;
+        return array('profit' => $profit, 'margin' => $margin);
     }
 
     public function getSingleSelectTagItem($storeId, $product, $attributeCode, &$alreadyRecordedTagIds = []) {
@@ -721,6 +751,7 @@ class Product extends \Magento\Framework\App\Helper\AbstractHelper
                     $productDetails['sale_price'] = $this->getPriceInBaseCurrency($productDetails['sale_price']);
                 }
             }
+
             /** Changing productForPrices->product (check if works) */
             if ($product->getSpecialFromDate() != null) {
                 $specialPriceFromDatetime = new \DateTime($product->getSpecialFromDate(), new \DateTimeZone($this->timezoneInterface->getConfigTimezone()));
@@ -811,6 +842,8 @@ class Product extends \Magento\Framework\App\Helper\AbstractHelper
                 $result = $this->addAssociatedProductDetails($product, $productDetails, $storeId);
                 $productDetails = $result['details'];
                 $productForPrice = $result['product_for_price'];
+                $productDetails['__average_profit'] = $result['average_profit'];
+                $productDetails['__average_margin'] = $result['average_margin'];
             }
 
             if ($productDetails['__magento_type'] == 'grouped') {
@@ -831,6 +864,12 @@ class Product extends \Magento\Framework\App\Helper\AbstractHelper
 
             // prices and sale price from/to
             $productDetails = $this->addPriceDetails($productForPrice, $productDetails);
+
+            if ($productDetails['__magento_type'] == 'simple') {
+                $profitAndMargin = $this->getProfitAndMargin($productDetails['sale_price'], $productForPrice->getCost());
+                $productDetails['__average_profit'] = $profitAndMargin['profit'];
+                $productDetails['__average_margin'] = $profitAndMargin['margin'];
+            }
 
             // New
             $currentDatetime = new \DateTime("now", new \DateTimeZone('UTC'));
